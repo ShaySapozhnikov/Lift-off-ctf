@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import '../App.css';
 
-function CrewChat() {
+function TerminalChat() {
   const [input, setInput] = useState("");
+  const [cooldown, setCooldown] = useState(0);
   const spanRef = useRef(null);
   const inputRef = useRef(null);
+  const lastEnterTime = useRef(0);
+  const intervalRef = useRef(null);
 
   useEffect(() => {
     if (spanRef.current && inputRef.current) {
@@ -16,11 +19,40 @@ function CrewChat() {
     inputRef.current?.focus();
   }, []);
 
+  // Clean up interval on unmount
+  useEffect(() => {
+    return () => clearInterval(intervalRef.current);
+  }, []);
+
+  const startCooldown = () => { // needs to be in the backend api 
+    setCooldown(10);
+    lastEnterTime.current = Date.now();
+
+    intervalRef.current = setInterval(() => {
+      const secondsPassed = Math.floor((Date.now() - lastEnterTime.current) / 1000);
+      const timeLeft = 10 - secondsPassed;
+
+      if (timeLeft <= 0) {
+        clearInterval(intervalRef.current);
+        setCooldown(0);
+      } else {
+        setCooldown(timeLeft);
+      }
+    }, 1000);
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && input.trim() !== "") {
-        // Send
+      const now = Date.now();
+
+      if (cooldown === 0) {
+        console.log("Message sent:", input);
         setInput("");
+        startCooldown();
+      } else {
+        console.log(`Wait ${cooldown} seconds before sending again.`);
       }
+    }
   };
 
   return (
@@ -52,8 +84,15 @@ function CrewChat() {
           <span className="ml-[-24px] mt-2 animate-blink relative z-10">|</span>
         </div>
       </div>
+
+      {cooldown > 0 && (
+
+        <div className=" text-left text-white font-mono mt-2 text-sm">
+          Next message available in  {cooldown} second{cooldown > 1 ? "s" : ""}
+        </div>
+      )}
     </div>
   );
 }
 
-export default CrewChat;
+export default TerminalChat;
