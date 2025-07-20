@@ -7,12 +7,17 @@ export default {
   theme: {
     extend: {
       animation: {
-        'float': 'float 3s ease-in-out infinite', // smooth and slow
+        'float': 'float 3s ease-in-out infinite', 
+        'blink': 'blink 2s step-start infinite', 
       },
       keyframes: {
         float: {
           '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-10px)' }, // how "high" it floats
+          '50%': { transform: 'translateY(-10px)' }, 
+        },
+        blink: {
+          '0%, 50%, 100%': { opacity: '1' },
+          '25%, 75%': { opacity: '0' },
         },
       },
     },
