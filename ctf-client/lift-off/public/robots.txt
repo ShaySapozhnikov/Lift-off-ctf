@@ -1,0 +1,12 @@
+# The Unhackable 1.0V
+User-agent: *
+Disallow: /admin/
+Disallow: /navigation-system/
+Disallow: /autopilot/
+Disallow: /backup/
+Disallow: /internal-communications/
+Disallow: /emergency-override/                     
+# Autonomous units are strictly prohibited from accessing
+# these modules to prevent unauthorized control.
+# Any attempts to access these paths will be thrown out the airlock.
+# For authorized Humans personnel only.
