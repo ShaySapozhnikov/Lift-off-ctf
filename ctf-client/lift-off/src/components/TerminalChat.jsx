@@ -80,7 +80,7 @@ function TerminalChat() {
             spellCheck="false"
             aria-label="Crew chat input"
           />
-          <span className="ml-[-24px] mt-2 animate-blink relative z-10">|</span>
+          <span className="ml-[-24px] mt-2 animate-blinkText relative z-10">|</span>
         </div>
       </div>
 
