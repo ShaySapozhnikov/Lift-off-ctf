@@ -1,7 +1,19 @@
 import React, { useState } from "react";
 
 function Backup() {
-  const [locked, setLocked] = useState(true); // change to puzzel
+  const [locked, setLocked] = useState(false); //auto.init.recovery_404 add pasword functionality !
+
+  const scriptContent = `
+    const debugInfo = {
+      meta: "This page was audited by Dillian. Looks fine!",
+      backup_token: "YXV0by5pbml0LnJlY292ZXJ5XzQwNA==", // base64
+      note: "nothing to worry about."
+    };
+  `;
+ 
+  
+
+  
 
   const svgLock = (
     <svg
@@ -14,6 +26,8 @@ function Backup() {
   );
 
   return (
+    
+    
     <>
       <div
         className={`fixed inset-0 z-50 hue-rotate-270 bg-black transition-opacity duration-300 ${
@@ -52,13 +66,21 @@ function Backup() {
         )}
       </div>
 
-      <div className="relative z-10 flex flex-col items-center justify-center mt-20">
-        <h1 className="text-4xl font-bold text-white select-none">BackUp</h1>
-        <button className="mt-6 px-6 py-2 bg-blue-600 text-white rounded">
-          backup
-        </button>
-      </div>
+      <div className="flex items-center justify-center min-h-screen">
+       <div className="z-10 flex flex-col items-center justify-center mt-20">
+         <h1 className="text-4xl font-bold text-white select-none">BackUp</h1>
+         <button className="mt-6 px-6 py-2 bg-blue-600 text-white rounded"> Download Backup.csv</button>
+         </div>
+        </div>
+
+      <script
+      id="debug-info"
+      type="text/plain"
+      dangerouslySetInnerHTML={{ __html: scriptContent }}
+    />
+
     </>
+    
   );
 }
 
