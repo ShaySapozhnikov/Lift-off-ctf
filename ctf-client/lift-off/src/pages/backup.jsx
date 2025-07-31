@@ -2,8 +2,10 @@ import React, { useState } from "react";
 import ShipIcon from "../components/shipIcon";
 
 function Backup() {
-  const [locked, setLocked] = useState(true); //auto.init.recovery_404 add pasword functionality !
+  const [locked, setLocked] = useState(true); 
   const [input, setInput] = useState("");
+  const [invalid, setInvalid] = useState(false)
+
 
   const scriptContent = `
     const debugInfo = {
@@ -14,9 +16,18 @@ function Backup() {
   `;
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && input.trim() !== "") { //add backend
-      if (input === "auto.init.recovery_404"){
+      if (input === "auto.init.recovery_404"){ // THIS SHOULD NOT BE HERE ON FINAL BUILD
         setLocked(false)
       }
+      else{
+        setInvalid(true)
+        setTimeout(() => {
+          setInvalid(false);
+        }, 3000);
+
+        
+      }
+      
     
     }
   };
@@ -79,6 +90,11 @@ function Backup() {
               onChange={(e) => setInput(e.target.value)}
             
             />
+            {invalid && (
+              <h3 className="text-amber-100 mt-5">Error: Incorrect password</h3>
+            )}
+
+
           </>
         )}
       </div>
@@ -87,7 +103,7 @@ function Backup() {
        <div className="z-10 flex flex-col items-center justify-center mt-10">
          < ShipIcon />
          <h3>The unhackable backup installer V2.0</h3>
-        bg-zinc-900 
+   
          <button className="mt-6 px-6 py-2 bg-zinc-900  text-white hover:text-amber-100 rounded border border-dashed mb-5"> Download Backup</button>
          </div>
         </div>

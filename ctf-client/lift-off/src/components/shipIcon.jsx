@@ -17,10 +17,11 @@ const asciiArt = `
                                                        \`------'\`
 `;
 
-function ShipIcon()
+function ShipIcon({className = ""})
 {
+    const defaultClassName = "text-white text-left font-mono text-[10px] leading-tight whitespace-pre-wrap p-4 mt-[10px] animate-float z-10"
     return(
-        <pre className="text-white text-left font-mono text-[10px] leading-tight whitespace-pre-wrap p-4 mt-[10px] animate-float z-10">
+        <pre className= {`${defaultClassName}  ${className}`}>
         {asciiArt}
       </pre>
     );
