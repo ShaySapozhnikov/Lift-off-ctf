@@ -1,5 +1,6 @@
 # The Unhackable 1.0V
 User-agent: *
+Allow: /start/
 Disallow: /admin/
 Disallow: /navigation-system/
 Disallow: /autopilot/

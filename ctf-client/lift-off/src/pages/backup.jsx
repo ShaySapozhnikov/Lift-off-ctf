@@ -28,6 +28,7 @@ function Backup() {
         
       }
       
+      
     
     }
   };
@@ -104,7 +105,19 @@ function Backup() {
          < ShipIcon />
          <h3>The unhackable backup installer V2.0</h3>
    
-         <button className="mt-6 px-6 py-2 bg-zinc-900  text-white hover:text-amber-100 rounded border border-dashed mb-5"> Download Backup</button>
+         <button
+            className="mt-6 px-6 py-2 bg-zinc-900 text-white hover:text-amber-100 rounded border border-dashed mb-5"
+            onClick={() => {
+              const link = document.createElement("a");
+              link.href = "/backup.zip";              // ADD to BACK END!!!! curent file is in Public!
+              link.download = "backup.zip";
+              document.body.appendChild(link);        
+              link.click();
+              document.body.removeChild(link);       
+            }}
+          >
+          Download Backup
+        </button>
          </div>
         </div>
 
@@ -115,6 +128,7 @@ function Backup() {
     />
 
     </>
+     //add backend : make api call instead 
     
   );
 }
