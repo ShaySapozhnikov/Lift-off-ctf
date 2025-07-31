@@ -17,3 +17,16 @@ const asciiArt = `
                                                        \`------'\`
 `;
 
+function ShipIcon()
+{
+    return(
+        <pre className="text-white text-left font-mono text-[10px] leading-tight whitespace-pre-wrap p-4 mt-[10px] animate-float z-10">
+        {asciiArt}
+      </pre>
+    );
+
+}
+
+export default ShipIcon;
+
+

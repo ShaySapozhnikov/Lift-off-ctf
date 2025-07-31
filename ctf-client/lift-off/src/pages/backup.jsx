@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import ShipIcon from "../components/shipIcon";
 
 function Backup() {
-  const [locked, setLocked] = useState(false); //auto.init.recovery_404 add pasword functionality !
+  const [locked, setLocked] = useState(true); //auto.init.recovery_404 add pasword functionality !
+  const [input, setInput] = useState("");
 
   const scriptContent = `
     const debugInfo = {
@@ -10,6 +12,14 @@ function Backup() {
       note: "nothing to worry about."
     };
   `;
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && input.trim() !== "") { //add backend
+      if (input === "auto.init.recovery_404"){
+        setLocked(false)
+      }
+    
+    }
+  };
  
   
 
@@ -61,15 +71,24 @@ function Backup() {
                 {svgLock}
               </div>
             </div>
-            <input className="rounded text-black mt-10" type="password" />
+            <input  
+              className="rounded text-black mt-10" 
+              type="password" 
+              value={input}
+              onKeyDown={handleKeyDown}
+              onChange={(e) => setInput(e.target.value)}
+            
+            />
           </>
         )}
       </div>
 
       <div className="flex items-center justify-center min-h-screen">
-       <div className="z-10 flex flex-col items-center justify-center mt-20">
-         <h1 className="text-4xl font-bold text-white select-none">BackUp</h1>
-         <button className="mt-6 px-6 py-2 bg-blue-600 text-white rounded"> Download Backup.csv</button>
+       <div className="z-10 flex flex-col items-center justify-center mt-10">
+         < ShipIcon />
+         <h3>The unhackable backup installer V2.0</h3>
+        bg-zinc-900 
+         <button className="mt-6 px-6 py-2 bg-zinc-900  text-white hover:text-amber-100 rounded border border-dashed mb-5"> Download Backup</button>
          </div>
         </div>
 
