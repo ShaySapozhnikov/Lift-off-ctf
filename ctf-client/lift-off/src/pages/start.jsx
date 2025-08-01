@@ -10,7 +10,7 @@ function start(){
   
           </div>
 
-  <div class="grid h-[650px] w-[650px] grid-rows-2 rounded border-2 border-dotted border-white">
+  <div class="grid h-[650px] w-[650px] grid-rows-2 rounded border-2 border-double shadow-lg shadow-white/50 border-white">
  
     <div>
       <h1 class="text-2xl text-white text-center p-5 animate-pulse">--Activity Log--</h1>

@@ -5,7 +5,7 @@ function Board()
 
 
     return(
-        <div className="relative bg-zinc-900 h-[400px] border-2 border-gray-500 border-dashed rounded-md">
+        <div className="relative bg-zinc-900 h-[400px] border-2 border-gray-500 border-dashed rounded-md ">
           <h1 className="p-3 text-white text-center italic font-semibold hover:scale-125 transition-transform duration-300">
             ------Leader Board------
           </h1>

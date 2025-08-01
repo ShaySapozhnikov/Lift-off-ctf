@@ -8,12 +8,15 @@ import Home from "./pages/home.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import Start from "./pages/start.jsx";
 import Backup from "./pages/backup.jsx";
+import InternalCommunications from "./pages/internal-communications.jsx";
 
 const router = createBrowserRouter([
   {path: "*", element: <NotFound />}, // needs btter ui!!
   { path: "/", element: <Home /> },
   {path:"start" , element: <Start />},
-  {path: "backup" , element: <Backup />}
+  {path: "backup" , element: <Backup />},
+  {path: "internal-communications", element: <InternalCommunications />}
+
 ]);
 
 
