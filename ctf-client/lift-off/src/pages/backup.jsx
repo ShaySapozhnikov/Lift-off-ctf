@@ -1,41 +1,49 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import ShipIcon from "../components/shipIcon";
 
 function Backup() {
-  const [locked, setLocked] = useState(true); 
+  const [locked, setLocked] = useState(true);
   const [input, setInput] = useState("");
-  const [invalid, setInvalid] = useState(false)
+  const [invalid, setInvalid] = useState(false);
+  const overlayRef = useRef(null);
 
+
+  useEffect(() => {
+    if (!locked) return;
+
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.removedNodes) {
+          if (node === overlayRef.current) {
+            console.warn("Lock screen removed — reloading...");
+            window.location.reload(); // Anti-bypass reaction
+          }
+        }
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [locked]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && input.trim() !== "") {
+      if (input === "auto.init.recovery_404") {
+        setLocked(false);
+      } else {
+        setInvalid(true);
+        setTimeout(() => setInvalid(false), 3000);
+      }
+    }
+  };
 
   const scriptContent = `
     const debugInfo = {
       meta: "This page was audited by Dillian. Looks fine!",
-      backup_token: "YXV0by5pbml0LnJlY292ZXJ5XzQwNA==", // base64
+      backup_token: "YXV0by5pbml0LnJlY292ZXJ5XzQwNA==",
       note: "nothing to worry about."
     };
   `;
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && input.trim() !== "") { //add backend
-      if (input === "auto.init.recovery_404"){ // THIS SHOULD NOT BE HERE ON FINAL BUILD
-        setLocked(false)
-      }
-      else{
-        setInvalid(true)
-        setTimeout(() => {
-          setInvalid(false);
-        }, 3000);
-
-        
-      }
-      
-      
-    
-    }
-  };
- 
-  
-
-  
 
   const svgLock = (
     <svg
@@ -48,10 +56,9 @@ function Backup() {
   );
 
   return (
-    
-    
     <>
       <div
+        ref={overlayRef}
         className={`fixed inset-0 z-50 hue-rotate-270 bg-black transition-opacity duration-300 ${
           locked ? "bg-opacity-80" : "bg-opacity-0 pointer-events-none"
         } flex flex-col items-center justify-center`}
@@ -59,23 +66,23 @@ function Backup() {
         {locked && (
           <>
             <div className="relative w-24 h-24">
-              {/* White  */}
+              {/* White Lock */}
               <div className="absolute top-0 left-0 text-white">{svgLock}</div>
-              {/* Red */}
+              {/* Red Glitch */}
               <div
                 className="absolute top-0 left-0 text-red-500 opacity-75 mix-blend-screen animate-glitch1"
                 style={{ animationDelay: "-0.2s" }}
               >
                 {svgLock}
               </div>
-              {/* Blue */}
+              {/* Blue Glitch */}
               <div
                 className="absolute top-0 left-0 text-blue-500 opacity-75 mix-blend-screen animate-glitch2"
                 style={{ animationDelay: "-0.4s" }}
               >
                 {svgLock}
               </div>
-             
+              {/* Cyan Glitch */}
               <div
                 className="absolute top-0 left-0 text-cyan-400 opacity-75 mix-blend-screen animate-glitch3"
                 style={{ animationDelay: "-0.6s" }}
@@ -83,53 +90,52 @@ function Backup() {
                 {svgLock}
               </div>
             </div>
-            <input  
-              className="rounded text-black mt-10" 
-              type="password" 
+
+            <input
+              className="rounded text-black mt-10 px-2 py-1"
+              type="password"
               value={input}
+              placeholder="Enter password"
               onKeyDown={handleKeyDown}
               onChange={(e) => setInput(e.target.value)}
-            
             />
+
             {invalid && (
               <h3 className="text-amber-100 mt-5">Error: Incorrect password</h3>
             )}
-
-
           </>
         )}
       </div>
 
+      {/* Main app UI when unlocked */}
       <div className="flex items-center justify-center min-h-screen">
-       <div className="z-10 flex flex-col items-center justify-center mt-10">
-         < ShipIcon />
-         <h3>The unhackable backup installer V2.0</h3>
-   
-         <button
+        <div className="z-10 flex flex-col items-center justify-center mt-10">
+          <ShipIcon />
+          <h3>The unhackable backup installer V2.0</h3>
+
+          <button
             className="mt-6 px-6 py-2 bg-zinc-900 text-white hover:text-amber-100 rounded border border-dashed mb-5"
             onClick={() => {
               const link = document.createElement("a");
-              link.href = "/backup.zip";              // ADD to BACK END!!!! curent file is in Public!
+              link.href = "/backup.zip"; // ⚠️ Public — change to server URL in real CTF
               link.download = "backup.zip";
-              document.body.appendChild(link);        
+              document.body.appendChild(link);
               link.click();
-              document.body.removeChild(link);       
+              document.body.removeChild(link);
             }}
           >
-          Download Backup
-        </button>
-         </div>
+            Download Backup
+          </button>
         </div>
+      </div>
 
+      {/* Debug Info */}
       <script
-      id="debug-info"
-      type="text/plain"
-      dangerouslySetInnerHTML={{ __html: scriptContent }}
-    />
-
+        id="debug-info"
+        type="text/plain"
+        dangerouslySetInnerHTML={{ __html: scriptContent }}
+      />
     </>
-     //add backend : make api call instead 
-    
   );
 }
 
