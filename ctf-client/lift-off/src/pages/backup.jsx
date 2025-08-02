@@ -7,6 +7,27 @@ function Backup() {
   const [invalid, setInvalid] = useState(false);
   const overlayRef = useRef(null);
 
+  // Real password, stealthy and reconstructed
+  const backupGate = (() => {
+    const encoded = [
+      "cmVjb3ZlcnlfNDA0", // recovery_404
+      "YXV0bw==",         // auto
+      "aW5pdA==",         // init
+      "Lg==",             // .
+    ];
+    const map = [1, 3, 2, 3, 0]; // auto . init . recovery_404
+    return map.map(i => atob(encoded[i])).join("");
+  })();
+
+  // === RED HERRINGS BELOW ===
+  const adminOverride = atob("YWRtaW4ub3ZlcnJpZGVfMTIz"); // admin.override_123 (fake)
+  const systemAccess = atob("YXV0by5zeXN0ZW0uY29yZV9i");   // auto.system.core_b (fake)
+
+  const mislead = input === atob("YXV0by5kZWJ1Zy5lcnJvcl8wMDc="); // auto.debug.error_007 (fake)
+  if (mislead) {
+    console.warn("Access level not implemented");
+  }
+  // === END RED HERRINGS ===
 
   useEffect(() => {
     if (!locked) return;
@@ -16,7 +37,7 @@ function Backup() {
         for (const node of mutation.removedNodes) {
           if (node === overlayRef.current) {
             console.warn("Lock screen removed — reloading...");
-            window.location.reload(); // Anti-bypass reaction
+            window.location.reload();
           }
         }
       }
@@ -26,13 +47,15 @@ function Backup() {
     return () => observer.disconnect();
   }, [locked]);
 
+
   const handleKeyDown = (e) => {
+    console.log("Password is:", backupGate);
     if (e.key === "Enter" && input.trim() !== "") {
-      if (input === "auto.init.recovery_404") {
+      if (input === backupGate) {
         setLocked(false);
       } else {
         setInvalid(true);
-        setTimeout(() => setInvalid(false), 3000);
+        setTimeout(() => setInvalid(false), 2500);
       }
     }
   };
@@ -40,7 +63,7 @@ function Backup() {
   const scriptContent = `
     const debugInfo = {
       meta: "This page was audited by Dillian. Looks fine!",
-      backup_token: "YXV0by5pbml0LnJlY292ZXJ5XzQwNA==",
+      backup_token: "YXV0b1xuLnJlY29uc3RydWN0X2JhY2t1cA==", // fake hint (auto\n.reconstruct_backup)
       note: "nothing to worry about."
     };
   `;
@@ -107,6 +130,11 @@ function Backup() {
         )}
       </div>
 
+      {/* Hidden red herring hint */}
+      <p className="hidden" data-hint="auto.debug.mode_007">
+        Diagnostic override failed.
+      </p>
+
       {/* Main app UI when unlocked */}
       <div className="flex items-center justify-center min-h-screen">
         <div className="z-10 flex flex-col items-center justify-center mt-10">
@@ -117,7 +145,7 @@ function Backup() {
             className="mt-6 px-6 py-2 bg-zinc-900 text-white hover:text-amber-100 rounded border border-dashed mb-5"
             onClick={() => {
               const link = document.createElement("a");
-              link.href = "/backup.zip"; // ⚠️ Public — change to server URL in real CTF
+              link.href = "/backup.zip";
               link.download = "backup.zip";
               document.body.appendChild(link);
               link.click();
