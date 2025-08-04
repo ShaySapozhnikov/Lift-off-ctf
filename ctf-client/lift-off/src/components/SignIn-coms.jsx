@@ -17,8 +17,8 @@ const textLable = `
 `;
 
 function Signin({ onLoginSuccess }) {
-    const [user, setuser] = useState("");
-    const [pass, setpass] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
     const formRef = useRef(null);
 
@@ -43,25 +43,21 @@ function Signin({ onLoginSuccess }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        await checkLogin(user, pass);
-    };
+        setErrorMsg("");
 
-    async function checkLogin(username, password) {
-        const { data, error } = await supabase
-            .from('InternalCommunications') // For CTF/testing only
-            .select('*')
-            .eq('user', username)
-            .eq('password', password)
-            .single();
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
 
-        if (error || !data) {
-            console.error('Login failed:', error?.message || "Invalid credentials");
-            setErrorMsg("Invalid username or password");
+        if (error) {
+            console.error("Login failed:", error.message);
+            setErrorMsg("Invalid email or password.");
         } else {
-            console.log('Login successful:', data);
-            onLoginSuccess(); // tell App.js to hide this
+            console.log("Login success:", data);
+            onLoginSuccess?.(); 
         }
-    }
+    };
 
     return (
         <div className="min-h-screen flex items-center justify-center">
@@ -83,18 +79,20 @@ function Signin({ onLoginSuccess }) {
 
                 <input
                     className="rounded mt-5 border bg-zinc-900 border-dotted px-3 py-1"
-                    type="text"
-                    placeholder="Username"
-                    value={user}
-                    onChange={(e) => setuser(e.target.value)}
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
                 />
 
                 <input
                     className="rounded mt-5 border bg-zinc-900 border-dotted px-3 py-1"
                     type="password"
                     placeholder="Password"
-                    value={pass}
-                    onChange={(e) => setpass(e.target.value)}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
                 />
 
                 <button

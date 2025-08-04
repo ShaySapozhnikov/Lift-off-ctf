@@ -1,6 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Signin from '../components/SignIn-coms';
 
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_API_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 const icon = ` Exploring the uncharted regions"
                         .   *        .       .
          *      -0-
@@ -21,60 +27,11 @@ const icon = ` Exploring the uncharted regions"
                    .                        *
          *               - ) -       *
                 .               .
-`
+`;
 
 const MissionControlCRM = () => {
-  // Sample mission data
-  const [contacts, setContacts] = useState([
-    {
-      id: 1,
-      name: "CAPTAIN_OVERRIDE",
-      email: "override@unhackable.space",
-      phone: "COMM-LINK-101",
-      status: "emergency",
-      online: true,
-      lastMessage: "Navigation systems compromised! Need immediate assistance!",
-      messages: [
-        { text: "Mission Control, we have a critical situation aboard The Unhackable!", sent: false, time: "10:30:00" },
-        { text: "Captain Override, we copy. What's your status?", sent: true, time: "10:32:15" },
-        { text: "Autopilot is locked! We're on collision course with the moon!", sent: false, time: "10:35:42" },
-        { text: "Emergency protocols activated. Stand by for rescue instructions.", sent: true, time: "10:37:08" },
-        { text: "Navigation systems compromised! Need immediate assistance!", sent: false, time: "10:40:33" }
-      ]
-    },
-    {
-      id: 2,
-      name: "VEGA_SERANO",
-      email: "vega@unhackable.space",
-      phone: "COMM-LINK-202",
-      status: "engineer",
-      online: false,
-      lastMessage: "Password database corruption detected in main systems",
-      messages: [
-        { text: "Houston, we have a problem with the main access codes", sent: false, time: "14:22:11" },
-        { text: "Vega, can you elaborate on the security breach?", sent: true, time: "14:25:03" },
-        { text: "Someone deleted the master password sticky note from the console", sent: false, time: "14:27:55" },
-        { text: "That intern Dillian again? Initiating recovery protocols.", sent: true, time: "14:30:12" },
-        { text: "Password database corruption detected in main systems", sent: false, time: "14:32:47" }
-      ]
-    },
-    {
-      id: 3,
-      name: "INTERN_DILLIAN",
-      email: "dillian@space-academy.org",
-      phone: "COMM-LINK-303",
-      status: "cadet",
-      online: true,
-      lastMessage: "Sorry about the sticky note... it looked like trash!",
-      messages: [
-        { text: "Um... Mission Control? I think I made a mistake...", sent: false, time: "16:15:22" },
-        { text: "Dillian, what did you do this time?", sent: true, time: "16:18:45" },
-        { text: "Sorry about the sticky note... it looked like trash!", sent: false, time: "16:22:11" }
-      ]
-    }
-  ]);
-
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [contacts, setContacts] = useState([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(null);
   const isLoggedInRef = useRef(false);
   const [currentContact, setCurrentContact] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -87,16 +44,49 @@ const MissionControlCRM = () => {
     status: 'cadet'
   });
 
-  // Monitor for tampering (e.g. user deletes the Signin modal from DevTools)
+  // Fetch contacts + messages from Supabase on mount
   useEffect(() => {
-    // Only set up the observer if user is not logged in
+    if (!isLoggedIn) return; // Do nothing if not logged in
+  
+    async function fetchContacts() {
+      const { data, error } = await supabase
+        .from('ICChat')
+        .select(`
+          *,
+          ICMessage (
+            idText,
+            time,
+            text,
+            sent
+          )
+        `)
+        .order('name', { ascending: true });
+  
+      if (error) {
+        console.error('Error fetching contacts:', error);
+        return;
+      }
+  
+      const contactsWithMessages = data.map(contact => ({
+        ...contact,
+        messages: contact.ICMessage || [],
+      }));
+  
+      setContacts(contactsWithMessages);
+    }
+  
+    fetchContacts();
+  }, [isLoggedIn]);
+  
+
+  // Tampering detection for Signin modal
+  useEffect(() => {
     if (isLoggedIn) {
       isLoggedInRef.current = true;
       return;
     }
 
     const observer = new MutationObserver(() => {
-      // Add a small delay to allow React to update the DOM naturally
       setTimeout(() => {
         const stillExists = document.getElementById("signin-overlay");
         if (!stillExists && !isLoggedInRef.current) {
@@ -114,16 +104,16 @@ const MissionControlCRM = () => {
     return () => observer.disconnect();
   }, [isLoggedIn]);
 
+  // Scroll messages to bottom when they change
   const messagesEndRef = useRef(null);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-
   useEffect(() => {
     scrollToBottom();
   }, [currentContact?.messages]);
 
+  // Filter contacts by search term
   const filteredContacts = contacts.filter(contact =>
     contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     contact.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -133,6 +123,7 @@ const MissionControlCRM = () => {
     setCurrentContact(contact);
   };
 
+  // Send a message (client-side only for now)
   const sendMessage = () => {
     if (!messageInput.trim() || !currentContact) return;
 
@@ -145,6 +136,7 @@ const MissionControlCRM = () => {
       time: timeString
     };
 
+    // Update contacts list with new message
     const updatedContacts = contacts.map(contact => {
       if (contact.id === currentContact.id) {
         return {
@@ -157,6 +149,8 @@ const MissionControlCRM = () => {
     });
 
     setContacts(updatedContacts);
+
+    // Update current contact messages
     setCurrentContact(prev => ({
       ...prev,
       messages: [...prev.messages, newMessage],
@@ -165,7 +159,7 @@ const MissionControlCRM = () => {
 
     setMessageInput('');
 
-    // Simulate space communication delay
+    // Simulated auto-reply after 2 seconds
     setTimeout(() => {
       const autoReply = {
         text: "Signal received. Processing transmission... Stand by.",
@@ -404,10 +398,10 @@ const MissionControlCRM = () => {
       <div className="flex-1 flex flex-col bg-zinc-900 terminal-border border-l-0 relative scanlines-vertical">
         {!currentContact ? (
           <div className="flex-1 flex flex-col items-center justify-center text-white text-opacity-50 text-xs relative z-10">
-            <pre className ="text-xs leading-none text-white text-opacity-30 text-center mb-5" >
+            <pre className="text-xs leading-none text-white text-opacity-30 text-center mb-5">
               {icon}
             </pre>
-            <p><span className="blink ml-[100px]">*</span> AWAITING TRANSMISSION...</p>
+            <p>AWAITING TRANSMISSION <span className="blink ">*</span></p>
           </div>
         ) : (
           <>
@@ -479,8 +473,8 @@ const MissionControlCRM = () => {
                 <button
                   onClick={sendMessage}
                   className="px-4 py-2 terminal-border bg-zinc-900 text-amber-100 cursor-pointer text-xs font-bold uppercase transition-all duration-200 terminal-button"
-                >
-                  [TRANSMIT]
+                  >
+                  SEND
                 </button>
               </div>
             </div>
@@ -488,77 +482,77 @@ const MissionControlCRM = () => {
         )}
       </div>
 
-      {/* Modal */}
+      {/* New Crew Member Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-zinc-900 bg-opacity-90 flex items-center justify-center z-50">
-          <div className="bg-zinc-900 terminal-border p-5 w-96 max-w-full">
-            <div className="text-xs leading-none text-amber-100 mb-3 text-center">
-              ╔═══════════════════════════════╗
-            </div>
-            <h3 className="text-sm text-center uppercase mb-2">CREW REGISTRATION</h3>
-            <div className="text-xs leading-none mb-4 text-center">
-              ╚═══════════════════════════════╝
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-amber-100 text-xs uppercase mb-1">► Callsign:</label>
+        <div
+          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[10000]"
+          onClick={() => setShowModal(false)}
+        >
+          <div
+            className="bg-zinc-900 p-6 rounded-md w-96 terminal-border relative"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-amber-100 mb-4 font-bold text-sm uppercase">
+              REGISTER NEW CREW MEMBER
+            </h3>
+            <form onSubmit={addNewContact} className="flex flex-col gap-3 text-xs text-amber-100">
+              <label>
+                Callsign:
                 <input
                   type="text"
                   value={newContact.name}
-                  onChange={(e) => setNewContact({...newContact, name: e.target.value})}
-                  className="w-full p-2 terminal-border-thin bg-zinc-900 text-amber-100 text-xs terminal-input"
+                  onChange={e => setNewContact({...newContact, name: e.target.value})}
+                  className="w-full mt-1 p-2 bg-zinc-800 text-amber-100 terminal-input terminal-border-thin"
+                  required
                 />
-              </div>
-              <div>
-                <label className="block text-amber-100 text-xs uppercase mb-1">► Email:</label>
+              </label>
+              <label>
+                Email (optional):
                 <input
                   type="email"
                   value={newContact.email}
-                  onChange={(e) => setNewContact({...newContact, email: e.target.value})}
-                  className="w-full p-2 terminal-border-thin bg-zinc-900 text-amber-100 text-xs terminal-input"
+                  onChange={e => setNewContact({...newContact, email: e.target.value})}
+                  className="w-full mt-1 p-2 bg-zinc-800 text-amber-100 terminal-input terminal-border-thin"
                 />
-              </div>
-              <div>
-                <label className="block text-amber-100 text-xs uppercase mb-1">► Comm Link:</label>
+              </label>
+              <label>
+                Phone (optional):
                 <input
-                  type="tel"
+                  type="text"
                   value={newContact.phone}
-                  onChange={(e) => setNewContact({...newContact, phone: e.target.value})}
-                  className="w-full p-2 terminal-border-thin bg-zinc-900 text-amber-100 text-xs terminal-input"
+                  onChange={e => setNewContact({...newContact, phone: e.target.value})}
+                  className="w-full mt-1 p-2 bg-zinc-800 text-amber-100 terminal-input terminal-border-thin"
                 />
-              </div>
-              <div>
-                <label className="block text-amber-100 text-xs uppercase mb-1">► Rank:</label>
+              </label>
+              <label>
+                Rank:
                 <select
                   value={newContact.status}
-                  onChange={(e) => setNewContact({...newContact, status: e.target.value})}
-                  className="w-full p-2 terminal-border-thin bg-zinc-900 text-amber-100 text-xs terminal-input"
+                  onChange={e => setNewContact({...newContact, status: e.target.value})}
+                  className="w-full mt-1 p-2 bg-zinc-800 text-amber-100 terminal-input terminal-border-thin"
                 >
-                  <option value="cadet">CADET</option>
-                  <option value="engineer">ENGINEER</option>
-                  <option value="emergency">EMERGENCY PERSONNEL</option>
+                  <option value="cadet">Cadet</option>
+                  <option value="engineer">Engineer</option>
+                  <option value="emergency">Emergency</option>
                 </select>
-              </div>
-              <div className="flex gap-3 justify-center mt-5">
+              </label>
+
+              <div className="flex justify-between mt-4">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 terminal-border-thin bg-zinc-900 text-white text-opacity-50 border-white border-opacity-50 cursor-pointer text-xs uppercase font-bold transition-all duration-200 hover:bg-gray-800"
+                  className="px-4 py-2 terminal-border-thin bg-zinc-800 text-amber-100 cursor-pointer text-xs uppercase terminal-button"
                 >
-                  [ABORT]
+                  CANCEL
                 </button>
                 <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    addNewContact(e);
-                  }}
-                  className="px-4 py-2 terminal-border-thin bg-zinc-900 text-amber-100 cursor-pointer text-xs uppercase font-bold transition-all duration-200 terminal-button"
+                  type="submit"
+                  className="px-4 py-2 terminal-border bg-amber-600 text-black font-bold text-xs uppercase cursor-pointer terminal-button"
                 >
-                  [REGISTER]
+                  REGISTER
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
