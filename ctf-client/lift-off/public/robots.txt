@@ -3,7 +3,6 @@ User-agent: *
 Allow: /start/
 Disallow: /admin/
 Disallow: /navigation-system/
-Disallow: /autopilot/
 Disallow: /backup/
 Disallow: /internal-communications/
 Disallow: /emergency-override/                     
