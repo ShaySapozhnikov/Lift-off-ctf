@@ -2,12 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import Signin from '../components/SignIn-coms';
 
 import { createClient } from '@supabase/supabase-js';
+import { useSearchParams } from 'react-router-dom';
+
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_API_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const icon = ` Exploring the uncharted regions"
+const icon = ` Exploring the uncharted regions" 
                         .   *        .       .
          *      -0-
             .                .  *       - )-
@@ -31,6 +33,9 @@ const icon = ` Exploring the uncharted regions"
 
 const MissionControlCRM = () => {
   const [contacts, setContacts] = useState([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [user, setUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(null);
   const isLoggedInRef = useRef(false);
   const [currentContact, setCurrentContact] = useState(null);
@@ -41,13 +46,35 @@ const MissionControlCRM = () => {
     name: '',
     email: '',
     phone: '',
-    status: 'cadet'
+    status: 'cadet',
+    online: true,
+    lastMessage: 'New crew member registered'
   });
 
-  // Fetch contacts + messages from Supabase on mount
+
+  // Get logged-in user info from Supabase auth
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      setIsLoggedIn(!!data.user);
+      if (data.user) isLoggedInRef.current = true;
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setIsLoggedIn(!!session?.user);
+      isLoggedInRef.current = !!session?.user;
+    });
+
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  // need fixing !!
   useEffect(() => {
     if (!isLoggedIn) return; // Do nothing if not logged in
-  
+
     async function fetchContacts() {
       const { data, error } = await supabase
         .from('ICChat')
@@ -61,23 +88,22 @@ const MissionControlCRM = () => {
           )
         `)
         .order('name', { ascending: true });
-  
+
       if (error) {
         console.error('Error fetching contacts:', error);
         return;
       }
-  
+
       const contactsWithMessages = data.map(contact => ({
         ...contact,
         messages: contact.ICMessage || [],
       }));
-  
+
       setContacts(contactsWithMessages);
     }
-  
+
     fetchContacts();
   }, [isLoggedIn]);
-  
 
   // Tampering detection for Signin modal
   useEffect(() => {
@@ -113,11 +139,13 @@ const MissionControlCRM = () => {
     scrollToBottom();
   }, [currentContact?.messages]);
 
-  // Filter contacts by search term
-  const filteredContacts = contacts.filter(contact =>
-    contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter contacts by logged-in user and search term
+  const filteredContacts = contacts
+    .filter(contact => contact.user_id === user?.id) // filter by logged-in user ID
+    .filter(contact =>
+      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
   const selectContact = (contact) => {
     setCurrentContact(contact);
@@ -193,22 +221,53 @@ const MissionControlCRM = () => {
     }
   };
 
-  const addNewContact = (e) => {
+  const addNewContact = async (e) => {
     e.preventDefault();
-    const contact = {
-      id: contacts.length + 1,
-      name: newContact.name.toUpperCase().replace(/\s+/g, '_'),
-      email: newContact.email || 'NO_COMMS_ESTABLISHED',
-      phone: newContact.phone || 'COMM_LINK_PENDING',
-      status: newContact.status,
-      online: true,
-      lastMessage: '*** NEW CREW MEMBER REGISTERED ***',
-      messages: []
-    };
+    
+    if (!newContact.name.trim()) return;
 
-    setContacts([contact, ...contacts]);
-    setShowModal(false);
-    setNewContact({ name: '', email: '', phone: '', status: 'cadet' });
+    try {
+      const { data, error } = await supabase
+        .from('ICChat')
+        .insert([
+          {
+            ...newContact,
+            user_id: user.id,
+            messages: []
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding contact:', error);
+        alert('Error adding crew member. Please try again.');
+        return;
+      }
+
+      // Add to local state
+      const newContactWithMessages = {
+        ...data,
+        messages: []
+      };
+
+      setContacts(prev => [...prev, newContactWithMessages]);
+      
+      // Reset form and close modal
+      setNewContact({
+        name: '',
+        email: '',
+        phone: '',
+        status: 'cadet',
+        online: true,
+        lastMessage: 'New crew member registered'
+      });
+      setShowModal(false);
+
+    } catch (error) {
+      console.error('Error adding contact:', error);
+      alert('Error adding crew member. Please try again.');
+    }
   };
 
   const viewContactDetails = () => {
@@ -261,78 +320,6 @@ const MissionControlCRM = () => {
         </div>
       )}
 
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
-        .font-mono {
-          font-family: 'JetBrains Mono', 'Courier New', monospace;
-        }
-        .glow {
-          text-shadow: 0 0 10px #fef3c7;
-          animation: glow 2s ease-in-out infinite alternate;
-        }
-        .urgent-glow {
-          text-shadow: 0 0 10px #ef4444;
-          animation: urgent-glow 1s ease-in-out infinite alternate;
-        }
-        @keyframes glow {
-          from { text-shadow: 0 0 5px #fef3c7; }
-          to { text-shadow: 0 0 20px #fef3c7, 0 0 30px #fef3c7; }
-        }
-        @keyframes urgent-glow {
-          from { text-shadow: 0 0 5px #ef4444; }
-          to { text-shadow: 0 0 20px #ef4444, 0 0 30px #ef4444; }
-        }
-        .blink {
-          animation: blink 1s infinite;
-        }
-        @keyframes blink {
-          0%, 50% { opacity: 1; }
-          51%, 100% { opacity: 0; }
-        }
-        .scanlines {
-          background: repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 2px,
-            rgba(254, 243, 199, 0.03) 2px,
-            rgba(254, 243, 199, 0.03) 4px
-          );
-        }
-        .scanlines-vertical {
-          background: repeating-linear-gradient(
-            90deg,
-            transparent,
-            transparent 2px,
-            rgba(254, 243, 199, 0.02) 2px,
-            rgba(254, 243, 199, 0.02) 4px
-          );
-        }
-        .terminal-border {
-          border: 2px solid #71797E;
-        }
-        .terminal-border-thin {
-          border: 1px solid #fef3c7;
-        }
-        .terminal-input:focus {
-          outline: none;
-          box-shadow: 0 0 10px rgba(254, 243, 199, 0.5);
-        }
-        .terminal-button:hover {
-          background: #1f1f1f;
-          box-shadow: 0 0 15px rgba(254, 243, 199, 0.5);
-        }
-        .scrollbar-terminal::-webkit-scrollbar {
-          width: 8px;
-        }
-        .scrollbar-terminal::-webkit-scrollbar-track {
-          background: #000;
-        }
-        .scrollbar-terminal::-webkit-scrollbar-thumb {
-          background: #fef3c7;
-          border-radius: 0;
-        }
-      `}</style>
-
       {/* Mission Control Sidebar */}
       <div className="w-80 bg-zinc-900 terminal-border border-r-0 flex flex-col h-screen relative scanlines">
         {/* Mission Header */}
@@ -345,14 +332,7 @@ const MissionControlCRM = () => {
           <div className="text-xs mb-3">
             ╚════════════════════════════════╝
           </div>
-          <label className="block text-xs mb-1">► SEARCH CREW:</label>
-          <input
-            type="text"
-            placeholder="enter callsign..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-2 terminal-border-thin bg-zinc-900 text-amber-100 text-xs terminal-input placeholder-amber-100 placeholder-opacity-50"
-          />
+         
         </div>
 
         {/* Crew List */}
@@ -384,14 +364,7 @@ const MissionControlCRM = () => {
           ))}
         </div>
 
-        {/* Add Crew Member Button */}
-        <button
-          onClick={() => setShowModal(true)}
-          className="m-4 p-3 bg-zinc-900 text-amber-100 terminal-border cursor-pointer font-bold text-xs uppercase transition-all duration-200 terminal-button"
-        >
-          ┌─ REGISTER NEW CREW ─┐<br />
-          └─────────────────────────┘
-        </button>
+       
       </div>
 
       {/* Communication Panel */}
@@ -417,26 +390,7 @@ const MissionControlCRM = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={viewContactDetails}
-                  className="px-2 py-1 terminal-border-thin bg-zinc-900 text-amber-100 cursor-pointer text-xs uppercase transition-all duration-200 terminal-button"
-                >
-                  [PROFILE]
-                </button>
-                <button
-                  onClick={editContact}
-                  className="px-2 py-1 terminal-border-thin bg-zinc-900 text-amber-100 cursor-pointer text-xs uppercase transition-all duration-200 terminal-button"
-                >
-                  [EDIT]
-                </button>
-                <button
-                  onClick={archiveContact}
-                  className="px-2 py-1 terminal-border-thin bg-zinc-900 text-amber-100 cursor-pointer text-xs uppercase transition-all duration-200 terminal-button"
-                >
-                  [REMOVE]
-                </button>
-              </div>
+              
             </div>
 
             {/* Messages */}
@@ -482,82 +436,9 @@ const MissionControlCRM = () => {
         )}
       </div>
 
-      {/* New Crew Member Modal */}
-      {showModal && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[10000]"
-          onClick={() => setShowModal(false)}
-        >
-          <div
-            className="bg-zinc-900 p-6 rounded-md w-96 terminal-border relative"
-            onClick={e => e.stopPropagation()}
-          >
-            <h3 className="text-amber-100 mb-4 font-bold text-sm uppercase">
-              REGISTER NEW CREW MEMBER
-            </h3>
-            <form onSubmit={addNewContact} className="flex flex-col gap-3 text-xs text-amber-100">
-              <label>
-                Callsign:
-                <input
-                  type="text"
-                  value={newContact.name}
-                  onChange={e => setNewContact({...newContact, name: e.target.value})}
-                  className="w-full mt-1 p-2 bg-zinc-800 text-amber-100 terminal-input terminal-border-thin"
-                  required
-                />
-              </label>
-              <label>
-                Email (optional):
-                <input
-                  type="email"
-                  value={newContact.email}
-                  onChange={e => setNewContact({...newContact, email: e.target.value})}
-                  className="w-full mt-1 p-2 bg-zinc-800 text-amber-100 terminal-input terminal-border-thin"
-                />
-              </label>
-              <label>
-                Phone (optional):
-                <input
-                  type="text"
-                  value={newContact.phone}
-                  onChange={e => setNewContact({...newContact, phone: e.target.value})}
-                  className="w-full mt-1 p-2 bg-zinc-800 text-amber-100 terminal-input terminal-border-thin"
-                />
-              </label>
-              <label>
-                Rank:
-                <select
-                  value={newContact.status}
-                  onChange={e => setNewContact({...newContact, status: e.target.value})}
-                  className="w-full mt-1 p-2 bg-zinc-800 text-amber-100 terminal-input terminal-border-thin"
-                >
-                  <option value="cadet">Cadet</option>
-                  <option value="engineer">Engineer</option>
-                  <option value="emergency">Emergency</option>
-                </select>
-              </label>
-
-              <div className="flex justify-between mt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 terminal-border-thin bg-zinc-800 text-amber-100 cursor-pointer text-xs uppercase terminal-button"
-                >
-                  CANCEL
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 terminal-border bg-amber-600 text-black font-bold text-xs uppercase cursor-pointer terminal-button"
-                >
-                  REGISTER
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+    
     </div>
   );
 };
 
-export default MissionControlCRM;
+export default MissionControlCRM

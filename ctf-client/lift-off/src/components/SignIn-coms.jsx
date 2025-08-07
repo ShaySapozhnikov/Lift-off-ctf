@@ -6,7 +6,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_API_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const textLable = `
+const defaultTextLabel = `
 ░██████              ░██                                              ░██      ░██████                                                                   ░██                         ░██    ░██                                 
   ░██                ░██                                              ░██     ░██   ░██                                                                                              ░██                                        
   ░██  ░████████  ░████████  ░███████  ░██░████ ░████████   ░██████   ░██    ░██         ░███████  ░█████████████  ░█████████████  ░██    ░██ ░████████  ░██ ░███████   ░██████   ░████████ ░██ ░███████  ░████████   ░███████  
@@ -16,7 +16,13 @@ const textLable = `
 ░██████░██    ░██     ░████  ░███████  ░██      ░██    ░██  ░█████░██ ░██      ░██████   ░███████  ░██   ░██   ░██ ░██   ░██   ░██  ░█████░██ ░██    ░██ ░██ ░███████   ░█████░██     ░████ ░██ ░███████  ░██    ░██  ░███████  
 `;
 
-function Signin({ onLoginSuccess }) {
+
+
+
+
+
+
+function Signin({ onLoginSuccess , textLabel = defaultTextLabel}) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
@@ -70,7 +76,7 @@ function Signin({ onLoginSuccess }) {
                     id="protected-overlay"
                     className="text-white text-left font-mono text-[5px] leading-tight whitespace-pre-wrap p-4 mt-[10px] z-10"
                 >
-                    {textLable}
+                    {textLabel}
                 </pre>
 
                 <ShipIcon />
