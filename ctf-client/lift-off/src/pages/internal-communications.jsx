@@ -32,8 +32,10 @@ const icon = ` Exploring the uncharted regions"
 `;
 
 const MissionControlCRM = () => {
+  
+  
   const [contacts, setContacts] = useState([]);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();  // <-- already present
 
   const [user, setUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(null);
@@ -43,6 +45,7 @@ const MissionControlCRM = () => {
   const [messageInput, setMessageInput] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [newContact, setNewContact] = useState({
+    
     name: '',
     email: '',
     phone: '',
@@ -50,8 +53,7 @@ const MissionControlCRM = () => {
     online: true,
     lastMessage: 'New crew member registered'
   });
-
-
+  
   // Get logged-in user info from Supabase auth
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -71,10 +73,17 @@ const MissionControlCRM = () => {
     };
   }, []);
 
-  // need fixing !!
+
   useEffect(() => {
     if (!isLoggedIn) return; // Do nothing if not logged in
-
+  
+    const idFromUrl = searchParams.get('id');
+    const id = idFromUrl || '1'; 
+  
+    if (!idFromUrl) {
+      console.warn('ADD HINT HERE !');
+    }
+  
     async function fetchContacts() {
       const { data, error } = await supabase
         .from('ICChat')
@@ -87,23 +96,27 @@ const MissionControlCRM = () => {
             sent
           )
         `)
-        .order('name', { ascending: true });
-
+        .eq('id', id) 
+        .single();
+  
       if (error) {
         console.error('Error fetching contacts:', error);
         return;
       }
-
-      const contactsWithMessages = data.map(contact => ({
-        ...contact,
-        messages: contact.ICMessage || [],
-      }));
-
-      setContacts(contactsWithMessages);
+  
+      setContacts([{
+        ...data,
+        messages: data.ICMessage || [],
+      }]);
     }
-
+  
     fetchContacts();
-  }, [isLoggedIn]);
+  }, [isLoggedIn, searchParams]);
+  
+
+  // ... rest of your component code
+
+
 
   // Tampering detection for Signin modal
   useEffect(() => {
