@@ -15,9 +15,10 @@ export default function VulnLogin() {
     e.preventDefault();
 
     const { data, error } = await supabase.rpc('vulnerable_login', {
-      user_input: username,
-      pass_input: password
-    });
+        user_input: username,
+        pass_input: password
+      });
+      
 
     if (error) {
       console.error(error);
