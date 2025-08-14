@@ -1,4 +1,11 @@
-import React, { useState, useEffect } from "react";
+
+import React, { useState, useEffect, useRef } from "react";
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_API_KEY
+);
 
 
 const asciiArt = `
@@ -19,40 +26,81 @@ const asciiArt = `
 `;
 
 export default function CountDown() {
-  const [timeLeft, setTimeLeft] = useState("");
+  const [timeLeft, setTimeLeft] = useState("Starting Soon");
+  const timerRef = useRef(null);
+  const targetRef = useRef(null); // store current target_time
 
   useEffect(() => {
-    const countDownDate = new Date("Jan 5, 2030 15:37:25").getTime(); // get from db later!!!
+    const updateCountdown = async () => {
+      const { data, error } = await supabase
+        .from("countdowns")
+        .select("*")
+        .eq("name", "mission")
+        .single();
 
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      const distance = countDownDate - now;
+      if (error) {
+        console.error(error);
+        return;
+      }
 
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = Math.floor(
-        (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-      );
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+      if (!data.running || !data.target_time) {
+        setTimeLeft("Starting Soon");
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        targetRef.current = null;
+        return;
+      }
 
-      setTimeLeft(`${days}d ${hours}h ${minutes}m ${seconds}s`);
-    }, 1000);
+      const newTarget = new Date(data.target_time).getTime();
 
-    return () => clearInterval(timer);
+      // Only start a new timer if target_time changed
+      if (targetRef.current !== newTarget) {
+        targetRef.current = newTarget;
+        if (timerRef.current) clearInterval(timerRef.current);
+
+        timerRef.current = setInterval(() => {
+          const now = Date.now();
+          const distance = newTarget - now;
+
+          if (distance <= 0) {
+            setTimeLeft("00d 00h 00m 00s");
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+            return;
+          }
+
+          const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+          const hours = Math.floor(
+            (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+          );
+          const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+          setTimeLeft(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+        }, 1000);
+      }
+    };
+
+    // Poll every 5 seconds for DB changes
+    const poller = setInterval(updateCountdown, 5000);
+
+    // Initial fetch
+    updateCountdown();
+
+    return () => {
+      clearInterval(poller);
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
-
-
 
   return (
     <div className="bg-zinc-900 h-[400px] border-2 border-gray-500 border-dashed rounded-md p-2 overflow-auto">
-      <div className=" z-0 animate-speedLine1">...........</div>
-      
-      
+      <div className="z-0 animate-speedLine1">...........</div>
       <pre className="text-white text-left font-mono text-[10px] leading-tight whitespace-pre-wrap p-4 mt-[10px] animate-float z-10">
         {asciiArt}
       </pre>
-      <div className=" z-0 animate-speedLine2">...........</div>
-      <h1 className=" italic font-bold text-white text-center text-lg font-mono mt-10 animate-pulse">
+      <div className="z-0 animate-speedLine2">...........</div>
+      <h1 className="italic font-bold text-white text-center text-lg font-mono mt-10 animate-pulse">
         Countdown: {timeLeft}
       </h1>
     </div>
