@@ -150,10 +150,19 @@ export default function Prompt() {
   };
 
   return (
-    <div className="mt-4" onClick={() => inputRef.current?.focus()}>
-      {history.map((h, i) => (<div key={i} className="text-white/80">{h}</div>))}
-      <div className="flex items-center gap-2 mt-1">
+    <div className="w-full" onClick={() => inputRef.current?.focus()}>
+      {/* history */}
+      <div className="space-y-0.5">
+        {history.map((h, i) => (
+          <div key={i} className="text-white/80">{h}</div>
+        ))}
+      </div>
+  
+      {/* prompt row — normal flow */}
+      <div className="flex items-center gap-2 pt-2 pb-2">
         <span className="text-white/70">{cwd.join("/")}&gt;</span>
+  
+        {/* hidden real input */}
         <input
           ref={inputRef}
           value={buf}
@@ -165,11 +174,15 @@ export default function Prompt() {
           autoCapitalize="off"
           spellCheck="false"
         />
+  
+        {/* visible fake input */}
         <TerminalInput value={buf} />
       </div>
-      <div className="mt-2 text-white/50">Current User: {currentUser}</div>
+  
+      <div className="mt-1 text-white/50">Current User: {currentUser}</div>
     </div>
   );
+  
 }
 
 function TerminalInput({ value }) {
