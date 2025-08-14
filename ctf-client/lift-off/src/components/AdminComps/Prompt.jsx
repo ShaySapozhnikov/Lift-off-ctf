@@ -1,139 +1,184 @@
+// Secure privilege escalation CTF simulation with proper root folder protection
 import { useEffect, useRef, useState } from "react";
-export default function Prompt() {
-    const [buf, setBuf] = useState("");
-    const [history, setHistory] = useState([]);
-    const [idx, setIdx] = useState(0);
-    const inputRef = useRef(null);
-    const containerRef = useRef(null);
-  
-    const onSubmit = (value) => {
-      const v = value.trim().toLowerCase();
-      if (!v) return;
-      const out = [];
-      if (v === "help") {
-        out.push("AVAILABLE> help, status, clear, shutdown");
-      } else if (v === "status") {
-        out.push("STATUS> processes: 7 | anomaly: ACTIVE | net: OFFLINE");
-      } else if (v === "shutdown") {
-        out.push("SYSTEM> permission denied. anomaly intercept.");
-      } else if (v === "clear") {
-        setHistory([]);
-        setBuf("");
-        setIdx(0);
-        return;
-      } else {
-        out.push(`UNKNOWN> ${v}`);
-      }
-      setHistory((h) => [...h, `> ${v}`, ...out]);
-      setBuf("");
-      setIdx(0);
-    };
-  
-    // Focus input on mount and whenever it loses focus
-    useEffect(() => {
-      const input = inputRef.current;
-      if (!input) return;
-      
-      input.focus();
-      
-      // Refocus when clicking anywhere in the container
-      const handleClick = () => {
-        input.focus();
-      };
-      
-      // Refocus when input loses focus (unless user is selecting text)
-      const handleBlur = () => {
-        setTimeout(() => {
-          if (document.activeElement !== input) {
-            input.focus();
-          }
-        }, 10);
-      };
-      
-      // Listen for clicks on the entire document to refocus
-      const handleDocumentClick = () => {
-        input.focus();
-      };
-  
-      const container = containerRef.current;
-      if (container) {
-        container.addEventListener('click', handleClick);
-      }
-      
-      input.addEventListener('blur', handleBlur);
-      document.addEventListener('click', handleDocumentClick);
-      
-      return () => {
-        if (container) {
-          container.removeEventListener('click', handleClick);
-        }
-        input.removeEventListener('blur', handleBlur);
-        document.removeEventListener('click', handleDocumentClick);
-      };
-    }, []);
-  
-    // Also refocus when new content is added
-    useEffect(() => {
-      const input = inputRef.current;
-      if (input) {
-        setTimeout(() => input.focus(), 50);
-      }
-    }, [history]);
-  
-    return (
-      <div ref={containerRef} className="mt-4">
-        {history.map((h, i) => (
-          <div key={i} className="text-white/80">{h}</div>
-        ))}
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-white/70">&gt;</span>
-          {/* Invisible input to capture keystrokes while we render custom caret */}
-          <input
-            ref={inputRef}
-            value={buf}
-            onChange={(e) => setBuf(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                onSubmit(buf);
-              }
-              if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setIdx((n) => Math.min(n + 1, history.length - 1));
-              }
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setIdx((n) => Math.max(n - 1, 0));
-              }
-            }}
-            className="absolute opacity-0 pointer-events-none"
-            style={{
-              position: 'fixed',
-              left: '-9999px',
-              top: '-9999px'
-            }}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck="false"
-          />
-          <TerminalInput value={buf} />
-        </div>
-      </div>
-    );
-  }
-  
 
-  function TerminalInput({ value }) {
-    const [cursorOn, setCursorOn] = useState(true);
-    useEffect(() => {
-      const t = setInterval(() => setCursorOn((c) => !c), 550);
-      return () => clearInterval(t);
-    }, []);
-    return (
-      <div className="font-mono text-white/90">
-        <span>{value}</span>
-        <span className={"ml-0.5 inline-block w-2 h-4 align-[-2px] " + (cursorOn ? "bg-white/80" : "bg-transparent border border-white/30")}></span>
-      </div>
-    );
+export default function Prompt() {
+  const [buf, setBuf] = useState("");
+  const [history, setHistory] = useState([]);
+  const [commands, setCommands] = useState([]);
+  const [cursor, setCursor] = useState(0);
+  const [cwd, setCwd] = useState(["/"]);
+  const [currentUser, setCurrentUser] = useState("user");
+  const inputRef = useRef(null);
+
+  // Mini in-memory file system with root folders and executables
+  const fs = {
+    "/": {
+      home: {
+        user: {
+          "readme.txt": { type: "file", content: "Welcome!", owner: "user", permissions: "r" },
+          "exploit.bat": { type: "exe", content: "exploit", owner: "user", permissions: "rw" }
+        }
+      },
+      root: {
+        secrets: {
+          "key.txt": { type: "file", content: "TOP_SECRET_KEY_123", owner: "root", permissions: "r" },
+          "root_exploit.sh": { type: "exe", content: "echo Root command executed", owner: "root", permissions: "rx" }
+        },
+        bin: {
+          "safe_exec": { type: "exe", content: "echo Safe binary", owner: "root", permissions: "rx" }
+        },
+        _protected: true // prevent non-root users from accessing
+      },
+      bin: {},
+      etc: {},
+    },
+  };
+
+  function getDir(fs, pathArray) {
+    try {
+      return pathArray.reduce((acc, key) => acc[key], fs);
+    } catch {
+      return null;
+    }
   }
+
+  function writeFile(pathArray, content, currentUser) {
+    const file = getDir(fs, pathArray);
+    if (!file) return "No such file";
+    if (file.owner !== currentUser && file.permissions !== "rw") return "Permission denied";
+    file.content = content;
+    return "File written";
+  }
+
+  function runFile(pathArray, currentUser) {
+    const file = getDir(fs, pathArray);
+    if (!file) return ["No such file"];
+    if (file.type !== "exe") return ["Not executable"];
+    if (file.owner !== currentUser && !file.permissions.includes("x")) return ["Permission denied"];
+
+    if (file.content === "exploit") {
+      setCurrentUser("root");
+      return ["SYSTEM> Root privileges granted!"];
+    }
+
+    return [file.content];
+  }
+
+  function isAccessible(pathArray) {
+    const dir = getDir(fs, pathArray);
+    if (!dir) return false;
+    if (dir._protected && currentUser !== "root") return false;
+    return true;
+  }
+
+  useEffect(() => inputRef.current?.focus(), []);
+  useEffect(() => inputRef.current?.focus(), [history]);
+  useEffect(() => setCursor(commands.length), [commands]);
+
+  const resolvePath = (cwd, input) => {
+    const parts = input.split("/").filter(Boolean);
+    const newPath = [...cwd];
+    parts.forEach((part) => {
+      if (part === ".") return;
+      if (part === "..") newPath.pop();
+      else newPath.push(part);
+    });
+    if (newPath.length === 0) newPath.push("/");
+    return newPath;
+  };
+
+  const commandsMap = {
+    help: () => ["AVAILABLE> help, ls, cd, cat, clear, edit, run"],
+    clear: ({ clear }) => { clear(); return []; },
+    ls: ({ cwd }) => {
+      const dir = getDir(fs, cwd);
+      if (!dir) return ["No such directory"];
+      if (dir._protected && currentUser !== "root") return ["Permission denied"];
+      return Object.keys(dir).filter(k => k !== '_protected');
+    },
+    cd: ({ cwd, args, setCwd }) => {
+      if (!args[0]) return [];
+      const newPath = resolvePath(cwd, args[0]);
+      const dir = getDir(fs, newPath);
+      if (!dir || (dir._protected && currentUser !== "root")) return [`cd: permission denied: ${args[0]}`];
+      setCwd(newPath);
+      return [];
+    },
+    cat: ({ cwd, args }) => {
+      if (!args[0]) return ["cat: missing filename"];
+      const path = resolvePath(cwd, args[0]);
+      const file = getDir(fs, path);
+      if (!file) return [`cat: no such file: ${args[0]}`];
+      if (file._protected && currentUser !== "root") return ["Permission denied"];
+      if (file.type === "file" || file.type === "exe") return [file.content];
+      return [`cat: ${args[0]} is a directory`];
+    },
+    edit: ({ cwd, args, buf }) => {
+      if (!args[0]) return ["edit: missing filename"];
+      const path = resolvePath(cwd, args[0]);
+      if (!isAccessible(path)) return ["Permission denied"];
+      return [writeFile(path, buf, currentUser)];
+    },
+    run: ({ cwd, args }) => {
+      if (!args[0]) return ["run: missing filename"];
+      const path = resolvePath(cwd, args[0]);
+      if (!isAccessible(path)) return ["Permission denied"];
+      return runFile(path, currentUser);
+    }
+  };
+
+  const onSubmit = (value) => {
+    const v = value.trim();
+    if (!v) return;
+    setHistory(h => [...h, `> ${v}`]);
+    setCommands(c => [...c, v]);
+    const [cmd, ...args] = v.split(/\s+/);
+    const handler = commandsMap[cmd];
+    if (handler) {
+      const out = handler({ args, cwd, buf, setCwd, clear: () => { setHistory([]); setCommands([]); setBuf(""); setCursor(0); setCwd(["/"]); }});
+      if (out && out.length) setHistory(h => [...h, ...out]);
+    } else {
+      setHistory(h => [...h, `UNKNOWN> ${v}`]);
+    }
+    setBuf("");
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") { e.preventDefault(); onSubmit(buf); return; }
+    if (e.key === "ArrowUp") { e.preventDefault(); setCursor(c => { const next = Math.max(0, c - 1); setBuf(next < commands.length ? commands[next] : ""); return next; }); return; }
+    if (e.key === "ArrowDown") { e.preventDefault(); setCursor(c => { const next = Math.min(commands.length, c + 1); setBuf(next === commands.length ? "" : commands[next]); return next; }); return; }
+  };
+
+  return (
+    <div className="mt-4" onClick={() => inputRef.current?.focus()}>
+      {history.map((h, i) => (<div key={i} className="text-white/80">{h}</div>))}
+      <div className="flex items-center gap-2 mt-1">
+        <span className="text-white/70">{cwd.join("/")}&gt;</span>
+        <input
+          ref={inputRef}
+          value={buf}
+          onChange={(e) => setBuf(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="absolute opacity-0 pointer-events-none"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck="false"
+        />
+        <TerminalInput value={buf} />
+      </div>
+      <div className="mt-2 text-white/50">Current User: {currentUser}</div>
+    </div>
+  );
+}
+
+function TerminalInput({ value }) {
+  const [cursorOn, setCursorOn] = useState(true);
+  useEffect(() => { const t = setInterval(() => setCursorOn(c => !c), 550); return () => clearInterval(t); }, []);
+  return (
+    <div className="font-mono text-white/90">
+      <span>{value}</span>
+      <span className={"ml-0.5 inline-block w-2 h-4 align-[-2px] " + (cursorOn ? "bg-white/80" : "bg-transparent border border-white/30")}/>
+    </div>
+  );
+}

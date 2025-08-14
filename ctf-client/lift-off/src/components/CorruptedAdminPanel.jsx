@@ -54,7 +54,7 @@ export default function CorruptedAdminPanel() {
           {/* Power LED (white only) */}
           <div className="absolute bottom-4 right-6 flex items-center gap-2">
             <div className="h-2.5 w-2.5 rounded-full bg-white animate-pulse" />
-            <span className="text-[10px] tracking-widest uppercase text-white/60">Power</span>
+         
           </div>
         </div>
 
@@ -69,15 +69,6 @@ export default function CorruptedAdminPanel() {
             <div className="absolute inset-0 pointer-events-none" style={{
               boxShadow: "inset 0 0 80px rgba(255,255,255,0.08), inset 0 0 300px rgba(0,0,0,0.9)",
             }} />
-
-            {/* Scanlines & subtle flicker */}
-            <div className="absolute inset-0 opacity-30" style={{
-              backgroundImage: "repeating-linear-gradient( to bottom, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 1px, rgba(0,0,0,0) 2px, rgba(0,0,0,0) 3px)",
-              animation: "crtFlicker 6s infinite steps(60)",
-            }} />
-
-            {/* Glare strip */}
-            <div className="absolute -left-10 top-0 h-full w-20 rotate-6 bg-gradient-to-b from-white/20 via-white/5 to-transparent blur-[2px] opacity-30 pointer-events-none" />
 
             {/* Background ASCII Logo */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -107,27 +98,7 @@ export default function CorruptedAdminPanel() {
             </motion.div>
           </div>
         </div>
-
-        {/* Subtle drop shadow to sell the CRT bulk */}
-        <div className="absolute -inset-2 rounded-[2.25rem] blur-xl opacity-40" style={{ boxShadow: "0 80px 100px rgba(255,255,255,0.06)" }} />
-      </div>
-
-      {/* Local styles for keyframes (kept self-contained) */}
-      <style>{`
-        @keyframes crtFlicker {
-          0% { opacity: 0.32; }
-          10% { opacity: 0.28; }
-          20% { opacity: 0.34; }
-          30% { opacity: 0.26; }
-          40% { opacity: 0.35; }
-          50% { opacity: 0.27; }
-          60% { opacity: 0.33; }
-          70% { opacity: 0.29; }
-          80% { opacity: 0.31; }
-          90% { opacity: 0.28; }
-          100% { opacity: 0.32; }
-        }
-      `}</style>
+      </div>     
     </div>
   );
 }
