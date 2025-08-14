@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import ShipIcon from "./shipIcon";
+import HeaderBar from "./AdminComps/HeaderBar";
+import Prompt from "./AdminComps/Prompt";
+import HelpBlock from "./AdminComps/HelpBlock";
 
 // Buddy Simulator 1999-inspired CRT monitor
 // Black & white palette only. TailwindCSS for styling.
@@ -75,6 +79,12 @@ export default function CorruptedAdminPanel() {
             {/* Glare strip */}
             <div className="absolute -left-10 top-0 h-full w-20 rotate-6 bg-gradient-to-b from-white/20 via-white/5 to-transparent blur-[2px] opacity-30 pointer-events-none" />
 
+            {/* Background ASCII Logo */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <ShipIcon className="!animate-none text-white/[0.3]"></ShipIcon>
+              
+            </div>
+
             {/* Content (terminal) */}
             <motion.div
               className="absolute inset-0 p-6 md:p-10 font-mono text-sm md:text-base leading-relaxed"
@@ -118,109 +128,6 @@ export default function CorruptedAdminPanel() {
           100% { opacity: 0.32; }
         }
       `}</style>
-    </div>
-  );
-}
-
-function HeaderBar() {
-  return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between text-[11px] tracking-widest uppercase text-white/60">
-        <div className="flex items-center gap-3">
-          <span className="inline-block h-2 w-2 rounded-full bg-white/80 animate-pulse" />
-          <span>International Chat // ADMIN</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span>v2.1</span>
-          <span>[ Unhackable ]</span>
-        </div>
-      </div>
-      <div className="mt-2 h-px w-full bg-gradient-to-r from-white/40 via-white/20 to-transparent" />
-    </div>
-  );
-}
-
-function Prompt() {
-  const [buf, setBuf] = useState("");
-  const [history, setHistory] = useState([]);
-  const [idx, setIdx] = useState(0);
-  const inputRef = useRef(null);
-
-  const onSubmit = (value) => {
-    const v = value.trim().toLowerCase();
-    if (!v) return;
-    const out = [];
-    if (v === "help") {
-      out.push("AVAILABLE> help, status, clear, shutdown");
-    } else if (v === "status") {
-      out.push("STATUS> processes: 7 | anomaly: ACTIVE | net: OFFLINE");
-    } else if (v === "shutdown") {
-      out.push("SYSTEM> permission denied. anomaly intercept.");
-    } else if (v === "clear") {
-      setHistory([]);
-      setBuf("");
-      setIdx(0);
-      return;
-    } else {
-      out.push(`UNKNOWN> ${v}`);
-    }
-    setHistory((h) => [...h, `> ${v}`, ...out]);
-    setBuf("");
-    setIdx(0);
-  };
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  return (
-    <div className="mt-4">
-      {history.map((h, i) => (
-        <div key={i} className="text-white/80">{h}</div>
-      ))}
-      <div className="flex items-center gap-2 mt-1">
-        <span className="text-white/70">&gt;</span>
-        {/* Invisible input to capture keystrokes while we render custom caret */}
-        <input
-          ref={inputRef}
-          value={buf}
-          onChange={(e) => setBuf(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") onSubmit(buf);
-            if (e.key === "ArrowUp") setIdx((n) => Math.min(n + 1, history.length - 1));
-            if (e.key === "ArrowDown") setIdx((n) => Math.max(n - 1, 0));
-          }}
-          className="absolute opacity-0 pointer-events-none"
-        />
-        <TerminalInput value={buf} />
-      </div>
-    </div>
-  );
-}
-
-function TerminalInput({ value }) {
-  const [cursorOn, setCursorOn] = useState(true);
-  useEffect(() => {
-    const t = setInterval(() => setCursorOn((c) => !c), 550);
-    return () => clearInterval(t);
-  }, []);
-  return (
-    <div className="font-mono text-white/90">
-      <span>{value}</span>
-      <span className={"ml-0.5 inline-block w-2 h-4 align-[-2px] " + (cursorOn ? "bg-white/80" : "bg-transparent border border-white/30")}></span>
-    </div>
-  );
-}
-
-function HelpBlock() {
-  return (
-    <div className="mt-6 text-[11px] text-white/50 leading-6">
-      <div className="uppercase tracking-widest">Controls</div>
-      <ul className="list-disc list-inside">
-        <li>Type <span className="px-1 rounded-sm bg-white/10">help</span> for commands</li>
-        <li>Try <span className="px-1 rounded-sm bg-white/10">status</span> or <span className="px-1 rounded-sm bg-white/10">shutdown</span></li>
-        <li>Use <span className="px-1 rounded-sm bg-white/10">clear</span> to wipe the console</li>
-      </ul>
     </div>
   );
 }
