@@ -1,11 +1,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../singletonSupabase';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_API_KEY
-);
 
 
 const asciiArt = `

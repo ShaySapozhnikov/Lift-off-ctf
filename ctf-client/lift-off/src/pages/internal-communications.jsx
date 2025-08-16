@@ -1,13 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Signin from '../components/SignIn-coms';
 
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../singletonSupabase';
 import { useSearchParams } from 'react-router-dom';
 
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_API_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+
 
 const icon = ` Exploring the uncharted regions" 
                         .   *        .       .
