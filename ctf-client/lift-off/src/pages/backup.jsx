@@ -1,5 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import ShipIcon from "../components/shipIcon";
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_API_KEY
+);
 
 function Backup() {
   const [locked, setLocked] = useState(true);
@@ -142,18 +148,59 @@ function Backup() {
           <h3>The unhackable backup installer V2.0</h3>
 
           <button
-            className="mt-6 px-6 py-2 bg-zinc-900 text-white hover:text-amber-100 rounded border border-dashed mb-5"
-            onClick={() => {
-              const link = document.createElement("a");
-              link.href = "/backup.zip";
-              link.download = "backup.zip";
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-            }}
-          >
-            Download Backup
-          </button>
+  className="mt-6 px-6 py-2 bg-zinc-900 text-white hover:text-amber-100 rounded border border-dashed mb-5"
+  onClick={async () => {
+    try {
+      // List all files in the Backup bucket
+      const { data: files, error } = await supabase.storage
+        .from("Backup")
+        .list("", { limit: 1000 }); // increase limit if needed
+
+      if (error) {
+        console.error("Error listing files:", error.message);
+        return;
+      }
+
+      if (!files || files.length === 0) {
+        console.log("No files found in bucket.");
+        return;
+      }
+
+      console.log("Files found:", files.map(f => f.name));
+
+      // Download each file
+      for (const file of files) {
+        const { data: signedUrlData, error: urlError } = await supabase.storage
+          .from("Backup")
+          .createSignedUrl(file.name, 60); // URL valid for 60 seconds
+
+        if (urlError) {
+          console.error("Error creating signed URL for", file.name, urlError.message);
+          continue;
+        }
+
+        const link = document.createElement("a");
+        link.href = signedUrlData.signedUrl;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+
+      console.log("All files download triggered.");
+    } catch (err) {
+      console.error("Unexpected error:", err);
+    }
+  }}
+>
+  Download All Backups
+</button>
+
+
+
+
+
+
         </div>
       </div>
 
