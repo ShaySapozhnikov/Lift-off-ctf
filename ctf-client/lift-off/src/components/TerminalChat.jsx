@@ -1,19 +1,26 @@
 import React, { useState, useRef, useEffect } from "react";
+import { supabase } from '../singletonSupabase';
+import { getOrSetUserId , getUserName} from "../../utils/cookieUser";
 
 function TerminalChat() {
+ 
   const [input, setInput] = useState("");
   const [cooldown, setCooldown] = useState(0);
   const spanRef = useRef(null);
   const inputRef = useRef(null);
   const lastEnterTime = useRef(0);
   const intervalRef = useRef(null);
+  const userId = getOrSetUserId();
+  const username = getUserName(userId);
 
+  // Adjust input width dynamically
   useEffect(() => {
     if (spanRef.current && inputRef.current) {
       inputRef.current.style.width = `${spanRef.current.offsetWidth + 10}px`;
     }
   }, [input]);
 
+  // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -23,7 +30,7 @@ function TerminalChat() {
     return () => clearInterval(intervalRef.current);
   }, []);
 
-  const startCooldown = () => { // needs to be in the backend api 
+  const startCooldown = () => {
     setCooldown(10);
     lastEnterTime.current = Date.now();
 
@@ -40,12 +47,14 @@ function TerminalChat() {
     }, 1000);
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = async (e) => {
     if (e.key === "Enter" && input.trim() !== "") {
-      const now = Date.now();
-
       if (cooldown === 0) {
-        console.log("Message sent:", input);
+        // Send message to Supabase
+        await supabase.from("messages").insert([
+          { content: input, user_id: userId , username: username  },
+        ]);
+
         setInput("");
         startCooldown();
       } else {
@@ -57,19 +66,18 @@ function TerminalChat() {
   return (
     <div className="bg-zinc-900 p-4 col-span-1 h-[200px] border-2 border-gray-500 border-dashed rounded-md mt-4">
       <h1 className="p-1 text-white italic font-semibold text-left">-Terminal-</h1>
+
+      {/* Input */}
       <div className="flex items-center space-x-1 font-mono text-white bg-zinc-900 relative">
         <span className="mt-2">theUnhackable</span>
         <span className="mt-2 text-amber-100">@chat$</span>
-        <span
-          ref={spanRef}
-          className="invisible absolute whitespace-pre p-2"
-        >
+        <span ref={spanRef} className="invisible absolute whitespace-pre p-2">
           {input || " "}
         </span>
 
         <div className="inline-flex items-center relative">
           <input
-            maxLength={20}
+            maxLength={100}
             type="text"
             ref={inputRef}
             value={input}
@@ -85,9 +93,8 @@ function TerminalChat() {
       </div>
 
       {cooldown > 0 && (
-
-        <div className=" text-left text-white font-mono mt-2 text-sm">
-          Next message available in  {cooldown} second{cooldown > 1 ? "s" : ""}
+        <div className="text-left text-white font-mono mt-2 text-sm">
+          Next message available in {cooldown} second{cooldown > 1 ? "s" : ""}
         </div>
       )}
     </div>
