@@ -10,6 +10,8 @@ import Start from "./pages/start.jsx";
 import Backup from "./pages/backup.jsx";
 import InternalCommunications from "./pages/internal-communications.jsx";
 import Admin from "./pages/admin.jsx";
+import Flags from "./pages/Flag.jsx";
+
 
 const router = createBrowserRouter([
   {path: "*", element: <NotFound />}, // needs btter ui!!
@@ -17,7 +19,8 @@ const router = createBrowserRouter([
   {path:"start" , element: <Start />},
   {path: "backup" , element: <Backup />},
   {path: "internal-communications", element: <InternalCommunications />},
-  {path: "admin" , element: <Admin /> }
+  {path: "admin" , element: <Admin /> },
+  {path: "flags", element: <Flags/> }
 
 ]);
 

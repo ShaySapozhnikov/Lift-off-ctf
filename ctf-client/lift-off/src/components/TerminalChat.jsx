@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { supabase } from '../singletonSupabase';
 import { getOrSetUserId , getUserName} from "../../utils/cookieUser";
+import leoProfanity from "leo-profanity";
 
 function TerminalChat() {
  
@@ -50,11 +51,12 @@ function TerminalChat() {
   const handleKeyDown = async (e) => {
     if (e.key === "Enter" && input.trim() !== "") {
       if (cooldown === 0) {
-        // Send message to Supabase
+        const cleanedMessage = leoProfanity.clean(input.trim());
+  
         await supabase.from("messages").insert([
-          { content: input, user_id: userId , username: username  },
+          { content: cleanedMessage, user_id: userId, username },
         ]);
-
+  
         setInput("");
         startCooldown();
       } else {
