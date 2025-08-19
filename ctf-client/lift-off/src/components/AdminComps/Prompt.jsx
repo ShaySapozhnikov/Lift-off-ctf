@@ -1,5 +1,6 @@
-// Secure privilege escalation CTF simulation with proper root folder protection
 import { useEffect, useRef, useState } from "react";
+
+const BACKEND_URL = "http://localhost:3000"; // Express backend URL
 
 export default function Prompt() {
   const [buf, setBuf] = useState("");
@@ -10,71 +11,11 @@ export default function Prompt() {
   const [currentUser, setCurrentUser] = useState("user");
   const inputRef = useRef(null);
 
-  // Mini in-memory file system with root folders and executables
-  const fs = {
-    "/": {
-      home: {
-        user: {
-          "readme.txt": { type: "file", content: "Welcome!", owner: "user", permissions: "r" },
-          "exploit.bat": { type: "exe", content: "exploit", owner: "user", permissions: "rw" }
-        }
-      },
-      root: {
-        secrets: {
-          "key.txt": { type: "file", content: "TOP_SECRET_KEY_123", owner: "root", permissions: "r" },
-          "root_exploit.sh": { type: "exe", content: "echo Root command executed", owner: "root", permissions: "rx" }
-        },
-        bin: {
-          "safe_exec": { type: "exe", content: "echo Safe binary", owner: "root", permissions: "rx" }
-        },
-        _protected: true // prevent non-root users from accessing
-      },
-      bin: {},
-      etc: {},
-    },
-  };
-
-  function getDir(fs, pathArray) {
-    try {
-      return pathArray.reduce((acc, key) => acc[key], fs);
-    } catch {
-      return null;
-    }
-  }
-
-  function writeFile(pathArray, content, currentUser) {
-    const file = getDir(fs, pathArray);
-    if (!file) return "No such file";
-    if (file.owner !== currentUser && file.permissions !== "rw") return "Permission denied";
-    file.content = content;
-    return "File written";
-  }
-
-  function runFile(pathArray, currentUser) {
-    const file = getDir(fs, pathArray);
-    if (!file) return ["No such file"];
-    if (file.type !== "exe") return ["Not executable"];
-    if (file.owner !== currentUser && !file.permissions.includes("x")) return ["Permission denied"];
-
-    if (file.content === "exploit") {
-      setCurrentUser("root");
-      return ["SYSTEM> Root privileges granted!"];
-    }
-
-    return [file.content];
-  }
-
-  function isAccessible(pathArray) {
-    const dir = getDir(fs, pathArray);
-    if (!dir) return false;
-    if (dir._protected && currentUser !== "root") return false;
-    return true;
-  }
-
   useEffect(() => inputRef.current?.focus(), []);
   useEffect(() => inputRef.current?.focus(), [history]);
   useEffect(() => setCursor(commands.length), [commands]);
 
+  // --- Helper: resolve relative paths ---
   const resolvePath = (cwd, input) => {
     const parts = input.split("/").filter(Boolean);
     const newPath = [...cwd];
@@ -87,62 +28,95 @@ export default function Prompt() {
     return newPath;
   };
 
-  const commandsMap = {
-    help: () => ["AVAILABLE> help, ls, cd, cat, clear, edit, run"],
-    clear: ({ clear }) => { clear(); return []; },
-    ls: ({ cwd }) => {
-      const dir = getDir(fs, cwd);
-      if (!dir) return ["No such directory"];
-      if (dir._protected && currentUser !== "root") return ["Permission denied"];
-      return Object.keys(dir).filter(k => k !== '_protected');
-    },
-    cd: ({ cwd, args, setCwd }) => {
-      if (!args[0]) return [];
-      const newPath = resolvePath(cwd, args[0]);
-      const dir = getDir(fs, newPath);
-      if (!dir || (dir._protected && currentUser !== "root")) return [`cd: permission denied: ${args[0]}`];
-      setCwd(newPath);
-      return [];
-    },
-    cat: ({ cwd, args }) => {
-      if (!args[0]) return ["cat: missing filename"];
-      const path = resolvePath(cwd, args[0]);
-      const file = getDir(fs, path);
-      if (!file) return [`cat: no such file: ${args[0]}`];
-      if (file._protected && currentUser !== "root") return ["Permission denied"];
-      if (file.type === "file" || file.type === "exe") return [file.content];
-      return [`cat: ${args[0]} is a directory`];
-    },
-    edit: ({ cwd, args, buf }) => {
-      if (!args[0]) return ["edit: missing filename"];
-      const path = resolvePath(cwd, args[0]);
-      if (!isAccessible(path)) return ["Permission denied"];
-      return [writeFile(path, buf, currentUser)];
-    },
-    run: ({ cwd, args }) => {
-      if (!args[0]) return ["run: missing filename"];
-      const path = resolvePath(cwd, args[0]);
-      if (!isAccessible(path)) return ["Permission denied"];
-      return runFile(path, currentUser);
+  // --- API Calls ---
+  const lsDir = async (path) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/ls?path=${encodeURIComponent(path)}&user=${currentUser}`);
+      if (!res.ok) return [`Error: ${await res.text()}`];
+      const data = await res.json();
+      return data.files;
+    } catch (e) {
+      return [`Network error: ${e.message}`];
     }
   };
 
-  const onSubmit = (value) => {
+  const catFile = async (path) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/file?path=${encodeURIComponent(path)}&user=${currentUser}`);
+      if (!res.ok) return [`Error: ${await res.text()}`];
+      const data = await res.json();
+      return [data.content];
+    } catch (e) {
+      return [`Network error: ${e.message}`];
+    }
+  };
+
+  const runFileAPI = async (path) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path, user: currentUser }),
+      });
+      if (!res.ok) return [`Error: ${await res.text()}`];
+      const data = await res.json();
+      // Simulate exploit granting root
+      if (data.output === "exploit") setCurrentUser("root");
+      return [data.output];
+    } catch (e) {
+      return [`Network error: ${e.message}`];
+    }
+  };
+
+  // --- Commands ---
+  const commandsMap = {
+    help: async () => ["AVAILABLE> help, ls, cd, cat, clear, run"],
+    clear: async ({ clear }) => { clear(); return []; },
+    ls: async ({ cwd }) => await lsDir(cwd.join("/")),
+    cd: async ({ cwd, args, setCwd }) => {
+      if (!args[0]) return [];
+      const newPath = resolvePath(cwd, args[0]);
+      const dirCheck = await lsDir(newPath.join("/"));
+      if (dirCheck[0]?.startsWith("Error")) return [`cd: permission denied: ${args[0]}`];
+      setCwd(newPath);
+      return [];
+    },
+    cat: async ({ cwd, args }) => {
+      if (!args[0]) return ["cat: missing filename"];
+      const path = resolvePath(cwd, args[0]).join("/");
+      return await catFile(path);
+    },
+    run: async ({ cwd, args }) => {
+      if (!args[0]) return ["run: missing filename"];
+      const path = resolvePath(cwd, args[0]).join("/");
+      return await runFileAPI(path);
+    }
+  };
+
+  const onSubmit = async (value) => {
     const v = value.trim();
     if (!v) return;
     setHistory(h => [...h, `> ${v}`]);
     setCommands(c => [...c, v]);
+
     const [cmd, ...args] = v.split(/\s+/);
     const handler = commandsMap[cmd];
     if (handler) {
-      const out = handler({ args, cwd, buf, setCwd, clear: () => { setHistory([]); setCommands([]); setBuf(""); setCursor(0); setCwd(["/"]); }});
+      const out = await handler({
+        args,
+        cwd,
+        setCwd,
+        clear: () => { setHistory([]); setCommands([]); setBuf(""); setCursor(0); setCwd(["/"]); }
+      });
       if (out && out.length) setHistory(h => [...h, ...out]);
     } else {
       setHistory(h => [...h, `UNKNOWN> ${v}`]);
     }
+
     setBuf("");
   };
 
+  // --- Keyboard navigation ---
   const handleKeyDown = (e) => {
     if (e.key === "Enter") { e.preventDefault(); onSubmit(buf); return; }
     if (e.key === "ArrowUp") { e.preventDefault(); setCursor(c => { const next = Math.max(0, c - 1); setBuf(next < commands.length ? commands[next] : ""); return next; }); return; }
@@ -157,12 +131,10 @@ export default function Prompt() {
           <div key={i} className="text-white/80">{h}</div>
         ))}
       </div>
-  
-      {/* prompt row — normal flow */}
+
+      {/* prompt row */}
       <div className="flex items-center gap-2 pt-2 pb-2">
         <span className="text-white/70">{cwd.join("/")}&gt;</span>
-  
-        {/* hidden real input */}
         <input
           ref={inputRef}
           value={buf}
@@ -174,15 +146,12 @@ export default function Prompt() {
           autoCapitalize="off"
           spellCheck="false"
         />
-  
-        {/* visible fake input */}
         <TerminalInput value={buf} />
       </div>
-  
+
       <div className="mt-1 text-white/50">Current User: {currentUser}</div>
     </div>
   );
-  
 }
 
 function TerminalInput({ value }) {
