@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
-const BACKEND_URL = "http://localhost:3000"; // Express backend URL
+// Replace localhost with your Render-hosted backend
+const BACKEND_URL = "https://lift-off-ctf.onrender.com"; // <-- hosted API URL
 
 export default function Prompt() {
   const [buf, setBuf] = useState("");
