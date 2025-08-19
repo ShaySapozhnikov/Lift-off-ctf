@@ -8,8 +8,8 @@ const app = express();
 
 app.use(express.json());
 
-// Enable CORS for your React dev server
-app.use(cors({ origin: "http://localhost:5173" }));
+// Allow any frontend to access the API
+app.use(cors());
 
 // Helper: traverse fs by path
 function getNode(path) {
@@ -54,10 +54,9 @@ app.post("/run", (req, res) => {
   if (node.type !== "exe") return res.status(400).send("Not executable");
   if (node.owner === "root" && user !== "root") return res.status(403).send("Permission denied");
 
-  // Simulate execution
   res.json({ output: node.content });
 });
 
-// Start server
+// Start server on Render's PORT or local 3000
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
