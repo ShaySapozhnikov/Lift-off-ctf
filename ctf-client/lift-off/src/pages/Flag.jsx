@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import { supabase } from '../singletonSupabase';
 function Flags() {
     const textLabel = `░██████████░██            ░███      ░██████       ░██████   ░██     ░██ ░████████   ░███     ░███ ░██████░██████████            
 ░██        ░██           ░██░██    ░██   ░██     ░██   ░██  ░██     ░██ ░██    ░██  ░████   ░████   ░██      ░██       
@@ -41,11 +41,25 @@ function Flags() {
   const [username, setUsername] = useState("");
   const [flag, setFlag] = useState("");
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    // later: send to Supabase or API
-    console.log("Submitted:", { username, flag });
+  async function handleSubmit(e) {
+    e.preventDefault(); // stop page reload
+  
+    const { data, error } = await supabase.rpc("submit_flag", {
+      username_input: username,
+      flag_input: flag,
+    });
+  
+    if (error) {
+      console.error(error);
+      alert("❌ Error submitting flag");
+    } else {
+      alert(data); // shows success / already submitted / invalid
+    }
+  
+    setFlag(""); // clear flag input
   }
+  
+  
 
 
 
