@@ -33,7 +33,7 @@ function EventProvider({ children }) {
     };
 
     fetchStatus();
-    const interval = setInterval(fetchStatus, 10000);
+    const interval = setInterval(fetchStatus, 1000);
     return () => clearInterval(interval);
   }, []);
 
