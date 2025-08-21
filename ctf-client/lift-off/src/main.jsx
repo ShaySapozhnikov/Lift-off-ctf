@@ -20,10 +20,10 @@ function EventProvider({ children }) {
         .eq("id", 1)
         .maybeSingle();
 
-      console.log("Supabase response:", { data, error });
+      //console.log("Supabase response:", { data, error });
 
       if (!error && data) {
-        console.log("Updating eventStarted:", data.started, "typeof:", typeof data.started);
+        //console.log("Updating eventStarted:", data.started, "typeof:", typeof data.started);
         setEventStarted(data.started);
       } else {
         console.log(" Error fetching event status:", error);
@@ -38,7 +38,7 @@ function EventProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    console.log("🟢 eventStarted changed:", eventStarted);
+    //console.log("🟢 eventStarted changed:", eventStarted);
   }, [eventStarted]);
 
   return (

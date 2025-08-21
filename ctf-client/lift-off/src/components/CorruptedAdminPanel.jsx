@@ -8,22 +8,31 @@ import SnakeAdmin from "./AdminComps/snakeAdmin";
 
 export default function CorruptedAdminPanel() {
   const [bootLines, setBootLines] = useState([]);
-  const [snakeEvent, setSnakeEvent] = useState(null);
+  const [snakeEvent, setSnakeEvent] = useState(null); // store event string
   const typedRef = useRef(null);
 
+  // Run command handler
   async function handleRunCommand(path, user) {
-    const res = await fetch("https://lift-off-ctf.onrender.com/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path, user }),
-    });
-    const data = await res.json();
+    try {
+      const res = await fetch("https://lift-off-ctf.onrender.com/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path, user }),
+      });
 
-    if (data.event) {
-      setSnakeEvent(data.event); // trigger special rendering
+      const data = await res.json();
+      console.log("API response:", data);
+
+      if (data.event) {
+        console.log("API triggered event:", data.event);
+        setSnakeEvent(data.event); // keep string
+      }
+
+      return data.output;
+    } catch (err) {
+      console.error("Error running command:", err);
+      return "Error running command";
     }
-
-    return data.output; // still return normal output for logs
   }
 
   // Boot sequence
@@ -45,14 +54,17 @@ export default function CorruptedAdminPanel() {
     return () => clearInterval(t);
   }, []);
 
-  // Auto-scroll only if at bottom
+  // Auto-scroll when bootLines or snakeEvent change
   useEffect(() => {
     const el = typedRef.current;
     if (!el) return;
-    const isAtBottom =
-      el.scrollHeight - el.scrollTop <= el.clientHeight + 10;
-    if (isAtBottom) el.scrollTop = el.scrollHeight;
+    el.scrollTop = el.scrollHeight;
   }, [bootLines, snakeEvent]);
+
+  // Debug log
+  useEffect(() => {
+    console.log("Current snakeEvent state:", snakeEvent);
+  }, [snakeEvent]);
 
   return (
     <div className="min-h-screen w-full bg-black text-white flex items-center justify-center p-4 select-none">
@@ -100,12 +112,10 @@ export default function CorruptedAdminPanel() {
               }}
               transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
             >
-              {/* Header fixed at top */}
               <div className="flex-shrink-0">
                 <HeaderBar />
               </div>
 
-              {/* Scrollable content */}
               <div
                 ref={typedRef}
                 className="flex-1 flex flex-col justify-end overflow-y-auto pr-4
@@ -117,8 +127,12 @@ export default function CorruptedAdminPanel() {
                   </div>
                 ))}
 
-                {/* Snake event render */}
-                {snakeEvent === "snakeGame" && <SnakeAdmin />}
+                {/* Snake game overlay */}
+                {snakeEvent === "snakeGame" && (
+                  <div className="w-full h-[300px] my-2 border-4 border-red-500 bg-white/10 z-50 relative">
+                    <SnakeAdmin />
+                  </div>
+                )}
 
                 <Prompt onRunCommand={handleRunCommand} />
                 <HelpBlock />
