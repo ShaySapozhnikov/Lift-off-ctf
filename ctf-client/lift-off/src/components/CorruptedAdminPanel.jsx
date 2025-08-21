@@ -11,30 +11,6 @@ export default function CorruptedAdminPanel() {
   const [snakeEvent, setSnakeEvent] = useState(null); // store event string
   const typedRef = useRef(null);
 
-  // Run command handler
-  async function handleRunCommand(path, user) {
-    try {
-      const res = await fetch("https://lift-off-ctf.onrender.com/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path, user }),
-      });
-
-      const data = await res.json();
-      console.log("API response:", data);
-
-      if (data.event) {
-        console.log("API triggered event:", data.event);
-        setSnakeEvent(data.event); // keep string
-      }
-
-      return data.output;
-    } catch (err) {
-      console.error("Error running command:", err);
-      return "Error running command";
-    }
-  }
-
   // Boot sequence
   useEffect(() => {
     const script = [
@@ -54,7 +30,7 @@ export default function CorruptedAdminPanel() {
     return () => clearInterval(t);
   }, []);
 
-  // Auto-scroll when bootLines or snakeEvent change
+  // Auto-scroll
   useEffect(() => {
     const el = typedRef.current;
     if (!el) return;
@@ -65,6 +41,12 @@ export default function CorruptedAdminPanel() {
   useEffect(() => {
     console.log("Current snakeEvent state:", snakeEvent);
   }, [snakeEvent]);
+
+  // --- Handler for Prompt events ---
+  const handleEvent = (event) => {
+    console.log("Prompt triggered event:", event);
+    setSnakeEvent(event);
+  };
 
   return (
     <div className="min-h-screen w-full bg-black text-white flex items-center justify-center p-4 select-none">
@@ -104,40 +86,44 @@ export default function CorruptedAdminPanel() {
 
             {/* Terminal content */}
             <motion.div
-              className="absolute inset-0 p-6 md:p-10 font-mono text-sm md:text-base leading-relaxed flex flex-col"
-              initial={{ filter: "blur(0.6px)", opacity: 0.95 }}
-              animate={{
-                filter: ["blur(0.6px)", "blur(0.4px)", "blur(0.5px)"],
-                opacity: [0.95, 0.92, 0.94],
-              }}
-              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-            >
-              <div className="flex-shrink-0">
-                <HeaderBar />
-              </div>
+  className="absolute inset-0 p-6 md:p-10 font-mono text-sm md:text-base leading-relaxed flex flex-col"
+  initial={{ filter: "blur(0.6px)", opacity: 0.95 }}
+  animate={{
+    filter: ["blur(0.6px)", "blur(0.4px)", "blur(0.5px)"],
+    opacity: [0.95, 0.92, 0.94],
+  }}
+  transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+>
+  <div className="flex-shrink-0">
+    <HeaderBar />
+  </div>
 
-              <div
-                ref={typedRef}
-                className="flex-1 flex flex-col justify-end overflow-y-auto pr-4
-                           scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-black/20"
-              >
-                {bootLines.map((line, idx) => (
-                  <div key={idx} className="text-white/90">
-                    {line}
-                  </div>
-                ))}
+  <div
+    ref={typedRef}
+    className="flex-1 flex flex-col justify-end overflow-y-auto pr-4
+               scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-black/20"
+  >
+    {bootLines.map((line, idx) => (
+      <div key={idx} className="text-white/90">
+        {line}
+      </div>
+    ))}
 
-                {/* Snake game overlay */}
-                {snakeEvent === "snakeGame" && (
-                  <div className="w-full h-[300px] my-2 border-4 border-red-500 bg-white/10 z-50 relative">
-                    <SnakeAdmin />
-                  </div>
-                )}
+    <Prompt onEvent={handleEvent} />
+    <HelpBlock />
+  </div>
 
-                <Prompt onRunCommand={handleRunCommand} />
-                <HelpBlock />
-              </div>
-            </motion.div>
+  {/* Snake game overlay — move outside scrollable content */}
+  {snakeEvent === "snakeGame" && (
+  <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
+    <div className="w-full h-full relative">
+      <SnakeAdmin />
+    </div>
+  </div>
+)}
+
+</motion.div>
+
           </div>
         </div>
       </div>

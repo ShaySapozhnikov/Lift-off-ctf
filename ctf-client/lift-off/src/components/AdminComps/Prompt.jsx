@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 
 // Replace localhost with your Render-hosted backend
-const BACKEND_URL = "https://lift-off-ctf.onrender.com"; // <-- hosted API URL
+const BACKEND_URL = "https://lift-off-ctf.onrender.com";
 
-export default function Prompt() {
+export default function Prompt({ onEvent }) {
   const [buf, setBuf] = useState("");
   const [history, setHistory] = useState([]);
   const [commands, setCommands] = useState([]);
@@ -32,7 +32,9 @@ export default function Prompt() {
   // --- API Calls ---
   const lsDir = async (path) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/ls?path=${encodeURIComponent(path)}&user=${currentUser}`);
+      const res = await fetch(
+        `${BACKEND_URL}/ls?path=${encodeURIComponent(path)}&user=${currentUser}`
+      );
       if (!res.ok) return [`Error: ${await res.text()}`];
       const data = await res.json();
       return data.files;
@@ -43,7 +45,9 @@ export default function Prompt() {
 
   const catFile = async (path) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/file?path=${encodeURIComponent(path)}&user=${currentUser}`);
+      const res = await fetch(
+        `${BACKEND_URL}/file?path=${encodeURIComponent(path)}&user=${currentUser}`
+      );
       if (!res.ok) return [`Error: ${await res.text()}`];
       const data = await res.json();
       return [data.content];
@@ -61,7 +65,12 @@ export default function Prompt() {
       });
       if (!res.ok) return [`Error: ${await res.text()}`];
       const data = await res.json();
-      // Simulate exploit granting root
+
+      // ✅ Notify parent about any event (like "snakeGame")
+      if (data.event && typeof onEvent === "function") {
+        onEvent(data.event);
+      }
+
       if (data.output === "exploit") setCurrentUser("root");
       return [data.output];
     } catch (e) {
@@ -72,13 +81,17 @@ export default function Prompt() {
   // --- Commands ---
   const commandsMap = {
     help: async () => ["AVAILABLE> help, ls, cd, cat, clear, run"],
-    clear: async ({ clear }) => { clear(); return []; },
+    clear: async ({ clear }) => {
+      clear();
+      return [];
+    },
     ls: async ({ cwd }) => await lsDir(cwd.join("/")),
     cd: async ({ cwd, args, setCwd }) => {
       if (!args[0]) return [];
       const newPath = resolvePath(cwd, args[0]);
       const dirCheck = await lsDir(newPath.join("/"));
-      if (dirCheck[0]?.startsWith("Error")) return [`cd: permission denied: ${args[0]}`];
+      if (dirCheck[0]?.startsWith("Error"))
+        return [`cd: permission denied: ${args[0]}`];
       setCwd(newPath);
       return [];
     },
@@ -91,14 +104,14 @@ export default function Prompt() {
       if (!args[0]) return ["run: missing filename"];
       const path = resolvePath(cwd, args[0]).join("/");
       return await runFileAPI(path);
-    }
+    },
   };
 
   const onSubmit = async (value) => {
     const v = value.trim();
     if (!v) return;
-    setHistory(h => [...h, `> ${v}`]);
-    setCommands(c => [...c, v]);
+    setHistory((h) => [...h, `> ${v}`]);
+    setCommands((c) => [...c, v]);
 
     const [cmd, ...args] = v.split(/\s+/);
     const handler = commandsMap[cmd];
@@ -107,11 +120,17 @@ export default function Prompt() {
         args,
         cwd,
         setCwd,
-        clear: () => { setHistory([]); setCommands([]); setBuf(""); setCursor(0); setCwd(["/"]); }
+        clear: () => {
+          setHistory([]);
+          setCommands([]);
+          setBuf("");
+          setCursor(0);
+          setCwd(["/"]);
+        },
       });
-      if (out && out.length) setHistory(h => [...h, ...out]);
+      if (out && out.length) setHistory((h) => [...h, ...out]);
     } else {
-      setHistory(h => [...h, `UNKNOWN> ${v}`]);
+      setHistory((h) => [...h, `UNKNOWN> ${v}`]);
     }
 
     setBuf("");
@@ -119,9 +138,29 @@ export default function Prompt() {
 
   // --- Keyboard navigation ---
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") { e.preventDefault(); onSubmit(buf); return; }
-    if (e.key === "ArrowUp") { e.preventDefault(); setCursor(c => { const next = Math.max(0, c - 1); setBuf(next < commands.length ? commands[next] : ""); return next; }); return; }
-    if (e.key === "ArrowDown") { e.preventDefault(); setCursor(c => { const next = Math.min(commands.length, c + 1); setBuf(next === commands.length ? "" : commands[next]); return next; }); return; }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onSubmit(buf);
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setCursor((c) => {
+        const next = Math.max(0, c - 1);
+        setBuf(next < commands.length ? commands[next] : "");
+        return next;
+      });
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setCursor((c) => {
+        const next = Math.min(commands.length, c + 1);
+        setBuf(next === commands.length ? "" : commands[next]);
+        return next;
+      });
+      return;
+    }
   };
 
   return (
@@ -129,7 +168,9 @@ export default function Prompt() {
       {/* history */}
       <div className="space-y-0.5">
         {history.map((h, i) => (
-          <div key={i} className="text-white/80">{h}</div>
+          <div key={i} className="text-white/80">
+            {h}
+          </div>
         ))}
       </div>
 
@@ -157,11 +198,19 @@ export default function Prompt() {
 
 function TerminalInput({ value }) {
   const [cursorOn, setCursorOn] = useState(true);
-  useEffect(() => { const t = setInterval(() => setCursorOn(c => !c), 550); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    const t = setInterval(() => setCursorOn((c) => !c), 550);
+    return () => clearInterval(t);
+  }, []);
   return (
     <div className="font-mono text-white/90">
       <span>{value}</span>
-      <span className={"ml-0.5 inline-block w-2 h-4 align-[-2px] " + (cursorOn ? "bg-white/80" : "bg-transparent border border-white/30")}/>
+      <span
+        className={
+          "ml-0.5 inline-block w-2 h-4 align-[-2px] " +
+          (cursorOn ? "bg-white/80" : "bg-transparent border border-white/30")
+        }
+      />
     </div>
   );
 }
