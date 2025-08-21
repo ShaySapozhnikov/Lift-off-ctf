@@ -53,6 +53,9 @@ app.post("/run", (req, res) => {
   if (!node) return res.status(404).send("File not found");
   if (node.type !== "exe") return res.status(400).send("Not executable");
   if (node.owner === "root" && user !== "root") return res.status(403).send("Permission denied");
+  if (path.endsWith("2nak3.bat")) {
+    return res.json({ output: "Loading", event: "snakeGame" });
+  }
 
   res.json({ output: node.content });
 });

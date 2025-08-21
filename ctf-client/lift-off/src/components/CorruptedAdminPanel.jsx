@@ -4,10 +4,27 @@ import ShipIcon from "./shipIcon";
 import HeaderBar from "./AdminComps/HeaderBar";
 import Prompt from "./AdminComps/Prompt";
 import HelpBlock from "./AdminComps/HelpBlock";
+import SnakeAdmin from "./AdminComps/snakeAdmin";
 
 export default function CorruptedAdminPanel() {
   const [bootLines, setBootLines] = useState([]);
+  const [snakeEvent, setSnakeEvent] = useState(null);
   const typedRef = useRef(null);
+
+  async function handleRunCommand(path, user) {
+    const res = await fetch("https://lift-off-ctf.onrender.com/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, user }),
+    });
+    const data = await res.json();
+
+    if (data.event) {
+      setSnakeEvent(data.event); // trigger special rendering
+    }
+
+    return data.output; // still return normal output for logs
+  }
 
   // Boot sequence
   useEffect(() => {
@@ -20,7 +37,9 @@ export default function CorruptedAdminPanel() {
     ];
     let i = 0;
     const t = setInterval(() => {
-      setBootLines((prev) => (i < script.length ? [...prev, script[i++]] : prev));
+      setBootLines((prev) =>
+        i < script.length ? [...prev, script[i++]] : prev
+      );
       if (i >= script.length) clearInterval(t);
     }, 350);
     return () => clearInterval(t);
@@ -30,9 +49,10 @@ export default function CorruptedAdminPanel() {
   useEffect(() => {
     const el = typedRef.current;
     if (!el) return;
-    const isAtBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 10;
+    const isAtBottom =
+      el.scrollHeight - el.scrollTop <= el.clientHeight + 10;
     if (isAtBottom) el.scrollTop = el.scrollHeight;
-  }, [bootLines]);
+  }, [bootLines, snakeEvent]);
 
   return (
     <div className="min-h-screen w-full bg-black text-white flex items-center justify-center p-4 select-none">
@@ -92,9 +112,15 @@ export default function CorruptedAdminPanel() {
                            scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-black/20"
               >
                 {bootLines.map((line, idx) => (
-                  <div key={idx} className="text-white/90">{line}</div>
+                  <div key={idx} className="text-white/90">
+                    {line}
+                  </div>
                 ))}
-                <Prompt />
+
+                {/* Snake event render */}
+                {snakeEvent === "snakeGame" && <SnakeAdmin />}
+
+                <Prompt onRunCommand={handleRunCommand} />
                 <HelpBlock />
               </div>
             </motion.div>
