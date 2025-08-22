@@ -8,9 +8,10 @@ function SnakeAdmin() {
   const [gameState, setGameState] = useState('waiting');
   const [snake, setSnake] = useState([{x: 10, y: 10}]);
   const [food, setFood] = useState({x: 5, y: 5});
-  const [direction, setDirection] = useState({x: 0, y: 0});
+  const [direction, setDirection] = useState({x: 1, y: 0}); // Start moving right automatically
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
+  const [victory, setVictory] = useState(false);
   const gameRef = useRef();
   const dialogueRef = useRef();
 
@@ -39,6 +40,38 @@ function SnakeAdmin() {
     "INITIALIZING GAME PROTOCOL...",
     "GOOD LUCK... YOU'LL NEED IT..."
   ];
+
+  // Victory condition - 50 points
+  useEffect(() => {
+    if (score >= 50 && !victory) {
+      setVictory(true);
+      setGameState('victory');
+      
+      // Send POST request to backend
+      // TODO: Implement backend endpoint
+      /*
+      fetch('/api/victory', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          score: score,
+          timestamp: new Date().toISOString(),
+          userId: 'current_user_id', // Replace with actual user identification
+          challenge: 'snake_admin'
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Victory reported:', data);
+      })
+      .catch(error => {
+        console.error('Error reporting victory:', error);
+      });
+      */
+    }
+  }, [score, victory]);
 
   // Auto-scroll dialogue
   useEffect(() => {
@@ -75,7 +108,7 @@ function SnakeAdmin() {
       return () => clearTimeout(timer);
     } else if (dialogueIndex >= dialogues.length && phase === 'dialogue') {
       setPhase('game');
-      setGameState('ready');
+      setGameState('playing'); // Start playing immediately with auto-movement
     }
   }, [dialogueIndex, phase, dialogues.length]);
 
@@ -96,14 +129,21 @@ function SnakeAdmin() {
   const resetGame = () => {
     setSnake([{x: 10, y: 10}]);
     setFood({x: 5, y: 5});
-    setDirection({x: 0, y: 0});
+    setDirection({x: 1, y: 0}); // Start moving right automatically
     setScore(0);
     setGameOver(false);
-    setGameState('ready');
+    setVictory(false);
+    setGameState('playing'); // Start playing immediately
+  };
+
+  const handleGameOver = () => {
+    // Reload the page or redirect to discovery phase
+    window.location.reload(); // This will restart the entire component
+    // Alternative: setPhase('discovery'); // This would go back to the discovery screen
   };
 
   const moveSnake = useCallback(() => {
-    if (gameState !== 'playing' || gameOver) return;
+    if (gameState !== 'playing' || gameOver || victory) return;
 
     setSnake(currentSnake => {
       const newSnake = [...currentSnake];
@@ -144,7 +184,7 @@ function SnakeAdmin() {
       
       return newSnake;
     });
-  }, [direction, food, gameState, gameOver]);
+  }, [direction, food, gameState, gameOver, victory]);
 
   useEffect(() => {
     const gameLoop = setInterval(moveSnake, 150);
@@ -153,37 +193,8 @@ function SnakeAdmin() {
 
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if (gameOver && gameState === 'playing') {
-        e.preventDefault();
-        if (e.key === ' ' || e.key === 'Enter') {
-          resetGame();
-          return;
-        }
-      }
-
-      if (gameState === 'ready') {
-        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-          e.preventDefault();
-          setGameState('playing');
-          switch(e.key) {
-            case 'ArrowUp':
-              setDirection({x: 0, y: -1});
-              break;
-            case 'ArrowDown':
-              setDirection({x: 0, y: 1});
-              break;
-            case 'ArrowLeft':
-              setDirection({x: -1, y: 0});
-              break;
-            case 'ArrowRight':
-              setDirection({x: 1, y: 0});
-              break;
-          }
-        }
-        return;
-      }
-      
-      if (gameState !== 'playing' || gameOver) return;
+      // Only allow direction changes during gameplay
+      if (gameState !== 'playing' || gameOver || victory) return;
       
       e.preventDefault();
       switch(e.key) {
@@ -199,22 +210,18 @@ function SnakeAdmin() {
         case 'ArrowRight':
           if (direction.x === 0) setDirection({x: 1, y: 0});
           break;
-        case ' ':
-        case 'Escape':
-          setGameState('paused');
-          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameState, direction, gameOver]);
+  }, [gameState, direction, gameOver, victory]);
 
-  // Game over effect - show reboot sequence
+  // Game over effect - reload page after delay
   useEffect(() => {
     if (gameOver) {
       const timer = setTimeout(() => {
-        setPhase('reboot');
+        handleGameOver();
       }, 2000);
       return () => clearTimeout(timer);
     }
@@ -235,25 +242,25 @@ function SnakeAdmin() {
       const row = [];
       for (let x = 0; x < BOARD_SIZE; x++) {
         let cellContent = '';
-        let cellClass = 'w-3 h-3 border border-amber-100/20 flex items-center justify-center text-xs';
+        let cellClass = 'w-4 h-4 flex items-center justify-center text-sm font-bold relative transition-all duration-75';
         
         // Check if this position has the snake head
         if (snake[0] && snake[0].x === x && snake[0].y === y) {
-          cellContent = '█';
-          cellClass += ' bg-amber-100 text-zinc-900';
+          cellContent = '●';
+          cellClass += ' bg-amber-200 text-zinc-900 shadow-lg shadow-amber-200/50 border-2 border-amber-100 animate-pulse';
         }
         // Check if this position has snake body
         else if (snake.slice(1).some(segment => segment.x === x && segment.y === y)) {
-          cellContent = '▓';
-          cellClass += ' bg-amber-100/70 text-zinc-900';
+          cellContent = '■';
+          cellClass += ' bg-amber-400/80 text-zinc-900 border border-amber-300/60 shadow-md shadow-amber-400/30';
         }
         // Check if this position has food
         else if (food.x === x && food.y === y) {
-          cellContent = '●';
-          cellClass += ' bg-red-500 text-amber-100';
+          cellContent = '◆';
+          cellClass += ' bg-red-500 text-amber-100 border border-red-400 shadow-lg shadow-red-500/50 animate-pulse';
         }
         else {
-          cellClass += ' bg-zinc-900';
+          cellClass += ' bg-zinc-800/50 border border-zinc-700/30 hover:bg-zinc-700/30';
         }
         
         row.push(
@@ -263,7 +270,7 @@ function SnakeAdmin() {
         );
       }
       rows.push(
-        <div key={y} className="flex">
+        <div key={y} className="flex gap-px">
           {row}
         </div>
       );
@@ -318,35 +325,33 @@ function SnakeAdmin() {
       <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono flex flex-col">
         <div className="text-center p-3 flex-shrink-0">
           <div className="text-red-400 mb-2 text-sm">TERMINAL TEST INITIATED</div>
-          <div className="text-xs mb-2">SCORE: {score}</div>
-          {gameState === 'ready' && (
-            <div className="text-xs animate-pulse">PRESS ANY ARROW KEY TO BEGIN</div>
-          )}
-          {gameState === 'paused' && (
-            <div className="text-xs animate-pulse">PAUSED - PRESS ARROW KEY TO RESUME</div>
+          <div className="text-xs mb-2">SCORE: {score} / 50</div>
+          {victory && (
+            <div className="text-xs">
+              <div className="text-green-400 animate-pulse mb-1">TEST PASSED! ACCESS GRANTED...</div>
+              <div className="text-amber-100">VICTORY ACHIEVED</div>
+            </div>
           )}
           {gameOver && (
             <div className="text-xs">
               <div className="text-red-400 animate-pulse mb-1">TEST FAILED... ANALYZING...</div>
-              <div className="text-amber-100">PRESS SPACE OR ENTER TO RETRY</div>
+              <div className="text-amber-100">RELOADING SYSTEM...</div>
             </div>
           )}
         </div>
         
         <div className="flex-1 flex items-center justify-center px-2 min-h-0">
-  <div className="border border-amber-100/30 bg-zinc-900 p-1 scale-150 origin-center">
-    <div className="grid grid-cols-20 gap-0 max-w-fit">
-      {renderSnakeBoard()}
-    </div>
-  </div>
-</div>
+          <div className="border border-amber-100/30 bg-zinc-900 p-1 scale-120 origin-center">
+            <div className="grid grid-cols-20 gap-0 max-w-fit">
+              {renderSnakeBoard()}
+            </div>
+          </div>
+        </div>
 
-        
         <div className="text-center p-2 text-xs flex-shrink-0">
-          {gameState === 'ready' && "USE ARROW KEYS TO CONTROL • COLLECT FOOD • AVOID WALLS"}
-          {gameState === 'playing' && "USE ARROW KEYS • SPACE TO PAUSE • COLLECT ● FOOD"}
-          {gameState === 'paused' && "GAME PAUSED • PRESS ARROW KEY TO RESUME"}
-          {gameOver && "GAME OVER • PRESS SPACE OR ENTER TO RETRY"}
+          {gameState === 'playing' && !gameOver && !victory && "USE ARROW KEYS TO CONTROL • COLLECT ◆ FOOD • REACH 50 POINTS"}
+          {gameOver && "GAME OVER • RELOADING..."}
+          {victory && "VICTORY ACHIEVED • ACCESS GRANTED"}
         </div>
       </div>
     );
