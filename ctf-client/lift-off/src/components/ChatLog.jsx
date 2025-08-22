@@ -50,7 +50,7 @@ function ChatLog() {
           <div
             key={msg.id}
             className={`text-left ${
-              msg.username === currentUserName ? "text-green-400" : "text-white"
+              msg.username === currentUserName ? "text-orange-400" : "text-white"
             }`}
           >
             {msg.username}: {msg.content}
