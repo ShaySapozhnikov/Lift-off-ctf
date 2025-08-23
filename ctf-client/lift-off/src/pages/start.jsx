@@ -1,7 +1,32 @@
 import React, { useState, useEffect, useRef } from "react";
 import ShipIcon from "../components/shipIcon";
 
-function start() {
+function HeaderBar({ memoryUsage }) {
+  const getMemoryColor = () => {
+    if (memoryUsage >= 90) return "text-red-400";
+    if (memoryUsage >= 80) return "text-yellow-400";
+    return "text-green-400";
+  };
+
+  return (
+    <div className="mb-4">
+      <div className="flex items-center justify-between text-[11px] tracking-widest uppercase text-white/60">
+        <div className="flex items-center gap-3">
+          <span className="inline-block h-2 w-2 rounded-full bg-white/80 animate-pulse" />
+          <span>// link-sec</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className={`${getMemoryColor()}`}>MEM: {memoryUsage}%</span>
+          <span>v2.1</span>
+          <span>[ Unhackable ]</span>
+        </div>
+      </div>
+      <div className="mt-2 h-px w-full bg-gradient-to-r from-white/40 via-white/20 to-transparent" />
+    </div>
+  );
+}
+
+function TerminalInterface() {
   const [history, setHistory] = useState([]);
   const [currentInput, setCurrentInput] = useState("");
   const [isBooting, setIsBooting] = useState(true);
@@ -109,7 +134,16 @@ function start() {
         ]);
         
         setTimeout(() => {
-          window.location.reload();
+          // Reset instead of reload for React component
+          setHistory([]);
+          setCommandCount(0);
+          setMemoryUsage(67);
+          setIsBooting(true);
+          setBootLines([]);
+          setCurrentBootLine("");
+          setCurrentBootIndex(0);
+          setCurrentCharIndex(0);
+          setCurrentInput("");
         }, 3000);
       }, 1000);
 
@@ -201,19 +235,6 @@ function start() {
     }
   };
 
-  const typewriterEffect = (text, callback) => {
-    let currentIndex = 0;
-    const typeInterval = setInterval(() => {
-      if (currentIndex <= text.length) {
-        callback(text.substring(0, currentIndex));
-        currentIndex++;
-      } else {
-        clearInterval(typeInterval);
-        callback(text);
-      }
-    }, Math.random() * 30 + 15);
-  };
-
   const executeCommandWithEffect = async (command, output) => {
     if (typeof output === 'function') {
       // Simple commands without delays
@@ -260,7 +281,16 @@ function start() {
     
     if (trimmedCmd === 'reboot') {
       setTimeout(() => {
-        window.location.reload();
+        // Reset instead of reload for React component
+        setHistory([]);
+        setCommandCount(0);
+        setMemoryUsage(67);
+        setIsBooting(true);
+        setBootLines([]);
+        setCurrentBootLine("");
+        setCurrentBootIndex(0);
+        setCurrentCharIndex(0);
+        setCurrentInput("");
       }, 3000);
     }
     
@@ -367,9 +397,15 @@ function start() {
             {/* Terminal content */}
             <div
               ref={terminalRef}
-              className="absolute inset-0 p-6 md:p-8 font-mono text-sm md:text-base leading-relaxed overflow-y-auto cursor-text scrollbar-thin scrollbar-thumb-amber-100/20 scrollbar-track-zinc-900/20 random-flicker"
+              className="absolute inset-0 p-6 md:p-8 font-mono text-sm md:text-base leading-relaxed overflow-y-auto cursor-text scrollbar-thin scrollbar-thumb-amber-100/20 scrollbar-track-zinc-900/20"
               onClick={handleTerminalClick}
+              style={{
+                animation: "randomFlicker 3.7s ease-in-out infinite"
+              }}
             >
+              {/* Header Bar */}
+              <HeaderBar memoryUsage={memoryUsage} />
+              
               {/* Boot sequence */}
               {bootLines.map((line, index) => renderLine(line, `boot-${index}`))}
               
@@ -410,10 +446,10 @@ function start() {
                 ref={inputRef}
                 value={currentInput}
                 onChange={handleInputChange}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyPress}
                 className="absolute opacity-0 pointer-events-none"
                 autoComplete="off"
-                disabled={isBooting}
+                disabled={isBooting || isExecutingCommand}
               />
             </div>
           </div>
@@ -483,10 +519,6 @@ function start() {
             opacity: 0.94; 
           }
         }
-        
-        .random-flicker {
-          animation: randomFlicker 3.7s ease-in-out infinite;
-        }
       `}</style>
 
       {/* Hidden comment */}
@@ -500,4 +532,4 @@ function start() {
   );
 }
 
-export default start;
+export default TerminalInterface;
