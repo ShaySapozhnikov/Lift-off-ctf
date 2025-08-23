@@ -18,7 +18,6 @@ export default function CorruptedAdminPanel() {
       "CHECK> MEMORY . . . unknown",
       "CHECK> DISK   . . . unknown",
       "CHECK> NET    . . . unknown",
-      "WARN> AN█████████ PR████ ████TED",
     ];
     let i = 0;
     const t = setInterval(() => {
