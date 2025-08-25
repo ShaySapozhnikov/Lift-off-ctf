@@ -3,6 +3,11 @@ import cors from "cors";
 import { fs } from "./fs.js";
 import dotenv from "dotenv";
 
+
+const FLAG_LEVEL_1 = "CTF{snake_victory_flag}";
+
+
+
 dotenv.config();
 const app = express();
 
@@ -47,19 +52,32 @@ app.get("/ls", (req, res) => {
 
 // API: execute "exe" files (run)
 app.post("/run", (req, res) => {
-  const { path, user } = req.body;
+  const { path, user, score } = req.body; // 👈 score comes from client
   const node = getNode(path);
 
-  if (!node) return res.status(404).send("File not found");
-  if (node.type !== "exe") return res.status(400).send("Not executable");
-  if (node.owner === "root" && user !== "root") return res.status(403).send("Permission denied");
+  if (!node) return res.status(404).json({ error: "File not found" });
+  if (node.type !== "exe") return res.status(400).json({ error: "Not executable" });
+  if (node.owner === "root" && user !== "root") return res.status(403).json({ error: "Permission denied" });
+
+  // Snake special logic
   if (path.toLowerCase().endsWith("2nak3.bat")) {
+    if (score !== undefined && score >= 50) {
+      return res.json({
+        output: "Snake Victory Achieved!",
+        flag: FLAG_LEVEL_1,
+      });
+    }
     return res.json({ output: "Loading", event: "snakeGame" });
   }
-  
+
+  if (node.event) {
+    return res.json({ output: "Loading", event: node.event });
+  }
 
   res.json({ output: node.content });
 });
+
+
 
 // Start server on Render's PORT or local 3000
 const PORT = process.env.PORT || 3000;

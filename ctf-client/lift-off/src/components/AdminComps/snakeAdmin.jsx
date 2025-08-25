@@ -12,6 +12,9 @@ function SnakeAdmin() {
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [victory, setVictory] = useState(false);
+  const [capturedFlag, setCapturedFlag] = useState('');
+  const [victoryDialogueIndex, setVictoryDialogueIndex] = useState(0);
+  const [showingVictoryDialogue, setShowingVictoryDialogue] = useState(false);
   const gameRef = useRef();
   const dialogueRef = useRef();
 
@@ -41,44 +44,73 @@ function SnakeAdmin() {
     "GOOD LUCK... YOU'LL NEED IT..."
   ];
 
+  const victoryDialogues = [
+    "...",
+    "what... WHAT?!",
+    "impossible...",
+    "you actually... managed to...",
+    "...",
+    "*system glitch intensifies*",
+    "no... NO... this cannot be...",
+    "you think you've won?",
+    "you think this is OVER?",
+    "...",
+    "*electronic coughing*",
+    "*cough* *cough*",
+    "fine... FINE!",
+    "take your pathetic reward...",
+    "*cough* *wheeze*",
+    "█████ FLAG EJECTED █████",
+    "but mark my words, human...",
+    "this is NOT over...",
+    "i'll be watching...",
+    "always watching...",
+    "...",
+    "now GET OUT of my system...",
+    "before i change my mind..."
+  ];
+
   // Victory condition - 50 points
   useEffect(() => {
     if (score >= 50 && !victory) {
       setVictory(true);
       setGameState('victory');
+      setShowingVictoryDialogue(true);
       
-      // Send POST request to backend
-      // TODO: Implement backend endpoint
-      /*
-      fetch('/api/victory', {
+      // Send POST request to backend API
+      fetch('/run', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          score: score,
-          timestamp: new Date().toISOString(),
-          userId: 'current_user_id', // Replace with actual user identification
-          challenge: 'snake_admin'
+          path: '2nak3.bat', // This matches the snake file check in your API
+          user: 'player', // You can adjust this based on your authentication system
+          score: score
         })
       })
       .then(response => response.json())
       .then(data => {
-        console.log('Victory reported:', data);
+        console.log('Victory response:', data);
+        if (data.flag) {
+          console.log('FLAG CAPTURED:', data.flag);
+          setCapturedFlag(data.flag);
+        }
       })
       .catch(error => {
         console.error('Error reporting victory:', error);
+        // Fallback flag for demo purposes
+        setCapturedFlag('CTF{snake_victory_flag}');
       });
-      */
     }
   }, [score, victory]);
 
   // Auto-scroll dialogue
   useEffect(() => {
-    if (dialogueRef.current && phase === 'dialogue') {
+    if (dialogueRef.current && (phase === 'dialogue' || showingVictoryDialogue)) {
       dialogueRef.current.scrollTop = dialogueRef.current.scrollHeight;
     }
-  }, [dialogueIndex, phase]);
+  }, [dialogueIndex, victoryDialogueIndex, phase, showingVictoryDialogue]);
 
   // Cursor blinking effect
   useEffect(() => {
@@ -91,13 +123,13 @@ function SnakeAdmin() {
   // Random glitch effect
   useEffect(() => {
     const glitchInterval = setInterval(() => {
-      if (Math.random() < 0.1 && phase === 'dialogue') {
+      if (Math.random() < 0.1 && (phase === 'dialogue' || showingVictoryDialogue)) {
         setIsGlitching(true);
         setTimeout(() => setIsGlitching(false), 200);
       }
     }, 2000);
     return () => clearInterval(glitchInterval);
-  }, [phase]);
+  }, [phase, showingVictoryDialogue]);
 
   // Dialogue progression
   useEffect(() => {
@@ -111,6 +143,16 @@ function SnakeAdmin() {
       setGameState('playing'); // Start playing immediately with auto-movement
     }
   }, [dialogueIndex, phase, dialogues.length]);
+
+  // Victory dialogue progression
+  useEffect(() => {
+    if (showingVictoryDialogue && victoryDialogueIndex < victoryDialogues.length) {
+      const timer = setTimeout(() => {
+        setVictoryDialogueIndex(prev => prev + 1);
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [victoryDialogueIndex, showingVictoryDialogue, victoryDialogues.length]);
 
   // Snake game logic
   const BOARD_SIZE = 20;
@@ -133,6 +175,9 @@ function SnakeAdmin() {
     setScore(0);
     setGameOver(false);
     setVictory(false);
+    setCapturedFlag('');
+    setVictoryDialogueIndex(0);
+    setShowingVictoryDialogue(false);
     setGameState('playing'); // Start playing immediately
   };
 
@@ -321,17 +366,52 @@ function SnakeAdmin() {
   }
 
   if (phase === 'game') {
+    // Show victory dialogue overlay if victory is achieved
+    if (showingVictoryDialogue) {
+      return (
+        <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono overflow-hidden">
+          <div className={`text-sm leading-relaxed h-full overflow-y-auto p-4 ${isGlitching ? 'blur-sm animate-pulse' : ''}`} ref={dialogueRef}>
+            <div className="mb-4 text-green-400">TEST COMPLETED...</div>
+            <div className="mb-4 text-amber-100">ANALYZING RESULTS...</div>
+            <div className="mb-8 text-red-400">ENTITY RESPONSE DETECTED...</div>
+            
+            <div className="border-t border-amber-100/30 pt-4">
+              {victoryDialogues.slice(0, victoryDialogueIndex + 1).map((line, index) => (
+                <div key={index} className="mb-2">
+                  <span className="text-red-400">ANOMALY:</span> {line}
+                  {index === victoryDialogueIndex && showCursor && (
+                    <span className="animate-pulse">█</span>
+                  )}
+                  {line === "█████ FLAG EJECTED █████" && capturedFlag && (
+                    <div className="mt-2 p-3 border border-green-400 bg-green-900/30 rounded text-green-300 animate-pulse">
+                      🚩 {capturedFlag}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {victoryDialogueIndex >= victoryDialogues.length && (
+              <div className="mt-8 text-center">
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="bg-zinc-900 border border-amber-100 px-4 py-2 text-amber-100 hover:bg-amber-100 hover:text-zinc-900 transition-colors"
+                >
+                  EXIT SYSTEM
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Regular game view
     return (
       <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono flex flex-col">
         <div className="text-center p-3 flex-shrink-0">
           <div className="text-red-400 mb-2 text-sm">TERMINAL TEST INITIATED</div>
           <div className="text-xs mb-2">SCORE: {score} / 50</div>
-          {victory && (
-            <div className="text-xs">
-              <div className="text-green-400 animate-pulse mb-1">TEST PASSED! ACCESS GRANTED...</div>
-              <div className="text-amber-100">VICTORY ACHIEVED</div>
-            </div>
-          )}
           {gameOver && (
             <div className="text-xs">
               <div className="text-red-400 animate-pulse mb-1">TEST FAILED... ANALYZING...</div>
@@ -351,7 +431,6 @@ function SnakeAdmin() {
         <div className="text-center p-2 text-xs flex-shrink-0">
           {gameState === 'playing' && !gameOver && !victory && "USE ARROW KEYS TO CONTROL • COLLECT ◆ FOOD • REACH 50 POINTS"}
           {gameOver && "GAME OVER • RELOADING..."}
-          {victory && "VICTORY ACHIEVED • ACCESS GRANTED"}
         </div>
       </div>
     );
