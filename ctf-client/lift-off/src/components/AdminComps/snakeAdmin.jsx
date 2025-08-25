@@ -8,13 +8,16 @@ function SnakeAdmin() {
   const [gameState, setGameState] = useState('waiting');
   const [snake, setSnake] = useState([{x: 10, y: 10}]);
   const [food, setFood] = useState({x: 5, y: 5});
-  const [direction, setDirection] = useState({x: 1, y: 0}); // Start moving right automatically
+  const [direction, setDirection] = useState({x: 1, y: 0});
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [victory, setVictory] = useState(false);
   const [capturedFlag, setCapturedFlag] = useState('');
   const [victoryDialogueIndex, setVictoryDialogueIndex] = useState(0);
   const [showingVictoryDialogue, setShowingVictoryDialogue] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
+  const [apiUrl, setApiUrl] = useState('');
   const gameRef = useRef();
   const dialogueRef = useRef();
 
@@ -70,38 +73,133 @@ function SnakeAdmin() {
     "before i change my mind..."
   ];
 
-  // Victory condition - 50 points
+  // Initialize API URL on component mount
   useEffect(() => {
-    if (score >= 50 && !victory) {
-      setVictory(true);
-      setGameState('victory');
-      setShowingVictoryDialogue(true);
+    const possibleURLs = [
+      'https://lift-off-ctf.onrender.com',
+      'http://localhost:3000',
+      'http://localhost:5000',
+      'http://127.0.0.1:3000'
+    ];
+    
+    // Set the first URL as default
+    setApiUrl(possibleURLs[0]);
+    setDebugInfo(`API URL set to: ${possibleURLs[0]}`);
+  }, []);
+
+  // Helper function to call victory API
+  const callVictoryAPI = async (currentScore) => {
+    try {
+      const possibleURLs = [
+        apiUrl,
+        'http://localhost:3000',
+        'http://localhost:5000',
+        'http://127.0.0.1:3000'
+      ].filter(Boolean);
+
+      let lastError;
       
-      // Send POST request to backend API
-      fetch('/run', {
+      for (const API_URL of possibleURLs) {
+        try {
+          setDebugInfo(`Trying API URL: ${API_URL}`);
+          
+          const response = await fetch(`${API_URL}/run`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              path: 'home/user/2nak3.bat', // Correct path based on your fs.js structure
+              user: 'player',
+              score: currentScore
+            }),
+            // Add timeout
+            signal: AbortSignal.timeout(10000)
+          });
+
+          setDebugInfo(`Response status: ${response.status}`);
+
+          if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`HTTP ${response.status}: ${text}`);
+          }
+
+          const data = await response.json();
+          console.log('Victory response:', data);
+          setDebugInfo(`Success! Response: ${JSON.stringify(data)}`);
+          
+          if (data.flag) {
+            setCapturedFlag(data.flag);
+            setApiError('');
+            return true;
+          } else if (data.output) {
+            setDebugInfo(`API responded: ${data.output}`);
+            return false;
+          }
+          return false;
+        } catch (err) {
+          lastError = err;
+          console.log(`Failed with ${API_URL}:`, err.message);
+          setDebugInfo(`Failed with ${API_URL}: ${err.message}`);
+        }
+      }
+      
+      throw lastError || new Error('All API URLs failed');
+    } catch (error) {
+      console.error('Victory API error:', error);
+      setApiError(`API Error: ${error.message}`);
+      setDebugInfo(`Final error: ${error.message}`);
+      
+      // For demo purposes, show a mock flag if API fails
+      if (currentScore >= 50) {
+        setCapturedFlag('CTF{demo_flag_api_unavailable}');
+        setDebugInfo(`Demo flag shown due to API error`);
+        return true;
+      }
+      return false;
+    }
+  };
+
+  // Test API connection
+  const testConnection = async () => {
+    try {
+      setDebugInfo('Testing connection...');
+      const response = await fetch(`${apiUrl}/run`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          path: '2nak3.bat', // This matches the snake file check in your API
-          user: 'player', // You can adjust this based on your authentication system
-          score: score
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        console.log('Victory response:', data);
-        if (data.flag) {
-          console.log('FLAG CAPTURED:', data.flag);
-          setCapturedFlag(data.flag);
-        }
-      })
-      .catch(error => {
-        console.error('Error reporting victory:', error);
-        // Fallback flag for demo purposes
-        setCapturedFlag('CTF{snake_victory_flag}');
+          path: 'home/user/2nak3.bat',
+          user: 'player',
+          score: 0
+        }),
+        signal: AbortSignal.timeout(5000)
       });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDebugInfo(`Connection OK! Response: ${JSON.stringify(data)}`);
+        setApiError('');
+      } else {
+        const text = await response.text();
+        setDebugInfo(`Connection failed: ${response.status} - ${text}`);
+      }
+    } catch (error) {
+      setDebugInfo(`Connection error: ${error.message}`);
+    }
+  };
+
+  // Victory condition - 50 points
+  useEffect(() => {
+    if (score >= 50 && !victory) {
+      console.log('Victory condition met! Score:', score);
+      setVictory(true);
+      setGameState('victory');
+      setShowingVictoryDialogue(true);
+      
+      // Call API
+      callVictoryAPI(score);
     }
   }, [score, victory]);
 
@@ -140,7 +238,7 @@ function SnakeAdmin() {
       return () => clearTimeout(timer);
     } else if (dialogueIndex >= dialogues.length && phase === 'dialogue') {
       setPhase('game');
-      setGameState('playing'); // Start playing immediately with auto-movement
+      setGameState('playing');
     }
   }, [dialogueIndex, phase, dialogues.length]);
 
@@ -171,20 +269,19 @@ function SnakeAdmin() {
   const resetGame = () => {
     setSnake([{x: 10, y: 10}]);
     setFood({x: 5, y: 5});
-    setDirection({x: 1, y: 0}); // Start moving right automatically
+    setDirection({x: 1, y: 0});
     setScore(0);
     setGameOver(false);
     setVictory(false);
     setCapturedFlag('');
     setVictoryDialogueIndex(0);
     setShowingVictoryDialogue(false);
-    setGameState('playing'); // Start playing immediately
+    setApiError('');
+    setGameState('playing');
   };
 
   const handleGameOver = () => {
-    // Reload the page or redirect to discovery phase
-    window.location.reload(); // This will restart the entire component
-    // Alternative: setPhase('discovery'); // This would go back to the discovery screen
+    window.location.reload();
   };
 
   const moveSnake = useCallback(() => {
@@ -238,7 +335,6 @@ function SnakeAdmin() {
 
   useEffect(() => {
     const handleKeyPress = (e) => {
-      // Only allow direction changes during gameplay
       if (gameState !== 'playing' || gameOver || victory) return;
       
       e.preventDefault();
@@ -262,7 +358,7 @@ function SnakeAdmin() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [gameState, direction, gameOver, victory]);
 
-  // Game over effect - reload page after delay
+  // Game over effect
   useEffect(() => {
     if (gameOver) {
       const timer = setTimeout(() => {
@@ -278,6 +374,11 @@ function SnakeAdmin() {
       setIsGlitching(false);
       setPhase('dialogue');
     }, 500);
+  };
+
+  // Quick score increase for testing
+  const increaseScore = () => {
+    setScore(prev => Math.min(prev + 10, 50));
   };
 
   const renderSnakeBoard = () => {
@@ -375,6 +476,18 @@ function SnakeAdmin() {
             <div className="mb-4 text-amber-100">ANALYZING RESULTS...</div>
             <div className="mb-8 text-red-400">ENTITY RESPONSE DETECTED...</div>
             
+            {apiError && (
+              <div className="mb-4 p-2 border border-red-400 bg-red-900/20 text-red-300 text-xs">
+                {apiError}
+              </div>
+            )}
+            
+            {debugInfo && (
+              <div className="mb-4 p-2 border border-blue-400 bg-blue-900/20 text-blue-300 text-xs">
+                Debug: {debugInfo}
+              </div>
+            )}
+            
             <div className="border-t border-amber-100/30 pt-4">
               {victoryDialogues.slice(0, victoryDialogueIndex + 1).map((line, index) => (
                 <div key={index} className="mb-2">
@@ -383,14 +496,14 @@ function SnakeAdmin() {
                     <span className="animate-pulse">█</span>
                   )}
                   {line === "█████ FLAG EJECTED █████" && capturedFlag && (
-                    <div className="mt-2 p-3 border border-green-400 bg-green-900/30 rounded text-green-300 animate-pulse">
-                      🚩 {capturedFlag}
+                    <div className="mt-2 p-3 border border-amber-100/30 bg-zinc-900 rounded text-white animate-pulse">
+                      ⚑ {capturedFlag}
                     </div>
                   )}
                 </div>
               ))}
             </div>
-            
+           
             {victoryDialogueIndex >= victoryDialogues.length && (
               <div className="mt-8 text-center">
                 <button 
@@ -409,6 +522,49 @@ function SnakeAdmin() {
     // Regular game view
     return (
       <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono flex flex-col">
+        {/* Debug panel */}
+        <div className="text-xs p-2 border-b border-amber-100/30 space-y-1">
+          <div className="flex gap-2 items-center flex-wrap">
+            <input
+              type="text"
+              value={apiUrl}
+              onChange={(e) => setApiUrl(e.target.value)}
+              placeholder="API URL"
+              className="bg-zinc-800 border border-amber-100 px-2 py-1 text-amber-100 text-xs flex-1 min-w-40"
+            />
+            <button
+              onClick={testConnection}
+              className="bg-zinc-800 border border-blue-400 px-2 py-1 text-blue-400 hover:bg-blue-400 hover:text-zinc-900 transition-colors text-xs"
+            >
+              TEST
+            </button>
+            <button
+              onClick={() => callVictoryAPI(score)}
+              className="bg-zinc-800 border border-amber-100 px-2 py-1 text-amber-100 hover:bg-amber-100 hover:text-zinc-900 transition-colors text-xs"
+            >
+              TEST API
+            </button>
+            <button
+              onClick={increaseScore}
+              className="bg-zinc-800 border border-green-400 px-2 py-1 text-green-400 hover:bg-green-400 hover:text-zinc-900 transition-colors text-xs"
+            >
+              +10 SCORE
+            </button>
+            <button
+              onClick={resetGame}
+              className="bg-zinc-800 border border-red-400 px-2 py-1 text-red-400 hover:bg-red-400 hover:text-zinc-900 transition-colors text-xs"
+            >
+              RESET
+            </button>
+          </div>
+          {debugInfo && (
+            <div className="text-blue-300">Debug: {debugInfo}</div>
+          )}
+          {apiError && (
+            <div className="text-red-300">Error: {apiError}</div>
+          )}
+        </div>
+
         <div className="text-center p-3 flex-shrink-0">
           <div className="text-red-400 mb-2 text-sm">TERMINAL TEST INITIATED</div>
           <div className="text-xs mb-2">SCORE: {score} / 50</div>
@@ -421,7 +577,7 @@ function SnakeAdmin() {
         </div>
         
         <div className="flex-1 flex items-center justify-center px-2 min-h-0">
-          <div className="border border-amber-100/30 bg-zinc-900 p-1 scale-120 origin-center">
+          <div className="border border-amber-100/30 bg-zinc-900 p-1">
             <div className="grid grid-cols-20 gap-0 max-w-fit">
               {renderSnakeBoard()}
             </div>
@@ -436,22 +592,7 @@ function SnakeAdmin() {
     );
   }
 
-  if (phase === 'reboot') {
-    return (
-      <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono p-4">
-        <div className="text-sm leading-relaxed">
-          <div className="mb-4">rebooting...</div>
-          <div className="mb-4 animate-pulse">scanning for anomaly...</div>
-          <div className="mb-4">status: UNKNOWN</div>
-          <div className="mt-8 text-xs opacity-50">
-            {showCursor && <span className="animate-pulse">█</span>}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return null;
-};
+}
 
 export default SnakeAdmin;
