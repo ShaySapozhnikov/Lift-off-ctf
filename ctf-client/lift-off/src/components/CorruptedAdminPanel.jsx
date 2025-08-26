@@ -52,6 +52,9 @@ export default function CorruptedAdminPanel() {
     console.log("Prompt triggered event:", event);
     setSnakeEvent(event);
   };
+  const handleSnakeExit = () => {
+    setSnakeEvent(null); // This will close the snake game overlay
+  };
 
   return (
     <div className={`min-h-screen w-full bg-zinc-900 text-white flex items-center justify-center p-4 select-none transition-opacity duration-1000 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
@@ -116,12 +119,12 @@ export default function CorruptedAdminPanel() {
 
               {/* Snake game overlay — move outside scrollable content */}
               {snakeEvent === "snakeGame" && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
-                  <div className="w-full h-full relative">
-                    <SnakeAdmin />
-                  </div>
-                </div>
-              )}
+  <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
+    <div className="w-full h-full relative">
+      <SnakeAdmin onExit={handleSnakeExit} />
+    </div>
+  </div>
+)}
             </div>
           </div>
         </div>

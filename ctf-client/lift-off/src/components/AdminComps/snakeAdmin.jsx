@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
-function SnakeAdmin() {
+function SnakeAdmin({ onExit }) {
   const [phase, setPhase] = useState('discovery');
   const [dialogueIndex, setDialogueIndex] = useState(0);
   const [isGlitching, setIsGlitching] = useState(false);
@@ -283,6 +283,13 @@ function SnakeAdmin() {
   const handleGameOver = () => {
     window.location.reload();
   };
+  const handleExit = () => {
+    if (onExit) {
+      onExit(); // Call the parent's exit handler
+    } else {
+      window.location.reload(); // Fallback to reload if no onExit provided
+    }
+  };
 
   const moveSnake = useCallback(() => {
     if (gameState !== 'playing' || gameOver || victory) return;
@@ -505,15 +512,15 @@ function SnakeAdmin() {
             </div>
            
             {victoryDialogueIndex >= victoryDialogues.length && (
-              <div className="mt-8 text-center">
-                <button 
-                  onClick={() => window.location.reload()}
-                  className="bg-zinc-900 border border-amber-100 px-4 py-2 text-amber-100 hover:bg-amber-100 hover:text-zinc-900 transition-colors"
-                >
-                  EXIT SYSTEM
-                </button>
-              </div>
-            )}
+    <div className="mt-8 text-center">
+      <button 
+        onClick={handleExit}
+        className="bg-zinc-900 border border-amber-100 px-4 py-2 text-amber-100 hover:bg-amber-100 hover:text-zinc-900 transition-colors"
+      >
+        RETURN TO TERMINAL
+      </button>
+    </div>
+  )}
           </div>
         </div>
       );
