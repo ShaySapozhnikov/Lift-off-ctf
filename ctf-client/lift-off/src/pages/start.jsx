@@ -39,10 +39,88 @@ function TerminalInterface() {
   const [currentBootIndex, setCurrentBootIndex] = useState(0);
   const [currentCharIndex, setCurrentCharIndex] = useState(0);
   const [isExecutingCommand, setIsExecutingCommand] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [showAudioPrompt, setShowAudioPrompt] = useState(true);
   const inputRef = useRef(null);
   const terminalRef = useRef(null);
+  const audioContextRef = useRef(null);
 
-  // Fade in effect on mount
+  // Initialize audio context after user interaction
+  const initializeAudio = async () => {
+    if (audioEnabled || audioContextRef.current) return;
+    
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) {
+        console.warn("Web Audio API not supported");
+        setShowAudioPrompt(false);
+        return;
+      }
+      
+      audioContextRef.current = new AudioContext();
+      
+      // Resume context if suspended
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+      
+      // Play a test sound to verify audio is working
+      const testOsc = audioContextRef.current.createOscillator();
+      const testGain = audioContextRef.current.createGain();
+      testOsc.frequency.setValueAtTime(200, audioContextRef.current.currentTime);
+      testGain.gain.setValueAtTime(0.05, audioContextRef.current.currentTime);
+      testGain.gain.exponentialRampToValueAtTime(0.001, audioContextRef.current.currentTime + 0.1);
+      testOsc.connect(testGain);
+      testGain.connect(audioContextRef.current.destination);
+      testOsc.start();
+      testOsc.stop(audioContextRef.current.currentTime + 0.1);
+      
+      setAudioEnabled(true);
+      setShowAudioPrompt(false);
+      console.log("Audio initialized successfully");
+    } catch (error) {
+      console.error("Audio initialization failed:", error);
+      setShowAudioPrompt(false);
+    }
+  };
+
+  // Terminal typing sound effect with only 2 pitches - reduced frequency
+  const playTypingSound = (charIndex = 0) => {
+    if (!audioEnabled || !audioContextRef.current) return;
+    
+    // Only play sound for every 3rd character to reduce frequency
+    if (charIndex % 4 !== 0) return;
+    
+    try {
+      const audioCtx = audioContextRef.current;
+      
+      // Resume context if suspended (common on mobile)
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.type = "square";
+      // Only 2 pitches - alternate between high and low
+      const frequency = charIndex % 2 === 0 ? 200 : 250;
+      oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+      
+      gainNode.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.05);
+    } catch (error) {
+      console.debug("Audio playback error:", error);
+    }
+  };
+
+  // Initialize audio and fade in effect on mount
   useEffect(() => {
     setTimeout(() => setFadeIn(true), 100);
   }, []);
@@ -82,6 +160,7 @@ function TerminalInterface() {
         const typewriterInterval = setInterval(() => {
           if (currentCharIndex < currentLine.length) {
             setCurrentBootLine(currentLine.substring(0, currentCharIndex + 1));
+            playTypingSound(currentCharIndex); // Add typing sound
             setCurrentCharIndex(prev => prev + 1);
           } else {
             clearInterval(typewriterInterval);
@@ -98,7 +177,7 @@ function TerminalInterface() {
       setIsBooting(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [currentBootIndex, currentCharIndex]);
+  }, [currentBootIndex, currentCharIndex, audioEnabled]);
 
   // Cursor blink
   useEffect(() => {
@@ -249,7 +328,20 @@ function TerminalInterface() {
       for (let i = 0; i < output.output.length; i++) {
         await new Promise(resolve => {
           setTimeout(() => {
-            results.push(output.output[i]);
+            const currentLine = output.output[i];
+            results.push(currentLine);
+            
+            // Add typewriter effect with sound for each character
+            let charIndex = 0;
+            const typeInterval = setInterval(() => {
+              if (charIndex < currentLine.length) {
+                playTypingSound(charIndex);
+                charIndex++;
+              } else {
+                clearInterval(typeInterval);
+              }
+            }, 40); // 40ms between each character sound
+            
             setHistory(prev => [
               ...prev.slice(0, -1), // Remove the last entry (current command)
               { type: 'input', content: `user@terminal:~$ ${command}` },
@@ -331,10 +423,21 @@ function TerminalInterface() {
   };
 
   const handleInputChange = (e) => {
+    if (!audioEnabled) {
+      initializeAudio(); // Initialize audio on first interaction
+    }
     setCurrentInput(e.target.value);
+    
+    // Play typing sound for user input (only for new characters)
+    if (e.target.value.length > currentInput.length) {
+      playTypingSound(e.target.value.length - 1);
+    }
   };
 
   const handleTerminalClick = () => {
+    if (!audioEnabled) {
+      initializeAudio(); // Initialize audio on click
+    }
     if (!isBooting && !isExecutingCommand) {
       inputRef.current?.focus();
     }
@@ -358,6 +461,35 @@ function TerminalInterface() {
 
   return (
     <div className={`min-h-screen w-full bg-zinc-900 text-white flex items-center justify-center p-4 select-none transition-opacity duration-1000 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+      {/* Audio Enable Overlay */}
+      {showAudioPrompt && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-zinc-800 border border-white/20 rounded-lg p-6 text-center max-w-sm">
+            <div className="text-amber-100 text-sm font-mono mb-4">
+              🔊 ENABLE AUDIO
+            </div>
+            <div className="text-white/80 text-xs mb-4">
+              Click to enable terminal sound effects
+            </div>
+            <button
+              onClick={initializeAudio}
+              className="bg-amber-100 text-black px-4 py-2 rounded font-mono text-sm hover:bg-amber-200 transition-colors"
+            >
+              ENABLE SOUND
+            </button>
+            <div className="text-white/40 text-xs mt-2">
+              (You can continue without sound)
+            </div>
+            <button
+              onClick={() => setShowAudioPrompt(false)}
+              className="text-white/60 hover:text-white/80 text-xs mt-2 block mx-auto"
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div className="relative w-full max-w-5xl aspect-[16/10]">
         {/* Bezel */}
         <div className="absolute inset-0 rounded-[2rem] bg-zinc-900 shadow-2xl ring-1 ring-white/10">
