@@ -93,7 +93,6 @@ function TerminalInterface() {
     
     try {
       const audioCtx = audioContextRef.current;
-      
       // Resume context if suspended (common on mobile)
       if (audioCtx.state === 'suspended') {
         audioCtx.resume();
@@ -104,7 +103,7 @@ function TerminalInterface() {
       
       oscillator.type = "square";
       // Only 2 pitches - alternate between high and low
-      const frequency = charIndex % 2 === 0 ? 200 : 250;
+      const frequency = charIndex % 5 === 0 ? 200 : 250;
       oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
       
       gainNode.gain.setValueAtTime(0.06, audioCtx.currentTime);

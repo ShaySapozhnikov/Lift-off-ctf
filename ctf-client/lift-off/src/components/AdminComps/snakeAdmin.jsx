@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
-function SnakeAdmin({ onExit }) {
+function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
   const [phase, setPhase] = useState('discovery');
   const [dialogueIndex, setDialogueIndex] = useState(0);
   const [isGlitching, setIsGlitching] = useState(false);
@@ -18,6 +18,16 @@ function SnakeAdmin({ onExit }) {
   const [apiError, setApiError] = useState('');
   const [debugInfo, setDebugInfo] = useState('');
   const [apiUrl, setApiUrl] = useState('');
+  const [showAudioPrompt, setShowAudioPrompt] = useState(false);
+
+  // Typewriter states
+  const [currentDialogue, setCurrentDialogue] = useState('');
+  const [typewriterIndex, setTypewriterIndex] = useState(0);
+  const [isTyping, setIsTyping] = useState(false);
+  const [currentVictoryDialogue, setCurrentVictoryDialogue] = useState('');
+  const [victoryTypewriterIndex, setVictoryTypewriterIndex] = useState(0);
+  const [isVictoryTyping, setIsVictoryTyping] = useState(false);
+  
   const gameRef = useRef();
   const dialogueRef = useRef();
 
@@ -73,6 +83,151 @@ function SnakeAdmin({ onExit }) {
     "before i change my mind..."
   ];
 
+  // Audio initialization - now handled by parent component
+  const initializeAudio = async () => {
+    try {
+      console.log("Requesting audio initialization from parent...");
+      
+      if (onAudioInit) {
+        const success = await onAudioInit();
+        if (success) {
+          setShowAudioPrompt(false);
+          setDebugInfo("Audio enabled successfully!");
+          setTimeout(() => setDebugInfo(""), 2000);
+        } else {
+          setDebugInfo("Audio initialization failed");
+        }
+      } else {
+        // Fallback: try to initialize directly if no parent handler
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) {
+          throw new Error("Web Audio API not supported");
+        }
+        
+        // This is just for testing - parent should handle this
+        console.log("No parent audio handler, cannot initialize audio");
+        setShowAudioPrompt(false);
+        setDebugInfo("No audio handler available");
+      }
+    } catch (error) {
+      console.error("Audio initialization failed:", error);
+      setDebugInfo(`Audio failed: ${error.message}`);
+      setShowAudioPrompt(false);
+    }
+  };
+
+  // Sound effects - now use the audioContext prop from parent
+  const playTickSound = () => {
+    if (!audioEnabled || !audioContext) {
+      console.log("Audio not enabled or context missing");
+      return;
+    }
+    
+    try {
+      // Resume context if needed
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      
+      osc.frequency.setValueAtTime(200, audioContext.currentTime);
+      gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+      
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(audioContext.currentTime);
+      osc.stop(audioContext.currentTime + 0.1);
+      
+      console.log("Tick sound played");
+    } catch (error) {
+      console.error("Error playing tick sound:", error);
+    }
+  };
+
+  const playBeepSound = () => {
+    if (!audioEnabled || !audioContext) {
+      console.log("Audio not enabled or context missing");
+      return;
+    }
+    
+    try {
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      
+      osc.frequency.setValueAtTime(660, audioContext.currentTime);
+      gain.gain.setValueAtTime(0.15, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+      
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(audioContext.currentTime);
+      osc.stop(audioContext.currentTime + 0.3);
+      
+      console.log("Beep sound played");
+    } catch (error) {
+      console.error("Error playing beep sound:", error);
+    }
+  };
+
+  const playGlitchSound = () => {
+    if (!audioEnabled || !audioContext) return;
+    
+    try {
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      
+      osc.frequency.setValueAtTime(800, audioContext.currentTime);
+      osc.frequency.linearRampToValueAtTime(100, audioContext.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.12, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+      
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(audioContext.currentTime);
+      osc.stop(audioContext.currentTime + 0.3);
+      
+      console.log("Glitch sound played");
+    } catch (error) {
+      console.error("Error playing glitch sound:", error);
+    }
+  };
+
+  const playTypewriterSound = () => {
+    if (!audioEnabled || !audioContext) return;
+    
+    try {
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      
+      osc.frequency.setValueAtTime(1000 + Math.random() * 500, audioContext.currentTime);
+      gain.gain.setValueAtTime(0.03, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.05);
+      
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(audioContext.currentTime);
+      osc.stop(audioContext.currentTime + 0.05);
+      
+    } catch (error) {
+      console.error("Error playing typewriter sound:", error);
+    }
+  };
+
   // Initialize API URL on component mount
   useEffect(() => {
     const possibleURLs = [
@@ -82,10 +237,16 @@ function SnakeAdmin({ onExit }) {
       'http://127.0.0.1:3000'
     ];
     
-    // Set the first URL as default
     setApiUrl(possibleURLs[0]);
     setDebugInfo(`API URL set to: ${possibleURLs[0]}`);
-  }, []);
+    
+    // Show audio prompt after a short delay if audio is not already enabled
+    setTimeout(() => {
+      if (!audioEnabled) {
+        setShowAudioPrompt(true);
+      }
+    }, 1000);
+  }, [audioEnabled]);
 
   // Helper function to call victory API
   const callVictoryAPI = async (currentScore) => {
@@ -109,11 +270,10 @@ function SnakeAdmin({ onExit }) {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              path: 'home/user/2nak3.bat', // Correct path based on your fs.js structure
+              path: 'home/user/2nak3.bat',
               user: 'player',
               score: currentScore
             }),
-            // Add timeout
             signal: AbortSignal.timeout(10000)
           });
 
@@ -150,7 +310,6 @@ function SnakeAdmin({ onExit }) {
       setApiError(`API Error: ${error.message}`);
       setDebugInfo(`Final error: ${error.message}`);
       
-      // For demo purposes, show a mock flag if API fails
       if (currentScore >= 50) {
         setCapturedFlag('CTF{demo_flag_api_unavailable}');
         setDebugInfo(`Demo flag shown due to API error`);
@@ -197,8 +356,8 @@ function SnakeAdmin({ onExit }) {
       setVictory(true);
       setGameState('victory');
       setShowingVictoryDialogue(true);
+      playGlitchSound();
       
-      // Call API
       callVictoryAPI(score);
     }
   }, [score, victory]);
@@ -223,34 +382,76 @@ function SnakeAdmin({ onExit }) {
     const glitchInterval = setInterval(() => {
       if (Math.random() < 0.1 && (phase === 'dialogue' || showingVictoryDialogue)) {
         setIsGlitching(true);
+        playGlitchSound();
         setTimeout(() => setIsGlitching(false), 200);
       }
     }, 2000);
     return () => clearInterval(glitchInterval);
-  }, [phase, showingVictoryDialogue]);
+  }, [phase, showingVictoryDialogue, audioEnabled, audioContext]);
 
-  // Dialogue progression
+  // Typewriter effect for main dialogue
   useEffect(() => {
     if (phase === 'dialogue' && dialogueIndex < dialogues.length) {
-      const timer = setTimeout(() => {
-        setDialogueIndex(prev => prev + 1);
-      }, 1500);
-      return () => clearTimeout(timer);
+      const text = dialogues[dialogueIndex];
+      setIsTyping(true);
+      setTypewriterIndex(0);
+      setCurrentDialogue('');
+      
+      const typeInterval = setInterval(() => {
+        setTypewriterIndex(prev => {
+          if (prev >= text.length) {
+            setIsTyping(false);
+            clearInterval(typeInterval);
+            // Move to next dialogue after completing current one
+            setTimeout(() => {
+              setDialogueIndex(prevIndex => prevIndex + 1);
+            }, 800);
+            return prev;
+          }
+          
+          playTypewriterSound();
+          setCurrentDialogue(text.substring(0, prev + 1));
+          return prev + 1;
+        });
+      }, 50);
+      
+      return () => clearInterval(typeInterval);
     } else if (dialogueIndex >= dialogues.length && phase === 'dialogue') {
-      setPhase('game');
-      setGameState('playing');
+      setTimeout(() => {
+        setPhase('game');
+        setGameState('playing');
+      }, 500);
     }
-  }, [dialogueIndex, phase, dialogues.length]);
+  }, [dialogueIndex, phase, audioEnabled, audioContext]);
 
-  // Victory dialogue progression
+  // Typewriter effect for victory dialogue
   useEffect(() => {
     if (showingVictoryDialogue && victoryDialogueIndex < victoryDialogues.length) {
-      const timer = setTimeout(() => {
-        setVictoryDialogueIndex(prev => prev + 1);
-      }, 1200);
-      return () => clearTimeout(timer);
+      const text = victoryDialogues[victoryDialogueIndex];
+      setIsVictoryTyping(true);
+      setVictoryTypewriterIndex(0);
+      setCurrentVictoryDialogue('');
+      
+      const typeInterval = setInterval(() => {
+        setVictoryTypewriterIndex(prev => {
+          if (prev >= text.length) {
+            setIsVictoryTyping(false);
+            clearInterval(typeInterval);
+            setTimeout(() => {
+              setVictoryDialogueIndex(prevIndex => prevIndex + 1);
+            }, 1000);
+            return prev;
+          }
+          
+          playTypewriterSound();
+          setCurrentVictoryDialogue(text.substring(0, prev + 1));
+          return prev + 1;
+        });
+      }, 60);
+      
+      return () => clearInterval(typeInterval);
     }
-  }, [victoryDialogueIndex, showingVictoryDialogue, victoryDialogues.length]);
+  }, [victoryDialogueIndex, showingVictoryDialogue, audioEnabled, audioContext]);
 
   // Snake game logic
   const BOARD_SIZE = 20;
@@ -283,11 +484,12 @@ function SnakeAdmin({ onExit }) {
   const handleGameOver = () => {
     window.location.reload();
   };
+  
   const handleExit = () => {
     if (onExit) {
-      onExit(); // Call the parent's exit handler
+      onExit();
     } else {
-      window.location.reload(); // Fallback to reload if no onExit provided
+      window.location.reload();
     }
   };
 
@@ -304,12 +506,14 @@ function SnakeAdmin({ onExit }) {
       // Wall collision
       if (head.x < 0 || head.x >= BOARD_SIZE || head.y < 0 || head.y >= BOARD_SIZE) {
         setGameOver(true);
+        playGlitchSound();
         return currentSnake;
       }
       
       // Self collision
       if (newSnake.some(segment => segment.x === head.x && segment.y === head.y)) {
         setGameOver(true);
+        playGlitchSound();
         return currentSnake;
       }
       
@@ -318,7 +522,8 @@ function SnakeAdmin({ onExit }) {
       // Food collision
       if (head.x === food.x && head.y === food.y) {
         setScore(prev => prev + 1);
-        // Generate new food that doesn't spawn on snake
+        playBeepSound();
+        
         let newFood;
         do {
           newFood = {
@@ -329,11 +534,12 @@ function SnakeAdmin({ onExit }) {
         setFood(newFood);
       } else {
         newSnake.pop();
+        playTickSound();
       }
       
       return newSnake;
     });
-  }, [direction, food, gameState, gameOver, victory]);
+  }, [direction, food, gameState, gameOver, victory, audioEnabled, audioContext]);
 
   useEffect(() => {
     const gameLoop = setInterval(moveSnake, 150);
@@ -377,15 +583,16 @@ function SnakeAdmin({ onExit }) {
 
   const handleDiscovery = () => {
     setIsGlitching(true);
+    playGlitchSound();
     setTimeout(() => {
       setIsGlitching(false);
       setPhase('dialogue');
     }, 500);
   };
 
-  // Quick score increase for testing
   const increaseScore = () => {
     setScore(prev => Math.min(prev + 10, 50));
+    playBeepSound();
   };
 
   const renderSnakeBoard = () => {
@@ -397,17 +604,14 @@ function SnakeAdmin({ onExit }) {
         let cellContent = '';
         let cellClass = 'w-4 h-4 flex items-center justify-center text-sm font-bold relative transition-all duration-75';
         
-        // Check if this position has the snake head
         if (snake[0] && snake[0].x === x && snake[0].y === y) {
           cellContent = '●';
           cellClass += ' bg-amber-200 text-zinc-900 shadow-lg shadow-amber-200/50 border-2 border-amber-100 animate-pulse';
         }
-        // Check if this position has snake body
         else if (snake.slice(1).some(segment => segment.x === x && segment.y === y)) {
           cellContent = '■';
           cellClass += ' bg-amber-400/80 text-zinc-900 border border-amber-300/60 shadow-md shadow-amber-400/30';
         }
-        // Check if this position has food
         else if (food.x === x && food.y === y) {
           cellContent = '◆';
           cellClass += ' bg-red-500 text-amber-100 border border-red-400 shadow-lg shadow-red-500/50 animate-pulse';
@@ -431,6 +635,34 @@ function SnakeAdmin({ onExit }) {
     
     return rows;
   };
+
+  // Audio prompt overlay
+  if (showAudioPrompt) {
+    return (
+      <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono flex items-center justify-center">
+        <div className="text-center p-8 border border-amber-100/30 bg-zinc-900">
+          <div className="text-sm mb-4">AUDIO SUBSYSTEM DETECTED</div>
+          <div className="text-xs mb-6 text-amber-100/70">
+            Enable audio for enhanced terminal experience?
+          </div>
+          <div className="flex gap-4 justify-center">
+            <button 
+              onClick={initializeAudio}
+              className="bg-zinc-900 border border-green-400 px-4 py-2 text-green-400 hover:bg-green-400 hover:text-zinc-900 transition-colors"
+            >
+              ENABLE AUDIO
+            </button>
+            <button 
+              onClick={() => setShowAudioPrompt(false)}
+              className="bg-zinc-900 border border-red-400 px-4 py-2 text-red-400 hover:bg-red-400 hover:text-zinc-900 transition-colors"
+            >
+              SKIP
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (phase === 'discovery') {
     return (
@@ -459,14 +691,19 @@ function SnakeAdmin({ onExit }) {
           <div className="mb-8">ESTABLISHING COMMUNICATION...</div>
           
           <div className="border-t border-amber-100/30 pt-4">
-            {dialogues.slice(0, dialogueIndex + 1).map((line, index) => (
+            {dialogues.slice(0, dialogueIndex).map((line, index) => (
               <div key={index} className="mb-2">
                 <span className="text-red-400">ANOMALY:</span> {line}
-                {index === dialogueIndex && showCursor && (
+              </div>
+            ))}
+            {dialogueIndex < dialogues.length && (
+              <div className="mb-2">
+                <span className="text-red-400">ANOMALY:</span> {currentDialogue}
+                {(isTyping || showCursor) && (
                   <span className="animate-pulse">█</span>
                 )}
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -474,7 +711,6 @@ function SnakeAdmin({ onExit }) {
   }
 
   if (phase === 'game') {
-    // Show victory dialogue overlay if victory is achieved
     if (showingVictoryDialogue) {
       return (
         <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono overflow-hidden">
@@ -496,12 +732,9 @@ function SnakeAdmin({ onExit }) {
             )}
             
             <div className="border-t border-amber-100/30 pt-4">
-              {victoryDialogues.slice(0, victoryDialogueIndex + 1).map((line, index) => (
+              {victoryDialogues.slice(0, victoryDialogueIndex).map((line, index) => (
                 <div key={index} className="mb-2">
                   <span className="text-red-400">ANOMALY:</span> {line}
-                  {index === victoryDialogueIndex && showCursor && (
-                    <span className="animate-pulse">█</span>
-                  )}
                   {line === "█████ FLAG EJECTED █████" && capturedFlag && (
                     <div className="mt-2 p-3 border border-amber-100/30 bg-zinc-900 rounded text-white animate-pulse">
                       ⚑ {capturedFlag}
@@ -509,27 +742,38 @@ function SnakeAdmin({ onExit }) {
                   )}
                 </div>
               ))}
+              {victoryDialogueIndex < victoryDialogues.length && (
+                <div className="mb-2">
+                  <span className="text-red-400">ANOMALY:</span> {currentVictoryDialogue}
+                  {(isVictoryTyping || showCursor) && (
+                    <span className="animate-pulse">█</span>
+                  )}
+                  {currentVictoryDialogue === "█████ FLAG EJECTED █████" && capturedFlag && (
+                    <div className="mt-2 p-3 border border-amber-100/30 bg-zinc-900 rounded text-white animate-pulse">
+                      ⚑ {capturedFlag}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
            
             {victoryDialogueIndex >= victoryDialogues.length && (
-    <div className="mt-8 text-center">
-      <button 
-        onClick={handleExit}
-        className="bg-zinc-900 border border-amber-100 px-4 py-2 text-amber-100 hover:bg-amber-100 hover:text-zinc-900 transition-colors"
-      >
-        RETURN TO TERMINAL
-      </button>
-    </div>
-  )}
+              <div className="mt-8 text-center">
+                <button 
+                  onClick={handleExit}
+                  className="bg-zinc-900 border border-amber-100 px-4 py-2 text-amber-100 hover:bg-amber-100 hover:text-zinc-900 transition-colors"
+                >
+                  RETURN TO TERMINAL
+                </button>
+              </div>
+            )}
           </div>
         </div>
       );
     }
 
-    // Regular game view
     return (
       <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono flex flex-col">
-        {/* Debug panel */}
         <div className="text-xs p-2 border-b border-amber-100/30 space-y-1">
           <div className="flex gap-2 items-center flex-wrap">
             <input
@@ -562,6 +806,25 @@ function SnakeAdmin({ onExit }) {
               className="bg-zinc-800 border border-red-400 px-2 py-1 text-red-400 hover:bg-red-400 hover:text-zinc-900 transition-colors text-xs"
             >
               RESET
+            </button>
+            <button
+              onClick={() => {
+                console.log("Audio test button clicked");
+                if (audioEnabled && audioContext) {
+                  playBeepSound();
+                  setTimeout(() => playTickSound(), 200);
+                  setTimeout(() => playGlitchSound(), 400);
+                } else {
+                  setShowAudioPrompt(true);
+                }
+              }}
+              className={`bg-zinc-800 border px-2 py-1 transition-colors text-xs ${
+                audioEnabled 
+                  ? 'border-green-400 text-green-400 hover:bg-green-400 hover:text-zinc-900' 
+                  : 'border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-zinc-900'
+              }`}
+            >
+              🔊 {audioEnabled ? 'TEST' : 'ENABLE'}
             </button>
           </div>
           {debugInfo && (

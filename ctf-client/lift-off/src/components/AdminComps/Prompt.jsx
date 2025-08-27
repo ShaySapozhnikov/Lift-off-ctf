@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 // Replace localhost with your Render-hosted backend
 const BACKEND_URL = "https://lift-off-ctf.onrender.com";
 
-export default function Prompt({ onEvent }) {
+export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudioInit }) {
   const [buf, setBuf] = useState("");
   const [history, setHistory] = useState([]);
   const [commands, setCommands] = useState([]);
@@ -136,6 +136,23 @@ export default function Prompt({ onEvent }) {
     setBuf("");
   };
 
+  // Enhanced input change handler with sound
+  const handleInputChange = (e) => {
+    const newValue = e.target.value;
+    
+    // Initialize audio on first interaction if needed
+    if (!audioEnabled && onAudioInit) {
+      onAudioInit();
+    }
+    
+    // Play typing sound for new characters only
+    if (newValue.length > buf.length && playTypingSound) {
+      playTypingSound(newValue.length - 1);
+    }
+    
+    setBuf(newValue);
+  };
+
   // --- Keyboard navigation ---
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
@@ -180,7 +197,7 @@ export default function Prompt({ onEvent }) {
         <input
           ref={inputRef}
           value={buf}
-          onChange={(e) => setBuf(e.target.value)}
+          onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           className="absolute opacity-0 pointer-events-none"
           autoComplete="off"
