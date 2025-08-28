@@ -69,6 +69,20 @@ app.post("/run", (req, res) => {
     }
     return res.json({ output: "Loading", event: "snakeGame" });
   }
+  if (path.toLowerCase().endsWith("LEAVE.bat")) {
+    // if (score !== undefined && score >= 50) {
+    //   return res.json({
+    //     output: "Snake Victory Achieved!",
+    //     flag: FLAG_LEVEL_1,
+    //   });
+    // }
+    return res.json({ output: "Loading", event: "SimonGame" });
+  }
+
+
+
+
+  
 
   if (node.event) {
     return res.json({ output: "Loading", event: node.event });

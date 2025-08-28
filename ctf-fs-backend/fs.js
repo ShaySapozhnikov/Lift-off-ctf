@@ -19,10 +19,17 @@ export const fs = {
         },
         "2nak3.bat": {
           type: "exe",
-          content: "launch snake game",
+          content: "ignore me please i beg you",
           owner: "user",
           permissions: "rw",
         },
+        "LEAVE.bat": {
+          type: "exe",
+          content: "why do you have the eurge to keep looking?",
+          owner: "user",
+          permissions: "rw",
+        },
+
       },
     },
     root: {
