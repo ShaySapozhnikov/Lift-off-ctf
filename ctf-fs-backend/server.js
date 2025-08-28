@@ -71,7 +71,7 @@ app.post("/run", (req, res) => {
   }
   // Simon game special logic (add this after the Snake game logic)
   if (path.toLowerCase().endsWith("leave.bat")) {
-    if (score !== undefined && score >= /* your winning score threshold */) {
+    if (score !== undefined && score >= 300) {
       return res.json({
         output: "Simon Victory Achieved!",
         flag: "CTF{simon_says_flag}", // Replace with your actual flag
