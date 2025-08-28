@@ -5,16 +5,21 @@ import HeaderBar from "./AdminComps/HeaderBar";
 import Prompt from "./AdminComps/Prompt";
 import HelpBlock from "./AdminComps/HelpBlock";
 import SnakeAdmin from "./AdminComps/snakeAdmin";
+import SimonSaysGame from "./AdminComps/SimonSaysGame";
 
 export default function CorruptedAdminPanel() {
   const [bootLines, setBootLines] = useState([]);
   const [snakeEvent, setSnakeEvent] = useState(null);
+  const [SimonEvent, setSimonEvent] = useState(null);
+
+
   const [fadeIn, setFadeIn] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [showAudioPrompt, setShowAudioPrompt] = useState(true);
   const [currentBootLine, setCurrentBootLine] = useState("");
   const [currentBootIndex, setCurrentBootIndex] = useState(0);
   const [currentCharIndex, setCurrentCharIndex] = useState(0);
+  
   const typedRef = useRef(null);
   const audioContextRef = useRef(null);
 
@@ -142,12 +147,25 @@ export default function CorruptedAdminPanel() {
   // Handler for Prompt events
   const handleEvent = (event) => {
     console.log("Prompt triggered event:", event);
-    setSnakeEvent(event);
+    if (event === "SimonGame"){
+      setSimonEvent(event)
+
+    }
+    else{
+      setSnakeEvent(event);
+
+    }
+    
   };
   
   const handleSnakeExit = () => {
     setSnakeEvent(null);
   };
+
+  const SimonExit = () => {
+    setSimonEvent(null);
+  };
+  
 
   const handleContainerClick = () => {
     if (!audioEnabled) {
@@ -272,14 +290,32 @@ export default function CorruptedAdminPanel() {
                 <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
                   <div className="w-full h-full relative">
                   <SnakeAdmin
-  onExit={handleSnakeExit}
-  audioContext={audioContextRef.current}
-  audioEnabled={audioEnabled}
-  onAudioInit={initializeAudio}
-/>
+                      onExit={handleSnakeExit}
+                      audioContext={audioContextRef.current}
+                      audioEnabled={audioEnabled}
+                       onAudioInit={initializeAudio}
+                  />
                   </div>
                 </div>
               )}
+              {/* SimonGame */}
+              {SimonEvent === "firewallGame" && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
+                  <div className="w-full h-full relative">
+                    <SimonSaysGame
+                      onExit={SimonExit}
+                      audioContext={audioContextRef.current}
+                      audioEnabled={audioEnabled}
+                      onAudioInit={initializeAudio}
+                    />
+                  </div>
+                </div>
+              )}
+
+
+
+
+
             </div>
           </div>
         </div>
