@@ -220,7 +220,7 @@ export default function CorruptedAdminPanel() {
 
             {/* Background ASCII Logo */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <ShipIcon className="!animate-none text-white/30" />
+              <ShipIcon className="!animate-none text-white/30 text-[8px] mr-10" />
             </div>
 
             {/* Terminal content */}

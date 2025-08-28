@@ -717,28 +717,21 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
           <div className={`text-sm leading-relaxed h-full overflow-y-auto p-4 ${isGlitching ? 'blur-sm animate-pulse' : ''}`} ref={dialogueRef}>
             <div className="mb-4 text-green-400">TEST COMPLETED...</div>
             <div className="mb-4 text-amber-100">ANALYZING RESULTS...</div>
-            <div className="mb-8 text-red-400">ENTITY RESPONSE DETECTED...</div>
-            
-            {apiError && (
-              <div className="mb-4 p-2 border border-red-400 bg-red-900/20 text-red-300 text-xs">
-                {apiError}
-              </div>
-            )}
-            
-            {debugInfo && (
-              <div className="mb-4 p-2 border border-blue-400 bg-blue-900/20 text-blue-300 text-xs">
-                Debug: {debugInfo}
-              </div>
-            )}
-            
+            <div className="mb-8 text-red-400">ENTITY RESPONSE DETECTED...</div>    
             <div className="border-t border-amber-100/30 pt-4">
               {victoryDialogues.slice(0, victoryDialogueIndex).map((line, index) => (
                 <div key={index} className="mb-2">
                   <span className="text-red-400">ANOMALY:</span> {line}
                   {line === "█████ FLAG EJECTED █████" && capturedFlag && (
-                    <div className="mt-2 p-3 border border-amber-100/30 bg-zinc-900 rounded text-white animate-pulse">
-                      ⚑ {capturedFlag}
-                    </div>
+                    <div
+                    className="mt-2 p-3 border border-amber-100/30 bg-zinc-900 rounded text-white animate-pulse highlightable cursor-pointer select-text"
+                    onClick={() => {
+                      navigator.clipboard.writeText(capturedFlag);
+                    }}
+                  >
+                    ⚑ {capturedFlag}
+                  </div>
+                  
                   )}
                 </div>
               ))}
@@ -774,74 +767,13 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
 
     return (
       <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono flex flex-col">
-        <div className="text-xs p-2 border-b border-amber-100/30 space-y-1">
-          <div className="flex gap-2 items-center flex-wrap">
-            <input
-              type="text"
-              value={apiUrl}
-              onChange={(e) => setApiUrl(e.target.value)}
-              placeholder="API URL"
-              className="bg-zinc-800 border border-amber-100 px-2 py-1 text-amber-100 text-xs flex-1 min-w-40"
-            />
-            <button
-              onClick={testConnection}
-              className="bg-zinc-800 border border-blue-400 px-2 py-1 text-blue-400 hover:bg-blue-400 hover:text-zinc-900 transition-colors text-xs"
-            >
-              TEST
-            </button>
-            <button
-              onClick={() => callVictoryAPI(score)}
-              className="bg-zinc-800 border border-amber-100 px-2 py-1 text-amber-100 hover:bg-amber-100 hover:text-zinc-900 transition-colors text-xs"
-            >
-              TEST API
-            </button>
-            <button
-              onClick={increaseScore}
-              className="bg-zinc-800 border border-green-400 px-2 py-1 text-green-400 hover:bg-green-400 hover:text-zinc-900 transition-colors text-xs"
-            >
-              +10 SCORE
-            </button>
-            <button
-              onClick={resetGame}
-              className="bg-zinc-800 border border-red-400 px-2 py-1 text-red-400 hover:bg-red-400 hover:text-zinc-900 transition-colors text-xs"
-            >
-              RESET
-            </button>
-            <button
-              onClick={() => {
-                console.log("Audio test button clicked");
-                if (audioEnabled && audioContext) {
-                  playBeepSound();
-                  setTimeout(() => playTickSound(), 200);
-                  setTimeout(() => playGlitchSound(), 400);
-                } else {
-                  setShowAudioPrompt(true);
-                }
-              }}
-              className={`bg-zinc-800 border px-2 py-1 transition-colors text-xs ${
-                audioEnabled 
-                  ? 'border-green-400 text-green-400 hover:bg-green-400 hover:text-zinc-900' 
-                  : 'border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-zinc-900'
-              }`}
-            >
-              🔊 {audioEnabled ? 'TEST' : 'ENABLE'}
-            </button>
-          </div>
-          {debugInfo && (
-            <div className="text-blue-300">Debug: {debugInfo}</div>
-          )}
-          {apiError && (
-            <div className="text-red-300">Error: {apiError}</div>
-          )}
-        </div>
-
         <div className="text-center p-3 flex-shrink-0">
           <div className="text-red-400 mb-2 text-sm">TERMINAL TEST INITIATED</div>
           <div className="text-xs mb-2">SCORE: {score} / 50</div>
           {gameOver && (
             <div className="text-xs">
               <div className="text-red-400 animate-pulse mb-1">TEST FAILED... ANALYZING...</div>
-              <div className="text-amber-100">RELOADING SYSTEM...</div>
+              <div className="text-amber-100">RELOADING SYSTEM GTFO...</div>
             </div>
           )}
         </div>
