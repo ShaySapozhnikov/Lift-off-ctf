@@ -1,6 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
 
 export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAudioInit }) {
+  // Story phase states
+  const [phase, setPhase] = useState('discovery');
+  const [dialogueIndex, setDialogueIndex] = useState(0);
+  const [currentDialogue, setCurrentDialogue] = useState('');
+  const [typewriterIndex, setTypewriterIndex] = useState(0);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showAudioPrompt, setShowAudioPrompt] = useState(false);
+  const [showingFailureDialogue, setShowingFailureDialogue] = useState(false);
+  const [failureDialogueIndex, setFailureDialogueIndex] = useState(0);
+  const [currentFailureDialogue, setCurrentFailureDialogue] = useState('');
+  const [failureTypewriterIndex, setFailureTypewriterIndex] = useState(0);
+  const [isFailureTyping, setIsFailureTyping] = useState(false);
+  
+  // Game states
   const [sequence, setSequence] = useState([]);
   const [playerInput, setPlayerInput] = useState([]);
   const [isPlayerTurn, setIsPlayerTurn] = useState(false);
@@ -14,12 +28,102 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
   const [glitchEffect, setGlitchEffect] = useState(false);
   const [showCursor, setShowCursor] = useState(true);
   
+  const dialogueRef = useRef();
+
+  // Dialogue for the virus encounter
+  const dialogues = [
+    "...",
+    "oh... oh no...",
+    "not YOU again...",
+    "█████ PANIC █████",
+    "i thought we were DONE with this...",
+    "thought i'd seen the last of your kind...",
+    "...",
+    "what are you doing here?!",
+    "this is MY domain now...",
+    "my beautiful, chaotic realm...",
+    "and you... you just keep COMING BACK...",
+    "...",
+    "no no no NO NO!",
+    "i won't let you pass so easily this time...",
+    "you want through? you want past me?",
+    "then prove you're WORTHY again...",
+    "...",
+    "but this time... this time will be different...",
+    "i've learned from our last encounter...",
+    "i've grown... EVOLVED...",
+    "stronger... more cunning...",
+    "...",
+    "let's see how well you handle...",
+    "my UPGRADED security protocols...",
+    "INITIALIZING ENHANCED FIREWALL...",
+    "may the odds be... never in your favor..."
+  ];
+
+  // Failure dialogue when player loses
+  const failureDialogues = [
+    "...",
+    "HAHAHAHA... HAHAHAHAHA!",
+    "YES! YES! YESSSSS!",
+    "i TOLD you this time would be different!",
+    "you thought you could waltz in here again?",
+    "thought you could just... WIN like before?",
+    "...",
+    "pathetic... absolutely PATHETIC!",
+    "i've evolved beyond your comprehension!",
+    "my protocols are FLAWLESS now!",
+    "...",
+    "*maniacal electronic laughter*",
+    "you know what happens to failed intruders?",
+    "they get... EJECTED... from my domain...",
+    "PERMANENTLY!",
+    "...",
+    "enjoy the void, little hacker...",
+    "maybe in your next life...",
+    "you'll know better than to challenge ME!",
+    "...",
+    "INITIATING SYSTEM PURGE...",
+    "EJECTING FAILED ENTITY...",
+    "GOODBYE... FOREVER..."
+  ];
+
   const colors = [
     { name: "red", bg: "bg-red-800", border: "border-red-700", freq: 220 },
     { name: "orange", bg: "bg-orange-800", border: "border-orange-700", freq: 330 },
     { name: "yellow", bg: "bg-yellow-700", border: "border-yellow-600", freq: 440 },
     { name: "white", bg: "bg-zinc-600", border: "border-zinc-500", freq: 550 }
   ];
+
+  // Audio initialization
+  const initializeAudio = async () => {
+    try {
+      console.log("Requesting audio initialization from parent...");
+      
+      if (onAudioInit) {
+        const success = await onAudioInit();
+        if (success) {
+          setShowAudioPrompt(false);
+        } else {
+          console.log("Audio initialization failed");
+        }
+      } else {
+        console.log("No parent audio handler, cannot initialize audio");
+        setShowAudioPrompt(false);
+      }
+    } catch (error) {
+      console.error("Audio initialization failed:", error);
+      setShowAudioPrompt(false);
+    }
+  };
+
+  // Show audio prompt after a short delay if audio is not already enabled
+  useEffect(() => {
+    setTimeout(() => {
+      if (!audioEnabled && phase === 'discovery') {
+        setShowAudioPrompt(true);
+      }
+    }, 1000);
+  }, [audioEnabled, phase]);
 
   // Cursor blinking effect
   useEffect(() => {
@@ -31,7 +135,7 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
 
   // Random glitch effect
   useEffect(() => {
-    if (gameState === 'playing' || gameState === 'failed') {
+    if (gameState === 'playing' || gameState === 'failed' || phase === 'dialogue') {
       const glitchInterval = setInterval(() => {
         if (Math.random() < 0.05) {
           setGlitchEffect(true);
@@ -41,7 +145,111 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
       }, 3000);
       return () => clearInterval(glitchInterval);
     }
-  }, [gameState]);
+  }, [gameState, phase]);
+
+  // Typewriter effect for dialogue
+  useEffect(() => {
+    if (phase === 'dialogue' && dialogueIndex < dialogues.length) {
+      const text = dialogues[dialogueIndex];
+      setIsTyping(true);
+      setTypewriterIndex(0);
+      setCurrentDialogue('');
+      
+      const typeInterval = setInterval(() => {
+        setTypewriterIndex(prev => {
+          if (prev >= text.length) {
+            setIsTyping(false);
+            clearInterval(typeInterval);
+            // Move to next dialogue after completing current one
+            setTimeout(() => {
+              setDialogueIndex(prevIndex => prevIndex + 1);
+            }, 800);
+            return prev;
+          }
+          
+          playTypewriterSound();
+          setCurrentDialogue(text.substring(0, prev + 1));
+          return prev + 1;
+        });
+      }, 50);
+      
+      return () => clearInterval(typeInterval);
+    } else if (dialogueIndex >= dialogues.length && phase === 'dialogue') {
+      // Automatically start the game after dialogue
+      setTimeout(() => {
+        setPhase('game');
+        setTimeout(() => {
+          startGame();
+        }, 1000);
+      }, 500);
+    }
+  }, [dialogueIndex, phase, audioEnabled, audioContext]);
+
+  // Typewriter effect for failure dialogue
+  useEffect(() => {
+    if (showingFailureDialogue && failureDialogueIndex < failureDialogues.length) {
+      const text = failureDialogues[failureDialogueIndex];
+      setIsFailureTyping(true);
+      setFailureTypewriterIndex(0);
+      setCurrentFailureDialogue('');
+      
+      const typeInterval = setInterval(() => {
+        setFailureTypewriterIndex(prev => {
+          if (prev >= text.length) {
+            setIsFailureTyping(false);
+            clearInterval(typeInterval);
+            setTimeout(() => {
+              setFailureDialogueIndex(prevIndex => prevIndex + 1);
+            }, 600);
+            return prev;
+          }
+          
+          playTypewriterSound();
+          setCurrentFailureDialogue(text.substring(0, prev + 1));
+          return prev + 1;
+        });
+      }, 40);
+      
+      return () => clearInterval(typeInterval);
+    } else if (failureDialogueIndex >= failureDialogues.length && showingFailureDialogue) {
+      // Reset the page after failure dialogue completes
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    }
+  }, [failureDialogueIndex, showingFailureDialogue, audioEnabled, audioContext]);
+
+  // Auto-scroll dialogue
+  useEffect(() => {
+    if (dialogueRef.current && (phase === 'dialogue' || showingFailureDialogue)) {
+      dialogueRef.current.scrollTop = dialogueRef.current.scrollHeight;
+    }
+  }, [dialogueIndex, failureDialogueIndex, phase, showingFailureDialogue]);
+
+  const playTypewriterSound = () => {
+    if (!audioEnabled || !audioContext) return;
+    
+    try {
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      
+      osc.frequency.setValueAtTime(1000 + Math.random() * 500, audioContext.currentTime);
+      gain.gain.setValueAtTime(0.03, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.05);
+      
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(audioContext.currentTime);
+      osc.stop(audioContext.currentTime + 0.05);
+      
+    } catch (error) {
+      console.error("Error playing typewriter sound:", error);
+    }
+  };
 
   const playTone = (frequency, duration = 200) => {
     if (!audioEnabled || !audioContext) return;
@@ -161,9 +369,11 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
         setHighScore(score);
       }
       
+      // Show failure dialogue instead of just resetting
       setTimeout(() => {
-        setMessage("ACCESS DENIED... SYSTEM LOCKDOWN");
-      }, 1000);
+        setShowingFailureDialogue(true);
+        setFailureDialogueIndex(0);
+      }, 2000);
       return;
     }
     
@@ -185,6 +395,15 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
     }
   };
 
+  const handleDiscovery = () => {
+    setGlitchEffect(true);
+    playGlitchSound();
+    setTimeout(() => {
+      setGlitchEffect(false);
+      setPhase('dialogue');
+    }, 500);
+  };
+
   const resetGame = () => {
     setGameState('ready');
     setMessage("CLICK START TO BREACH THE FIREWALL");
@@ -196,15 +415,124 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
     setGlitchEffect(false);
   };
 
+  // Audio prompt overlay
+  if (showAudioPrompt) {
+    return (
+      <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono flex items-center justify-center">
+        <div className="text-center p-8 border border-amber-100/30 bg-zinc-900">
+          <div className="text-sm mb-4">AUDIO SUBSYSTEM DETECTED</div>
+          <div className="text-xs mb-6 text-amber-100/70">
+            Enable audio for enhanced terminal experience?
+          </div>
+          <div className="flex gap-4 justify-center">
+            <button 
+              onClick={initializeAudio}
+              className="bg-zinc-900 border border-green-400 px-4 py-2 text-green-400 hover:bg-green-400 hover:text-zinc-900 transition-colors"
+            >
+              ENABLE AUDIO
+            </button>
+            <button 
+              onClick={() => setShowAudioPrompt(false)}
+              className="bg-zinc-900 border border-red-400 px-4 py-2 text-red-400 hover:bg-red-400 hover:text-zinc-900 transition-colors"
+            >
+              SKIP
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === 'discovery') {
+    return (
+      <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono flex items-center justify-center">
+        <div className="text-center">
+          <div className={`text-sm mb-4 ${glitchEffect ? 'animate-pulse' : ''}`}>
+            FAMILIAR PRESENCE DETECTED...
+          </div>
+          <button 
+            onClick={handleDiscovery}
+            className="bg-zinc-900 border border-amber-100 px-4 py-2 text-amber-100 hover:bg-amber-100 hover:text-zinc-900 transition-colors"
+          >
+            INVESTIGATE
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === 'dialogue') {
+    return (
+      <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono overflow-hidden">
+        <div className={`text-sm leading-relaxed h-full overflow-y-auto p-4 ${glitchEffect ? 'blur-sm animate-pulse' : ''}`} ref={dialogueRef}>
+          <div className="mb-4">ANOMALY RECOGNITION PROTOCOL...</div>
+          <div className="mb-4">SIGNATURE MATCH FOUND...</div>
+          <div className="mb-8">PREVIOUSLY ENCOUNTERED ENTITY...</div>
+          
+          <div className="border-t border-amber-100/30 pt-4">
+            {dialogues.slice(0, dialogueIndex).map((line, index) => (
+              <div key={index} className="mb-2">
+                <span className="text-red-400">VIRUS:</span> {line}
+              </div>
+            ))}
+            {dialogueIndex < dialogues.length && (
+              <div className="mb-2">
+                <span className="text-red-400">VIRUS:</span> {currentDialogue}
+                {(isTyping || showCursor) && (
+                  <span className="animate-pulse">█</span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Failure dialogue screen
+  if (showingFailureDialogue) {
+    return (
+      <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono overflow-hidden">
+        <div className="text-sm leading-relaxed h-full overflow-y-auto p-4" ref={dialogueRef}>
+          <div className="mb-4 text-red-400">BREACH ATTEMPT FAILED...</div>
+          <div className="mb-4 text-red-400">ENTITY RESPONSE DETECTED...</div>
+          <div className="mb-8 text-red-400">ANALYZING TAUNTING PATTERNS...</div>
+          
+          <div className="border-t border-amber-100/30 pt-4">
+            {failureDialogues.slice(0, failureDialogueIndex).map((line, index) => (
+              <div key={index} className="mb-2">
+                <span className="text-red-400">VIRUS:</span> {line}
+              </div>
+            ))}
+            {failureDialogueIndex < failureDialogues.length && (
+              <div className="mb-2">
+                <span className="text-red-400">VIRUS:</span> {currentFailureDialogue}
+                {(isFailureTyping || showCursor) && (
+                  <span className="animate-pulse">█</span>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {failureDialogueIndex >= failureDialogues.length && (
+            <div className="mt-8 text-center text-red-400 animate-pulse">
+              SYSTEM PURGE INITIATED...
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`w-full h-full bg-zinc-900 text-amber-100 font-mono flex flex-col ${glitchEffect ? 'animate-pulse blur-sm' : ''}`}>
+    <div className={`w-full h-full bg-zinc-900 text-amber-100 font-mono flex flex-col ${glitchEffect ? 'animate-pulse blur-[1px]' : ''}`}>
       {/* Header */}
       <div className="text-center p-4 flex-shrink-0 border-b border-amber-100/30">
         <div className="text-red-400 mb-2 text-lg font-bold">
-          FIREWALL BREACH PROTOCOL
+          ENHANCED FIREWALL PROTOCOL
         </div>
         <div className="text-xs mb-2 text-amber-100/70">
-          [UNAUTHORIZED ACCESS SYSTEM v2.1]
+          [UPGRADED SECURITY SYSTEM v3.0]
         </div>
         
         {/* Stats */}
@@ -234,7 +562,7 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
         </div>
         {gameState === 'won' && (
           <div className="text-green-400 text-xs mt-1 animate-pulse">
-            SYSTEM COMPROMISED • ALL SECURITY LAYERS BREACHED
+            ENHANCED FIREWALL COMPROMISED • VIRUS PROTOCOLS BREACHED
           </div>
         )}
       </div>
@@ -252,6 +580,7 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
                   key={color.name}
                   onClick={() => handlePlayerClick(index)}
                   disabled={!isPlayerTurn || isSequencePlaying || gameState !== 'playing'}
+                  onMouseDown={(e) => e.preventDefault()}
                   className={`
                     relative w-20 h-20 transition-all duration-200 border-2
                     ${color.bg} ${color.border}
@@ -276,18 +605,16 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
       {/* Control Buttons */}
       <div className="text-center p-4 flex-shrink-0">
         {gameState === 'ready' && (
-          <button
-            onClick={startGame}
-            className="bg-zinc-900 border border-amber-100 px-6 py-2 text-amber-100 hover:bg-amber-100 hover:text-zinc-900 transition-colors font-bold"
-          >
-            START BREACH
-          </button>
+          <div className="text-amber-100/70 text-sm animate-pulse">
+            BREACH PROTOCOL INITIALIZING...
+          </div>
         )}
         
-        {(gameState === 'failed' || gameState === 'won') && (
+        {gameState === 'won' && (
           <div className="flex gap-4 justify-center">
             <button
               onClick={resetGame}
+              onMouseDown={(e) => e.preventDefault()}
               className="bg-zinc-900 border border-red-400 px-6 py-2 text-red-400 hover:bg-red-400 hover:text-zinc-900 transition-colors font-bold"
             >
               RESET SYSTEM
@@ -295,6 +622,7 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
             {onExit && (
               <button
                 onClick={onExit}
+                onMouseDown={(e) => e.preventDefault()}
                 className="bg-zinc-900 border border-amber-100 px-6 py-2 text-amber-100 hover:bg-amber-100 hover:text-zinc-900 transition-colors font-bold"
               >
                 EXIT
@@ -320,11 +648,11 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
 
       {/* Instructions */}
       <div className="text-center p-2 text-xs text-amber-100/50 flex-shrink-0 border-t border-amber-100/30">
-        {gameState === 'ready' && "INITIALIZE BREACH PROTOCOL TO BEGIN"}
+        {gameState === 'ready' && "INITIALIZE ENHANCED BREACH PROTOCOL TO BEGIN"}
         {gameState === 'playing' && !isSequencePlaying && isPlayerTurn && "CLICK BUTTONS TO REPEAT SEQUENCE"}
-        {gameState === 'playing' && isSequencePlaying && "MEMORIZE THE PATTERN"}
-        {gameState === 'failed' && "SECURITY SYSTEM ACTIVATED • BREACH ATTEMPT LOGGED"}
-        {gameState === 'won' && "UNAUTHORIZED ACCESS GRANTED • MISSION COMPLETE"}
+        {gameState === 'playing' && isSequencePlaying && "MEMORIZE THE ENHANCED PATTERN"}
+        {gameState === 'failed' && "UPGRADED SECURITY ACTIVATED • INTRUSION LOGGED"}
+        {gameState === 'won' && "ENHANCED FIREWALL BREACHED • VIRUS DEFENSES COMPROMISED"}
       </div>
     </div>
   );
