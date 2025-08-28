@@ -69,15 +69,16 @@ app.post("/run", (req, res) => {
     }
     return res.json({ output: "Loading", event: "snakeGame" });
   }
-  if (path.toLowerCase().endsWith("LEAVE.bat")) {
-    // if (score !== undefined && score >= 50) {
-    //   return res.json({
-    //     output: "Snake Victory Achieved!",
-    //     flag: FLAG_LEVEL_1,
-    //   });
-    // }
-    return res.json({ output: "Loading", event: "SimonGame" });
+  // Simon game special logic (add this after the Snake game logic)
+  if (path.toLowerCase().endsWith("leave.bat")) {
+    if (score !== undefined && score >= /* your winning score threshold */) {
+      return res.json({
+        output: "Simon Victory Achieved!",
+        flag: "CTF{simon_says_flag}", // Replace with your actual flag
+    });
   }
+  return res.json({ output: "Loading", event: "SimonGame" }); 
+  } 
 
 
 

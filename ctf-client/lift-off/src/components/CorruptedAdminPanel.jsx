@@ -11,17 +11,25 @@ export default function CorruptedAdminPanel() {
   const [bootLines, setBootLines] = useState([]);
   const [snakeEvent, setSnakeEvent] = useState(null);
   const [SimonEvent, setSimonEvent] = useState(null);
-
-
   const [fadeIn, setFadeIn] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [showAudioPrompt, setShowAudioPrompt] = useState(true);
   const [currentBootLine, setCurrentBootLine] = useState("");
   const [currentBootIndex, setCurrentBootIndex] = useState(0);
   const [currentCharIndex, setCurrentCharIndex] = useState(0);
+  const [bootComplete, setBootComplete] = useState(false);
   
   const typedRef = useRef(null);
   const audioContextRef = useRef(null);
+  const typewriterIntervalRef = useRef(null);
+
+  // Boot script - moved outside useEffect to prevent recreating
+  const bootScript = [
+    "BOOT> INIT SYSTEM",
+    "CHECK> MEMORY . . . unknown",
+    "CHECK> DISK   . . . unknown", 
+    "CHECK> NET    . . . unknown",
+  ];
 
   // Initialize audio context after user interaction
   const initializeAudio = async () => {
@@ -99,37 +107,45 @@ export default function CorruptedAdminPanel() {
 
   // Fade in effect on mount
   useEffect(() => {
-    setTimeout(() => setFadeIn(true), 100);
+    const timer = setTimeout(() => setFadeIn(true), 100);
+    return () => clearTimeout(timer);
   }, []);
 
   // Boot sequence with typewriter effect and sound
   useEffect(() => {
-    const script = [
-      "BOOT> INIT SYSTEM",
-      "CHECK> MEMORY . . . unknown",
-      "CHECK> DISK   . . . unknown", 
-      "CHECK> NET    . . . unknown",
-    ];
-
-    if (currentBootIndex < script.length) {
-      const currentLine = script[currentBootIndex];
-      
-      const typewriterInterval = setInterval(() => {
-        if (currentCharIndex < currentLine.length) {
-          setCurrentBootLine(currentLine.substring(0, currentCharIndex + 1));
-          playTypingSound(currentCharIndex);
-          setCurrentCharIndex(prev => prev + 1);
-        } else {
-          clearInterval(typewriterInterval);
-          setBootLines(prev => [...prev, currentLine]);
-          setCurrentBootLine("");
-          setCurrentBootIndex(prev => prev + 1);
-          setCurrentCharIndex(0);
-        }
-      }, Math.random() * 40 + 30); // Random typing speed
-
-      return () => clearInterval(typewriterInterval);
+    // Clear any existing interval
+    if (typewriterIntervalRef.current) {
+      clearInterval(typewriterIntervalRef.current);
     }
+
+    if (currentBootIndex >= bootScript.length) {
+      setBootComplete(true);
+      return;
+    }
+
+    const currentLine = bootScript[currentBootIndex];
+    
+    if (currentCharIndex < currentLine.length) {
+      typewriterIntervalRef.current = setTimeout(() => {
+        setCurrentBootLine(currentLine.substring(0, currentCharIndex + 1));
+        playTypingSound(currentCharIndex);
+        setCurrentCharIndex(prev => prev + 1);
+      }, Math.random() * 40 + 30); // Random typing speed
+    } else {
+      // Line complete, move to next line
+      typewriterIntervalRef.current = setTimeout(() => {
+        setBootLines(prev => [...prev, currentLine]);
+        setCurrentBootLine("");
+        setCurrentBootIndex(prev => prev + 1);
+        setCurrentCharIndex(0);
+      }, 200); // Small delay before next line
+    }
+
+    return () => {
+      if (typewriterIntervalRef.current) {
+        clearTimeout(typewriterIntervalRef.current);
+      }
+    };
   }, [currentBootIndex, currentCharIndex, audioEnabled]);
 
   // Auto-scroll
@@ -139,36 +155,39 @@ export default function CorruptedAdminPanel() {
     el.scrollTop = el.scrollHeight;
   }, [bootLines, currentBootLine, snakeEvent]);
 
-  // Debug log
+  // Debug logs
   useEffect(() => {
     console.log("Current snakeEvent state:", snakeEvent);
   }, [snakeEvent]);
 
+  useEffect(() => {
+    console.log("SimonEvent state changed:", SimonEvent);
+  }, [SimonEvent]);
+
   // Handler for Prompt events
   const handleEvent = (event) => {
     console.log("Prompt triggered event:", event);
-    if (event === "SimonGame"){
-      setSimonEvent(event)
-
-    }
-    else{
+    if (event === "SimonGame") {
+      setSimonEvent(event);
+      setSnakeEvent(null); // Clear snake event if simon starts
+    } else {
       setSnakeEvent(event);
-
+      setSimonEvent(null); // Clear simon event if snake starts
     }
-    
   };
   
   const handleSnakeExit = () => {
+    console.log("Snake game exiting");
     setSnakeEvent(null);
   };
 
-  const SimonExit = () => {
+  const handleSimonExit = () => {
+    console.log("Simon game exiting");
     setSimonEvent(null);
   };
-  
 
   const handleContainerClick = () => {
-    if (!audioEnabled) {
+    if (!audioEnabled && showAudioPrompt) {
       initializeAudio();
     }
   };
@@ -258,20 +277,21 @@ export default function CorruptedAdminPanel() {
               >
                 {/* Boot sequence lines */}
                 {bootLines.map((line, idx) => (
-                  <div key={idx} className="text-amber-100">
+                  <div key={`boot-line-${idx}`} className="text-amber-100">
                     {line}
                   </div>
                 ))}
 
                 {/* Current typing line during boot */}
-                {currentBootLine && (
+                {currentBootLine && !bootComplete && (
                   <div className="text-amber-100">
                     {currentBootLine}
+                    <span className="animate-pulse">|</span>
                   </div>
                 )}
 
                 {/* Only show Prompt and HelpBlock after boot is complete */}
-                {currentBootIndex >= 4 && (
+                {bootComplete && (
                   <>
                     <Prompt 
                       onEvent={handleEvent} 
@@ -289,21 +309,8 @@ export default function CorruptedAdminPanel() {
               {snakeEvent === "snakeGame" && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
                   <div className="w-full h-full relative">
-                  <SnakeAdmin
+                    <SnakeAdmin
                       onExit={handleSnakeExit}
-                      audioContext={audioContextRef.current}
-                      audioEnabled={audioEnabled}
-                       onAudioInit={initializeAudio}
-                  />
-                  </div>
-                </div>
-              )}
-              {/* SimonGame */}
-              {SimonEvent === "firewallGame" && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
-                  <div className="w-full h-full relative">
-                    <SimonSaysGame
-                      onExit={SimonExit}
                       audioContext={audioContextRef.current}
                       audioEnabled={audioEnabled}
                       onAudioInit={initializeAudio}
@@ -312,10 +319,19 @@ export default function CorruptedAdminPanel() {
                 </div>
               )}
 
-
-
-
-
+              {/* Simon Says Game overlay */}
+              {SimonEvent === "SimonGame" && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
+                  <div className="w-full h-full relative">
+                    <SimonSaysGame
+                      onExit={handleSimonExit}
+                      audioContext={audioContextRef.current}
+                      audioEnabled={audioEnabled}
+                      onAudioInit={initializeAudio}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

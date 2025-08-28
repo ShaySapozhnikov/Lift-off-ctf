@@ -56,25 +56,44 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     }
   };
 
-  const runFileAPI = async (path) => {
+  const runFileAPI = async (path, score = undefined) => {
     try {
+      const requestBody = { path, user: currentUser };
+      if (score !== undefined) {
+        requestBody.score = score;
+      }
+
       const res = await fetch(`${BACKEND_URL}/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path, user: currentUser }),
+        body: JSON.stringify(requestBody),
       });
       if (!res.ok) return [`Error: ${await res.text()}`];
       const data = await res.json();
 
-      // ✅ Notify parent about any event (like "snakeGame")
+      // ✅ Notify parent about any event (like "snakeGame" or "SimonGame")
       if (data.event && typeof onEvent === "function") {
         onEvent(data.event);
       }
 
       if (data.output === "exploit") setCurrentUser("root");
+
+      // Handle flags from completed games
+      if (data.flag) {
+        return [data.output, `FLAG: ${data.flag}`];
+      }
+
       return [data.output];
     } catch (e) {
       return [`Network error: ${e.message}`];
+    }
+  };
+
+  // Expose function for games to submit scores
+  window.submitGameScore = async (gamePath, score) => {
+    const result = await runFileAPI(gamePath, score);
+    if (result && result.length) {
+      setHistory((h) => [...h, ...result]);
     }
   };
 
