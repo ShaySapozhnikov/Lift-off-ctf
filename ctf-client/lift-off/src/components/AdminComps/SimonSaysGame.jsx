@@ -30,7 +30,7 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
   
   const dialogueRef = useRef();
 
-  // Dialogue for the virus encounter
+  // Dialogue for the ANOMALY encounter
   const dialogues = [
     "...",
     "oh... oh no...",
@@ -472,12 +472,12 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
           <div className="border-t border-amber-100/30 pt-4">
             {dialogues.slice(0, dialogueIndex).map((line, index) => (
               <div key={index} className="mb-2">
-                <span className="text-red-400">VIRUS:</span> {line}
+                <span className="text-red-400">ANOMALY:</span> {line}
               </div>
             ))}
             {dialogueIndex < dialogues.length && (
               <div className="mb-2">
-                <span className="text-red-400">VIRUS:</span> {currentDialogue}
+                <span className="text-red-400">ANOMALY:</span> {currentDialogue}
                 {(isTyping || showCursor) && (
                   <span className="animate-pulse">█</span>
                 )}
@@ -501,12 +501,12 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
           <div className="border-t border-amber-100/30 pt-4">
             {failureDialogues.slice(0, failureDialogueIndex).map((line, index) => (
               <div key={index} className="mb-2">
-                <span className="text-red-400">VIRUS:</span> {line}
+                <span className="text-red-400">ANOMALY:</span> {line}
               </div>
             ))}
             {failureDialogueIndex < failureDialogues.length && (
               <div className="mb-2">
-                <span className="text-red-400">VIRUS:</span> {currentFailureDialogue}
+                <span className="text-red-400">ANOMALY:</span> {currentFailureDialogue}
                 {(isFailureTyping || showCursor) && (
                   <span className="animate-pulse">█</span>
                 )}
@@ -562,7 +562,7 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
         </div>
         {gameState === 'won' && (
           <div className="text-green-400 text-xs mt-1 animate-pulse">
-            ENHANCED FIREWALL COMPROMISED • VIRUS PROTOCOLS BREACHED
+            ENHANCED FIREWALL COMPROMISED • ANOMALY PROTOCOLS BREACHED
           </div>
         )}
       </div>
@@ -652,7 +652,7 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
         {gameState === 'playing' && !isSequencePlaying && isPlayerTurn && "CLICK BUTTONS TO REPEAT SEQUENCE"}
         {gameState === 'playing' && isSequencePlaying && "MEMORIZE THE ENHANCED PATTERN"}
         {gameState === 'failed' && "UPGRADED SECURITY ACTIVATED • INTRUSION LOGGED"}
-        {gameState === 'won' && "ENHANCED FIREWALL BREACHED • VIRUS DEFENSES COMPROMISED"}
+        {gameState === 'won' && "ENHANCED FIREWALL BREACHED • ANOMALY DEFENSES COMPROMISED"}
       </div>
     </div>
   );
