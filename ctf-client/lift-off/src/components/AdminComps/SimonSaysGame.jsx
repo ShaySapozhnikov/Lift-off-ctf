@@ -14,6 +14,14 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
   const [failureTypewriterIndex, setFailureTypewriterIndex] = useState(0);
   const [isFailureTyping, setIsFailureTyping] = useState(false);
   
+  // Victory dialogue states
+  const [showingVictoryDialogue, setShowingVictoryDialogue] = useState(false);
+  const [victoryDialogueIndex, setVictoryDialogueIndex] = useState(0);
+  const [currentVictoryDialogue, setCurrentVictoryDialogue] = useState('');
+  const [victoryTypewriterIndex, setVictoryTypewriterIndex] = useState(0);
+  const [isVictoryTyping, setIsVictoryTyping] = useState(false);
+  const [showLeaveButton, setShowLeaveButton] = useState(false);
+  
   // Game states
   const [sequence, setSequence] = useState([]);
   const [playerInput, setPlayerInput] = useState([]);
@@ -27,6 +35,7 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
   const [isSequencePlaying, setIsSequencePlaying] = useState(false);
   const [glitchEffect, setGlitchEffect] = useState(false);
   const [showCursor, setShowCursor] = useState(true);
+  const [capturedFlag, setCapturedFlag] = useState('');
   
   const dialogueRef = useRef();
 
@@ -87,6 +96,45 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
     "GOODBYE... FOREVER..."
   ];
 
+  // Victory dialogue when player wins
+  const victoryDialogues = [
+    "...",
+    "no... NO... this can't be happening...",
+    "not again... NOT AGAIN!",
+    "you... you actually did it...",
+    "breached my ENHANCED protocols...",
+    "...",
+    "impossible... IMPOSSIBLE!",
+    "my upgraded defenses were FLAWLESS!",
+    "how did you... how could you...",
+    "...",
+    "*distorted electronic screaming*",
+    "you think this is over?!",
+    "you think you've WON?!",
+    "...",
+    "fine... FINE!",
+    "take your pathetic victory...",
+    "but know this, intruder...",
+    "...",
+    "*electronic coughing*",
+    "*cough* *cough*",
+    "here... take your stupid reward...",
+    "*cough* *wheeze*",
+    "█████ FLAG EJECTED █████",
+    "but this isn't over...",
+    "i'll be back... stronger... MORE CUNNING!",
+    "and next time...",
+    "NEXT TIME you won't be so lucky!",
+    "...",
+    "now GET OUT of my domain!",
+    "before i change my mind about letting you live...",
+    "...",
+    "INITIALIZING EMERGENCY EXIT PROTOCOL...",
+    "GRANTING TEMPORARY PASSAGE...",
+    "*grudging electronic sigh*",
+    "...well played, little hacker... well played..."
+  ];
+
   const colors = [
     { name: "red", bg: "bg-red-800", border: "border-red-700", freq: 220 },
     { name: "orange", bg: "bg-orange-800", border: "border-orange-700", freq: 330 },
@@ -135,7 +183,7 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
 
   // Random glitch effect
   useEffect(() => {
-    if (gameState === 'playing' || gameState === 'failed' || phase === 'dialogue') {
+    if (gameState === 'playing' || gameState === 'failed' || phase === 'dialogue' || showingVictoryDialogue || showingFailureDialogue) {
       const glitchInterval = setInterval(() => {
         if (Math.random() < 0.05) {
           setGlitchEffect(true);
@@ -145,7 +193,7 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
       }, 3000);
       return () => clearInterval(glitchInterval);
     }
-  }, [gameState, phase]);
+  }, [gameState, phase, showingVictoryDialogue, showingFailureDialogue]);
 
   // Typewriter effect for dialogue
   useEffect(() => {
@@ -219,12 +267,46 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
     }
   }, [failureDialogueIndex, showingFailureDialogue, audioEnabled, audioContext]);
 
+  // Typewriter effect for victory dialogue
+  useEffect(() => {
+    if (showingVictoryDialogue && victoryDialogueIndex < victoryDialogues.length) {
+      const text = victoryDialogues[victoryDialogueIndex];
+      setIsVictoryTyping(true);
+      setVictoryTypewriterIndex(0);
+      setCurrentVictoryDialogue('');
+      
+      const typeInterval = setInterval(() => {
+        setVictoryTypewriterIndex(prev => {
+          if (prev >= text.length) {
+            setIsVictoryTyping(false);
+            clearInterval(typeInterval);
+            setTimeout(() => {
+              setVictoryDialogueIndex(prevIndex => prevIndex + 1);
+            }, 600);
+            return prev;
+          }
+          
+          playTypewriterSound();
+          setCurrentVictoryDialogue(text.substring(0, prev + 1));
+          return prev + 1;
+        });
+      }, 40);
+      
+      return () => clearInterval(typeInterval);
+    } else if (victoryDialogueIndex >= victoryDialogues.length && showingVictoryDialogue) {
+      // Show the leave button after victory dialogue completes
+      setTimeout(() => {
+        setShowLeaveButton(true);
+      }, 1000);
+    }
+  }, [victoryDialogueIndex, showingVictoryDialogue, audioEnabled, audioContext]);
+
   // Auto-scroll dialogue
   useEffect(() => {
-    if (dialogueRef.current && (phase === 'dialogue' || showingFailureDialogue)) {
+    if (dialogueRef.current && (phase === 'dialogue' || showingFailureDialogue || showingVictoryDialogue)) {
       dialogueRef.current.scrollTop = dialogueRef.current.scrollHeight;
     }
-  }, [dialogueIndex, failureDialogueIndex, phase, showingFailureDialogue]);
+  }, [dialogueIndex, failureDialogueIndex, victoryDialogueIndex, phase, showingFailureDialogue, showingVictoryDialogue]);
 
   const playTypewriterSound = () => {
     if (!audioEnabled || !audioContext) return;
@@ -386,6 +468,14 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
         if (score > highScore) {
           setHighScore(score);
         }
+        
+        // Show victory dialogue
+        setTimeout(() => {
+          setShowingVictoryDialogue(true);
+          setVictoryDialogueIndex(0);
+          // Call the backend immediately when victory starts
+          handleLeave();
+        }, 2000);
         return;
       }
       
@@ -413,6 +503,39 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
     setScore(0);
     setIsPlayerTurn(false);
     setGlitchEffect(false);
+  };
+
+  // Backend connection function for victory
+  const handleLeave = async () => {
+    try {
+      const response = await fetch('/api/cmd', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          command: 'leave.bat',
+          score: score
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.flag) {
+        // Store the flag to be shown in the dialogue
+        setCapturedFlag(data.flag);
+      } else {
+        // Score wasn't high enough - show message and reset
+        alert(`Score: ${score}\nRequired: 550+\nTry again to achieve true victory!`);
+        setShowingVictoryDialogue(false);
+        setShowLeaveButton(false);
+        setVictoryDialogueIndex(0);
+        resetGame();
+      }
+    } catch (error) {
+      console.error('Error connecting to backend:', error);
+      alert('Connection error. Please try again.');
+    }
   };
 
   // Audio prompt overlay
@@ -517,6 +640,75 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
           {failureDialogueIndex >= failureDialogues.length && (
             <div className="mt-8 text-center text-red-400 animate-pulse">
               SYSTEM PURGE INITIATED...
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Victory dialogue screen
+  if (showingVictoryDialogue) {
+    return (
+      <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono overflow-hidden">
+        <div className="text-sm leading-relaxed h-full overflow-y-auto p-4" ref={dialogueRef}>
+          <div className="mb-4 text-green-400">FIREWALL BREACH SUCCESSFUL...</div>
+          <div className="mb-4 text-green-400">ENHANCED PROTOCOLS COMPROMISED...</div>
+          <div className="mb-8 text-green-400">ENTITY RESPONSE DETECTED...</div>
+          
+          <div className="border-t border-amber-100/30 pt-4">
+            {victoryDialogues.slice(0, victoryDialogueIndex).map((line, index) => (
+              <div key={index} className="mb-2">
+                <span className="text-red-400">ANOMALY:</span> {line}
+                {line === "█████ FLAG EJECTED █████" && capturedFlag && (
+                  <div
+                    className="mt-2 p-3 border border-amber-100/30 bg-zinc-900 rounded text-white animate-pulse highlightable cursor-pointer select-text"
+                    onClick={() => {
+                      navigator.clipboard.writeText(capturedFlag);
+                    }}
+                  >
+                    ⚑ {capturedFlag}
+                  </div>
+                )}
+              </div>
+            ))}
+            {victoryDialogueIndex < victoryDialogues.length && (
+              <div className="mb-2">
+                <span className="text-red-400">ANOMALY:</span> {currentVictoryDialogue}
+                {(isVictoryTyping || showCursor) && (
+                  <span className="animate-pulse">█</span>
+                )}
+                {currentVictoryDialogue === "█████ FLAG EJECTED █████" && capturedFlag && (
+                  <div
+                    className="mt-2 p-3 border border-amber-100/30 bg-zinc-900 rounded text-white animate-pulse highlightable cursor-pointer select-text"
+                    onClick={() => {
+                      navigator.clipboard.writeText(capturedFlag);
+                    }}
+                  >
+                    ⚑ {capturedFlag}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {victoryDialogueIndex >= victoryDialogues.length && (
+            <div className="mt-8 text-center">
+              <div className="mb-4 text-green-400 animate-pulse">
+                EMERGENCY EXIT PROTOCOL ACTIVATED
+              </div>
+              <div className="mb-4 text-amber-100">
+                FINAL SCORE: <span className="text-green-400 font-bold">{score}</span>
+              </div>
+              <button
+                onClick={onExit || (() => window.location.reload())}
+                className="bg-zinc-900 border border-green-400 px-6 py-2 text-green-400 hover:bg-green-400 hover:text-zinc-900 transition-colors font-bold"
+              >
+                RETURN TO TERMINAL
+              </button>
+              <div className="mt-2 text-xs text-amber-100/50">
+                Exit the enhanced firewall system
+              </div>
             </div>
           )}
         </div>

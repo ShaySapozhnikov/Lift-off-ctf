@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 
 
 const FLAG_LEVEL_1 = "CTF{snake_victory_flag}";
-
+const FLAG_LEVEL_2 = "CTF{simon_says_flag}";
 
 
 dotenv.config();
@@ -69,17 +69,21 @@ app.post("/run", (req, res) => {
     }
     return res.json({ output: "Loading", event: "snakeGame" });
   }
-  // Simon game special logic (add this after the Snake game logic)
   if (path.toLowerCase().endsWith("leave.bat")) {
-    if (score !== undefined && score >= 300) {
+    const playerScore = score ?? 0;
+  
+    if (playerScore >= 550) {
       return res.json({
         output: "Simon Victory Achieved!",
-        flag: "CTF{simon_says_flag}", // Replace with your actual flag
+        flag: FLAG_LEVEL_2,
+      });
+    }
+  
+    return res.json({
+      output: "Loading",
+      event: "SimonGame",
     });
   }
-  return res.json({ output: "Loading", event: "SimonGame" }); 
-  } 
-
 
 
 
