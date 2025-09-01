@@ -20,7 +20,6 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
   const [currentVictoryDialogue, setCurrentVictoryDialogue] = useState('');
   const [victoryTypewriterIndex, setVictoryTypewriterIndex] = useState(0);
   const [isVictoryTyping, setIsVictoryTyping] = useState(false);
-  const [showLeaveButton, setShowLeaveButton] = useState(false);
   
   // Game states
   const [sequence, setSequence] = useState([]);
@@ -36,10 +35,6 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
   const [glitchEffect, setGlitchEffect] = useState(false);
   const [showCursor, setShowCursor] = useState(true);
   const [capturedFlag, setCapturedFlag] = useState('');
-  
-  // Debug states
-  const [debugMode, setDebugMode] = useState(false);
-  const [apiDebugLogs, setApiDebugLogs] = useState([]);
   
   const dialogueRef = useRef();
 
@@ -212,7 +207,6 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
           if (prev >= text.length) {
             setIsTyping(false);
             clearInterval(typeInterval);
-            // Move to next dialogue after completing current one
             setTimeout(() => {
               setDialogueIndex(prevIndex => prevIndex + 1);
             }, 800);
@@ -227,7 +221,6 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
       
       return () => clearInterval(typeInterval);
     } else if (dialogueIndex >= dialogues.length && phase === 'dialogue') {
-      // Automatically start the game after dialogue
       setTimeout(() => {
         setPhase('game');
         setTimeout(() => {
@@ -264,7 +257,6 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
       
       return () => clearInterval(typeInterval);
     } else if (failureDialogueIndex >= failureDialogues.length && showingFailureDialogue) {
-      // Reset the page after failure dialogue completes
       setTimeout(() => {
         window.location.reload();
       }, 2000);
@@ -298,10 +290,7 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
       
       return () => clearInterval(typeInterval);
     } else if (victoryDialogueIndex >= victoryDialogues.length && showingVictoryDialogue) {
-      // Show the leave button after victory dialogue completes
-      setTimeout(() => {
-        setShowLeaveButton(true);
-      }, 1000);
+      // Victory dialogue is complete
     }
   }, [victoryDialogueIndex, showingVictoryDialogue, audioEnabled, audioContext]);
 
@@ -455,7 +444,6 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
         setHighScore(score);
       }
       
-      // Show failure dialogue instead of just resetting
       setTimeout(() => {
         setShowingFailureDialogue(true);
         setFailureDialogueIndex(0);
@@ -473,11 +461,9 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
           setHighScore(score);
         }
         
-        // Show victory dialogue
         setTimeout(() => {
           setShowingVictoryDialogue(true);
           setVictoryDialogueIndex(0);
-          // Call the backend immediately when victory starts
           handleLeave();
         }, 2000);
         return;
@@ -510,82 +496,39 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
   };
 
   // Backend connection function for victory
-  const handleLeave = async (overrideScore) => {
-    const finalScore = overrideScore ?? score; // use the argument if given, otherwise the state
-  
-    const debugLog = (message, data = null) => {
-      const timestamp = new Date().toLocaleTimeString();
-      const logEntry = { timestamp, message, data };
-      setApiDebugLogs(prev => [...prev, logEntry]);
-      console.log(`[${timestamp}] ${message}`, data);
-    };
-  
+  const handleLeave = async () => {
     try {
-      debugLog('Starting API call to backend', { score: finalScore, requiredScore: 550 });
-  
       const requestBody = {
         path: '/home/user/LEAVE.bat',
         user: 'player',
-        score: finalScore,
+        score: score,
       };
-  
-      debugLog('Request body prepared', requestBody);
-  
+
       const response = await fetch("https://lift-off-ctf.onrender.com/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
-  
-      debugLog('Response received', { 
-        status: response.status, 
-        statusText: response.statusText,
-        ok: response.ok 
-      });
-  
-      if (!response.ok) throw new Error(`Server error: ${response.status} - ${response.statusText}`);
-  
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status} - ${response.statusText}`);
+      }
+
       const data = await response.json();
-      debugLog('Response data parsed', data);
-  
-      if (data.flag && finalScore >= 550) {
-        debugLog('Victory conditions met, setting flag', { flag: data.flag });
+
+      if (data.flag && score >= 550) {
         setCapturedFlag(data.flag);
         navigator.clipboard.writeText(data.flag);
       } else {
-        debugLog('Victory conditions not met', { hasFlag: !!data.flag, score: finalScore, required: 550 });
+        // If score is not high enough, reset the game
         setShowingVictoryDialogue(false);
-        setShowLeaveButton(false);
         setVictoryDialogueIndex(0);
         resetGame();
       }
     } catch (error) {
-      debugLog('API call failed', { error: error.message, stack: error.stack });
       console.error('Error connecting to backend:', error);
       alert('Connection error. Please try again.');
     }
-  };
-  
-  
-  const debugAutoVictory = () => {
-    const forcedScore = 600;
-    setScore(forcedScore); // update UI
-    setMessage("█████ FIREWALL BREACHED █████");
-    setGameState('won');
-    setIsPlayerTurn(false);
-    if (forcedScore > highScore) setHighScore(forcedScore);
-  
-    setTimeout(() => {
-      setShowingVictoryDialogue(true);
-      setVictoryDialogueIndex(0);
-      handleLeave(forcedScore); // ← now this is actually sent to backend
-    }, 1000);
-  };
-
-
-  // Debug function to toggle debug panel
-  const toggleDebugMode = () => {
-    setDebugMode(prev => !prev);
   };
 
   // Audio prompt overlay
@@ -829,7 +772,7 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
                     ${isPlayerInputMatch ? 'ring-2 ring-amber-100/50' : ''}
                   `}
                 >
-                  {/* Corner indicators like snake game */}
+                  {/* Corner indicators */}
                   <div className="absolute top-1 left-1 w-1 h-1 bg-amber-100/60 rounded-full" />
                   <div className="absolute top-1 right-1 w-1 h-1 bg-amber-100/60 rounded-full" />
                   <div className="absolute bottom-1 left-1 w-1 h-1 bg-amber-100/60 rounded-full" />
@@ -841,38 +784,33 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
         </div>
       </div>
 
-      {/* Debug buttons - always available when not in dialogue phases */}
-      {(gameState === 'ready' || gameState === 'playing' || gameState === 'failed') && (
-        <div className="text-center mb-4">
-          <div className="flex gap-2 justify-center">
-            <button
-              onClick={toggleDebugMode}
-              onMouseDown={(e) => e.preventDefault()}
-              className="bg-zinc-900 border border-purple-400 px-3 py-1 text-purple-400 hover:bg-purple-400 hover:text-zinc-900 transition-colors text-xs"
-            >
-              {debugMode ? 'HIDE' : 'SHOW'} DEBUG
-            </button>
-            {debugMode && (
-              <button
-                onClick={debugAutoVictory}
-                onMouseDown={(e) => e.preventDefault()}
-                className="bg-zinc-900 border border-green-400 px-3 py-1 text-green-400 hover:bg-green-400 hover:text-zinc-900 transition-colors text-xs"
-              >
-                AUTO VICTORY
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Control Buttons */}
       <div className="text-center p-4 flex-shrink-0">
         {gameState === 'ready' && (
-          <div className="text-amber-100/70 text-sm animate-pulse">
+          <button
+            onClick={startGame}
+            onMouseDown={(e) => e.preventDefault()}
+            className="bg-zinc-900 border border-amber-100 px-6 py-3 text-amber-100 hover:bg-amber-100 hover:text-zinc-900 transition-colors font-bold text-lg"
+          >
+            INITIALIZE BREACH PROTOCOL
+          </button>
+        )}
+
+        {gameState === 'failed' && (
+          <button
+            onClick={resetGame}
+            onMouseDown={(e) => e.preventDefault()}
+            className="bg-zinc-900 border border-red-400 px-6 py-3 text-red-400 hover:bg-red-400 hover:text-zinc-900 transition-colors font-bold"
+          >
+            RESET SECURITY SYSTEM
+          </button>
+        )}
+
+        {gameState === 'ready' && (
+          <div className="text-amber-100/70 text-sm animate-pulse mt-2">
             BREACH PROTOCOL INITIALIZING...
           </div>
         )}
-        
 
         {/* Progress indicator */}
         {gameState === 'playing' && (
@@ -897,50 +835,6 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
         {gameState === 'failed' && "UPGRADED SECURITY ACTIVATED • INTRUSION LOGGED"}
         {gameState === 'won' && "ENHANCED FIREWALL BREACHED • ANOMALY DEFENSES COMPROMISED"}
       </div>
-
-      {/* Debug Panel */}
-      {debugMode && (
-        <div className="fixed top-4 right-4 bg-zinc-800 border border-purple-400 p-4 max-w-md max-h-80 overflow-y-auto text-xs font-mono">
-          <div className="text-purple-400 mb-2 font-bold">DEBUG PANEL</div>
-          <div className="mb-2">
-            <span className="text-purple-400">Current Score:</span> {score}
-          </div>
-          <div className="mb-2">
-            <span className="text-purple-400">Required Score:</span> 550
-          </div>
-          <div className="mb-2">
-            <span className="text-purple-400">Game State:</span> {gameState}
-          </div>
-          <div className="mb-2">
-            <span className="text-purple-400">Victory Dialogue:</span> {showingVictoryDialogue ? 'Active' : 'Inactive'}
-          </div>
-          
-          {apiDebugLogs.length > 0 && (
-            <div className="mt-4">
-              <div className="text-purple-400 mb-2 font-bold">API DEBUG LOGS:</div>
-              <div className="max-h-40 overflow-y-auto bg-zinc-900 p-2 border border-purple-400/30">
-                {apiDebugLogs.map((log, index) => (
-                  <div key={index} className="mb-1 text-xs">
-                    <div className="text-purple-300">[{log.timestamp}]</div>
-                    <div className="text-amber-100">{log.message}</div>
-                    {log.data && (
-                      <div className="text-green-300 pl-2">
-                        {JSON.stringify(log.data, null, 2)}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={() => setApiDebugLogs([])}
-                className="mt-2 bg-zinc-900 border border-red-400 px-2 py-1 text-red-400 hover:bg-red-400 hover:text-zinc-900 transition-colors text-xs"
-              >
-                CLEAR LOGS
-              </button>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
