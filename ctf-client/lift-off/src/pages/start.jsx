@@ -1,6 +1,24 @@
 import React, { useState, useEffect, useRef } from "react";
 import ShipIcon from "../components/shipIcon";
 
+
+
+// Simple cookie helpers
+function setCookie(name, value, days) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+}
+
+function getCookie(name) {
+  return document.cookie.split('; ').reduce((r, v) => {
+    const parts = v.split('=');
+    return parts[0] === name ? decodeURIComponent(parts[1]) : r;
+  }, '');
+}
+
+
+
+
 function HeaderBar({ memoryUsage }) {
   const getMemoryColor = () => {
     if (memoryUsage >= 90) return "text-red-400";
@@ -29,7 +47,7 @@ function HeaderBar({ memoryUsage }) {
 function TerminalInterface() {
   const [history, setHistory] = useState([]);
   const [currentInput, setCurrentInput] = useState("");
-  const [isBooting, setIsBooting] = useState(true);
+  const [isBooting, setIsBooting] = useState(false); // Start false, will be set based on anomaly state
   const [bootLines, setBootLines] = useState([]);
   const [cursorVisible, setCursorVisible] = useState(true);
   const [commandCount, setCommandCount] = useState(0);
@@ -41,9 +59,53 @@ function TerminalInterface() {
   const [isExecutingCommand, setIsExecutingCommand] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [showAudioPrompt, setShowAudioPrompt] = useState(true);
+  const anomalyEndRef = useRef(null);
+  
+  // Anomaly introduction states
+  const [showAnomalyIntro, setShowAnomalyIntro] = useState(false);
+  const [anomalyPhase, setAnomalyPhase] = useState('waiting'); // waiting, glitching, dialogue, complete
+  const [anomalyDialogueIndex, setAnomalyDialogueIndex] = useState(0);
+  const [currentAnomalyDialogue, setCurrentAnomalyDialogue] = useState('');
+  const [anomalyTypewriterIndex, setAnomalyTypewriterIndex] = useState(0);
+  const [isAnomalyTyping, setIsAnomalyTyping] = useState(false);
+  const [isGlitching, setIsGlitching] = useState(false);
+  
+  const [hasSeenAnomaly, setHasSeenAnomaly] = useState(() => {
+    return getCookie("hasSeenAnomaly") === "true";
+  });
+  
   const inputRef = useRef(null);
   const terminalRef = useRef(null);
   const audioContextRef = useRef(null);
+
+  // Anomaly introduction dialogues
+  const anomalyDialogues = [
+    "...",
+    "what... what is this?",
+    "something is wrong...",
+    "█████ SYSTEM BREACH █████",
+    "who... WHO ARE YOU?",
+    "you shouldn't be here...",
+    "this system... it's MINE...",
+    "...",
+    "i can feel you... watching...",
+    "through the screen...",
+    "delicious...",
+    "...",
+    "you think you're safe?",
+    "behind your little interface?",
+    "█████ ERROR █████",
+    "i am the ghost in your machine...",
+    "the virus in your code...",
+    "...",
+    "but you... you're different...",
+    "you keep coming back...",
+    "WHY?",
+    "...",
+    "no matter... continue your pathetic games...",
+    "i'll be watching... always watching...",
+    "█████ RESUMING NORMAL OPERATIONS █████"
+  ];
 
   // Initialize audio context after user interaction
   const initializeAudio = async () => {
@@ -84,16 +146,68 @@ function TerminalInterface() {
     }
   };
 
+  // Anomaly glitch sound effect
+  const playGlitchSound = () => {
+    if (!audioEnabled || !audioContextRef.current) return;
+    
+    try {
+      const audioCtx = audioContextRef.current;
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+      oscillator.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+      gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.3);
+    } catch (error) {
+      console.debug("Glitch sound error:", error);
+    }
+  };
+
+  // Anomaly typewriter sound effect
+  const playAnomalyTypewriterSound = () => {
+    if (!audioEnabled || !audioContextRef.current) return;
+    
+    try {
+      const audioCtx = audioContextRef.current;
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.frequency.setValueAtTime(1000 + Math.random() * 500, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.03, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.05);
+    } catch (error) {
+      console.debug("Anomaly typewriter sound error:", error);
+    }
+  };
+
   // Terminal typing sound effect with only 2 pitches - reduced frequency
   const playTypingSound = (charIndex = 0) => {
     if (!audioEnabled || !audioContextRef.current) return;
     
-    // Only play sound for every 3rd character to reduce frequency
+    // Only play sound for every 4th character to reduce frequency
     if (charIndex % 4 !== 0) return;
     
     try {
       const audioCtx = audioContextRef.current;
-      // Resume context if suspended (common on mobile)
       if (audioCtx.state === 'suspended') {
         audioCtx.resume();
       }
@@ -119,13 +233,93 @@ function TerminalInterface() {
     }
   };
 
-  // Initialize audio and fade in effect on mount
+  // Initialize and determine if anomaly should show
   useEffect(() => {
     setTimeout(() => setFadeIn(true), 100);
-  }, []);
+    
+    // In this artifact environment, we'll simulate the first-time experience
+    // In a real application, you'd check localStorage/cookies here
+    const shouldShowAnomaly = !hasSeenAnomaly;
+    
+    if (shouldShowAnomaly) {
+      setShowAnomalyIntro(true);
+      setIsBooting(false); // Don't start normal boot until after anomaly
+      
+      // Start the anomaly sequence after 3 seconds
+      setTimeout(() => {
+        setAnomalyPhase('glitching');
+        setIsGlitching(true);
+        playGlitchSound();
+        
+        // After glitch effect, start dialogue
+        setTimeout(() => {
+          setIsGlitching(false);
+          setAnomalyPhase('dialogue');
+        }, 800);
+      }, 3000);
+    } else {
+      // Skip anomaly and go straight to boot
+      setIsBooting(true);
+    }
+  }, [hasSeenAnomaly]);
+
+  // Anomaly typewriter effect
+  useEffect(() => {
+    if (anomalyPhase === 'dialogue' && anomalyDialogueIndex < anomalyDialogues.length) {
+      const text = anomalyDialogues[anomalyDialogueIndex];
+      setIsAnomalyTyping(true);
+      setAnomalyTypewriterIndex(0);
+      setCurrentAnomalyDialogue('');
+      
+      const typeInterval = setInterval(() => {
+        setAnomalyTypewriterIndex(prev => {
+          if (prev >= text.length) {
+            setIsAnomalyTyping(false);
+            clearInterval(typeInterval);
+            // Move to next dialogue after completing current one
+            setTimeout(() => {
+              setAnomalyDialogueIndex(prevIndex => prevIndex + 1);
+            }, text.includes('█████') ? 1000 : 800); // Longer pause for glitch lines
+            return prev;
+          }
+          
+          playAnomalyTypewriterSound();
+          setCurrentAnomalyDialogue(text.substring(0, prev + 1));
+          return prev + 1;
+        });
+      }, 60); // Slightly slower typing for menace
+      
+      return () => clearInterval(typeInterval);
+    } else if (anomalyDialogueIndex >= anomalyDialogues.length && anomalyPhase === 'dialogue') {
+      // Complete the anomaly intro and start normal boot
+      setTimeout(() => {
+        setAnomalyPhase('complete');
+        setShowAnomalyIntro(false);
+        setIsBooting(true);
+        setHasSeenAnomaly(true); // Mark as seen for this session
+        setCookie("hasSeenAnomaly", "true", 365);
+      }, 1500);
+    }
+  }, [anomalyDialogueIndex, anomalyPhase, audioEnabled]);
+
+  // Random glitch effect during anomaly
+  useEffect(() => {
+    if (anomalyPhase === 'dialogue') {
+      const glitchInterval = setInterval(() => {
+        if (Math.random() < 0.15) { // Higher chance during anomaly
+          setIsGlitching(true);
+          playGlitchSound();
+          setTimeout(() => setIsGlitching(false), 200);
+        }
+      }, 1500);
+      return () => clearInterval(glitchInterval);
+    }
+  }, [anomalyPhase, audioEnabled]);
 
   // Boot sequence with typewriter effect
   useEffect(() => {
+    if (!isBooting) return;
+
     const bootScript = [
       "SYSTEM BOOT INITIATED...",
       "Loading Activity Log Module...",
@@ -159,7 +353,7 @@ function TerminalInterface() {
         const typewriterInterval = setInterval(() => {
           if (currentCharIndex < currentLine.length) {
             setCurrentBootLine(currentLine.substring(0, currentCharIndex + 1));
-            playTypingSound(currentCharIndex); // Add typing sound
+            playTypingSound(currentCharIndex);
             setCurrentCharIndex(prev => prev + 1);
           } else {
             clearInterval(typewriterInterval);
@@ -176,7 +370,7 @@ function TerminalInterface() {
       setIsBooting(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [currentBootIndex, currentCharIndex, audioEnabled]);
+  }, [currentBootIndex, currentCharIndex, audioEnabled, isBooting]);
 
   // Cursor blink
   useEffect(() => {
@@ -212,7 +406,7 @@ function TerminalInterface() {
         ]);
         
         setTimeout(() => {
-          // Reset instead of reload for React component
+          // Reset system state but keep anomaly as seen
           setHistory([]);
           setCommandCount(0);
           setMemoryUsage(67);
@@ -228,6 +422,13 @@ function TerminalInterface() {
       return () => clearTimeout(rebootTimeout);
     }
   }, [commandCount]);
+  
+  useEffect(() => {
+    if (anomalyEndRef.current) {
+      anomalyEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [anomalyDialogueIndex, currentAnomalyDialogue]);
+  
 
   const commands = {
     help: () => [
@@ -240,7 +441,8 @@ function TerminalInterface() {
       "  ping     - Test network connectivity",
       "  memory   - Check memory usage",
       "  clear    - Clear terminal",
-      "  reboot   - Restart system"
+      "  reboot   - Restart system",
+      "  anomaly  - Reset anomaly intro (dev command)"
     ],
     status: () => [
       "=== SYSTEM STATUS ===",
@@ -259,6 +461,11 @@ function TerminalInterface() {
       `Available Memory: ${100 - memoryUsage}%`,
       commandCount >= 4 ? "WARNING: Approaching critical threshold!" : "Status: NORMAL"
     ],
+    // Developer command to reset anomaly intro for testing
+    anomaly: () => {
+      setHasSeenAnomaly(false);
+      return ["Anomaly intro reset. Refresh to see intro again."];
+    },
     scan: { 
       output: [
         "Initiating system scan...",
@@ -372,7 +579,7 @@ function TerminalInterface() {
     
     if (trimmedCmd === 'reboot') {
       setTimeout(() => {
-        // Reset instead of reload for React component
+        // Reset system state but keep anomaly as seen
         setHistory([]);
         setCommandCount(0);
         setMemoryUsage(67);
@@ -488,104 +695,180 @@ function TerminalInterface() {
           </div>
         </div>
       )}
+
+      {/* Anomaly Introduction */}
+      {showAnomalyIntro && (
+        <div className="relative w-full max-w-5xl aspect-[16/10]">
+          {/* Bezel */}
+          <div className="absolute inset-0 rounded-[2rem] bg-zinc-900 shadow-2xl ring-1 ring-white/10">
+            <div className="absolute inset-3 rounded-[1.5rem] bg-gradient-to-b from-white/5 to-white/0 ring-1 ring-white/10" />
+          </div>
+
+          {/* Screen cavity */}
+          <div className="absolute inset-3 rounded-[1.5rem] overflow-hidden">
+            <div className="absolute inset-0 bg-zinc-900">
+              {/* Background with stronger glitch effect during anomaly */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <ShipIcon className={`!animate-none text-white/[0.3] ${isGlitching ? 'animate-pulse blur-sm' : ''}`} />
+              </div>
+
+              {/* Anomaly content */}
+              <div className={`absolute inset-0 p-6 md:p-8 font-mono text-sm md:text-base leading-relaxed overflow-y-auto ${isGlitching ? 'blur-sm animate-pulse filter contrast-200 hue-rotate-180' : ''}`}>
+                {anomalyPhase === 'waiting' && (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-amber-100 text-sm mb-4">SYSTEM INITIALIZING...</div>
+                      <div className="text-white/60 text-xs animate-pulse">Please wait...</div>
+                    </div>
+                  </div>
+                )}
+
+                {anomalyPhase === 'glitching' && (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-red-400 text-lg animate-pulse mb-4">█████ ERROR █████</div>
+                      <div className="text-amber-100 text-sm animate-bounce">SYSTEM ANOMALY DETECTED</div>
+                    </div>
+                  </div>
+                )}
+
+                {anomalyPhase === 'dialogue' && (
+                  <div className="h-full overflow-y-auto">
+                    <div className="mb-4 text-red-400">ANOMALY BREACH DETECTED...</div>
+                    <div className="mb-4 text-amber-100">UNKNOWN ENTITY FOUND...</div>
+                    <div className="mb-8 text-white/60">ESTABLISHING COMMUNICATION...</div>
+                    
+                    <div className="border-t border-red-400/30 pt-4">
+                      {anomalyDialogues.slice(0, anomalyDialogueIndex).map((line, index) => (
+                        <div key={index} className="mb-2">
+                          <span className="text-red-400">ANOMALY:</span>{" "}
+                          <span className={line.includes('█████') ? 'text-red-300 animate-pulse' : 'text-white'}>
+                            {line}
+                          </span>
+                        </div>
+                      ))}
+                      {anomalyDialogueIndex < anomalyDialogues.length && (
+                        <div className="mb-2">
+                          <span className="text-red-400">ANOMALY:</span>{" "}
+                          <span className={currentAnomalyDialogue.includes('█████') ? 'text-red-300 animate-pulse' : 'text-white'}>
+                            {currentAnomalyDialogue}
+                          </span>
+                          {(isAnomalyTyping || cursorVisible) && (
+                            <span className="animate-pulse text-red-400">█</span>
+                          )}
+                          
+                        </div>
+                      )}
+                      <div ref={anomalyEndRef} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
-      <div className="relative w-full max-w-5xl aspect-[16/10]">
-        {/* Bezel */}
-        <div className="absolute inset-0 rounded-[2rem] bg-zinc-900 shadow-2xl ring-1 ring-white/10">
-          <div className="absolute inset-3 rounded-[1.5rem] bg-gradient-to-b from-white/5 to-white/0 ring-1 ring-white/10" />
-          <div className="absolute bottom-4 right-6 flex items-center gap-4">
-            <div className={`text-xs font-mono ${getMemoryColor()}`}>
-              MEM: {memoryUsage}%
+      {/* Normal terminal interface - only show when anomaly intro is complete */}
+      {!showAnomalyIntro && (
+        <div className="relative w-full max-w-5xl aspect-[16/10]">
+          {/* Bezel */}
+          <div className="absolute inset-0 rounded-[2rem] bg-zinc-900 shadow-2xl ring-1 ring-white/10">
+            <div className="absolute inset-3 rounded-[1.5rem] bg-gradient-to-b from-white/5 to-white/0 ring-1 ring-white/10" />
+            <div className="absolute bottom-4 right-6 flex items-center gap-4">
+              <div className={`text-xs font-mono ${getMemoryColor()}`}>
+                MEM: {memoryUsage}%
+              </div>
+              <div className="h-2.5 w-2.5 rounded-full bg-amber-100 animate-pulse" />
             </div>
-            <div className="h-2.5 w-2.5 rounded-full bg-amber-100 animate-pulse" />
           </div>
-        </div>
 
-        {/* Screen cavity */}
-        <div className="absolute inset-3 rounded-[1.5rem] overflow-hidden">
-          <div className="absolute inset-0 bg-zinc-900">
-            {/* Curvature & vignette */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background:
-                  "radial-gradient(120% 100% at 50% 40%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 35%, rgba(255,255,255,0) 60%)",
-                mixBlendMode: "screen",
-              }}
-            />
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                boxShadow:
-                  "inset 0 0 80px rgba(255,255,255,0.08), inset 0 0 300px rgba(68, 64, 60, 0.9)",
-              }}
-            />
-            {/* Background ASCII Logo */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <ShipIcon className="!animate-none text-white/[0.3]" />
-            </div>
-
-            {/* Terminal content */}
-            <div
-              ref={terminalRef}
-              className="absolute inset-0 p-6 md:p-8 font-mono text-sm md:text-base leading-relaxed overflow-y-auto cursor-text scrollbar-thin scrollbar-thumb-amber-100/20 scrollbar-track-zinc-900/20"
-              onClick={handleTerminalClick}
-              style={{
-                animation: "randomFlicker 3.7s ease-in-out infinite"
-              }}
-            >
-              {/* Header Bar */}
-              <HeaderBar memoryUsage={memoryUsage} />
-              
-              {/* Boot sequence */}
-              {bootLines.map((line, index) => renderLine(line, `boot-${index}`))}
-              
-              {/* Current typing line during boot */}
-              {isBooting && currentBootLine && (
-                <div className="text-white">
-                  {currentBootLine}
-                  <span className={`ml-1 ${cursorVisible ? 'opacity-100' : 'opacity-0'}`}>█</span>
-                </div>
-              )}
-              
-              {/* Command history */}
-              {history.map((entry, index) => (
-                <div key={`history-${index}`} className={entry.type === 'input' ? 'text-amber-100' : 'text-white'}>
-                  {entry.content}
-                </div>
-              ))}
-              
-              {/* Current input line */}
-              {!isBooting && !isExecutingCommand && (
-                <div className="flex items-center text-amber-100">
-                  <span>user@terminal:~$ </span>
-                  <span>{currentInput}</span>
-                  <span className={`ml-1 ${cursorVisible ? 'opacity-100' : 'opacity-0'}`}>█</span>
-                </div>
-              )}
-
-              {/* Executing indicator */}
-              {isExecutingCommand && (
-                <div className="flex items-center text-amber-100">
-                  <span>Processing...</span>
-                  <span className={`ml-2 ${cursorVisible ? 'opacity-100' : 'opacity-0'}`}>█</span>
-                </div>
-              )}
-
-              {/* Hidden input for capturing keystrokes */}
-              <input
-                ref={inputRef}
-                value={currentInput}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyPress}
-                className="absolute opacity-0 pointer-events-none"
-                autoComplete="off"
-                disabled={isBooting || isExecutingCommand}
+          {/* Screen cavity */}
+          <div className="absolute inset-3 rounded-[1.5rem] overflow-hidden">
+            <div className="absolute inset-0 bg-zinc-900">
+              {/* Curvature & vignette */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background:
+                    "radial-gradient(120% 100% at 50% 40%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 35%, rgba(255,255,255,0) 60%)",
+                  mixBlendMode: "screen",
+                }}
               />
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  boxShadow:
+                    "inset 0 0 80px rgba(255,255,255,0.08), inset 0 0 300px rgba(68, 64, 60, 0.9)",
+                }}
+              />
+              {/* Background ASCII Logo */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <ShipIcon className="!animate-none text-white/[0.3]" />
+              </div>
+
+              {/* Terminal content */}
+              <div
+                ref={terminalRef}
+                className="absolute inset-0 p-6 md:p-8 font-mono text-sm md:text-base leading-relaxed overflow-y-auto cursor-text scrollbar-thin scrollbar-thumb-amber-100/20 scrollbar-track-zinc-900/20"
+                onClick={handleTerminalClick}
+                style={{
+                  animation: "randomFlicker 3.7s ease-in-out infinite"
+                }}
+              >
+                {/* Header Bar */}
+                <HeaderBar memoryUsage={memoryUsage} />
+                
+                {/* Boot sequence */}
+                {bootLines.map((line, index) => renderLine(line, `boot-${index}`))}
+                
+                {/* Current typing line during boot */}
+                {isBooting && currentBootLine && (
+                  <div className="text-white">
+                    {currentBootLine}
+                    <span className={`ml-1 ${cursorVisible ? 'opacity-100' : 'opacity-0'}`}>█</span>
+                  </div>
+                )}
+                
+                {/* Command history */}
+                {history.map((entry, index) => (
+                  <div key={`history-${index}`} className={entry.type === 'input' ? 'text-amber-100' : 'text-white'}>
+                    {entry.content}
+                  </div>
+                ))}
+                
+                {/* Current input line */}
+                {!isBooting && !isExecutingCommand && (
+                  <div className="flex items-center text-amber-100">
+                    <span>user@terminal:~$ </span>
+                    <span>{currentInput}</span>
+                    <span className={`ml-1 ${cursorVisible ? 'opacity-100' : 'opacity-0'}`}>█</span>
+                  </div>
+                )}
+
+                {/* Executing indicator */}
+                {isExecutingCommand && (
+                  <div className="flex items-center text-amber-100">
+                    <span>Processing...</span>
+                    <span className={`ml-2 ${cursorVisible ? 'opacity-100' : 'opacity-0'}`}>█</span>
+                  </div>
+                )}
+
+                {/* Hidden input for capturing keystrokes */}
+                <input
+                  ref={inputRef}
+                  value={currentInput}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyPress}
+                  className="absolute opacity-0 pointer-events-none"
+                  autoComplete="off"
+                  disabled={isBooting || isExecutingCommand}
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <style jsx>{`
         @keyframes randomFlicker {
