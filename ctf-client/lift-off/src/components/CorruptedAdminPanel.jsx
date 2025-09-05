@@ -111,16 +111,41 @@ export default function CorruptedAdminPanel() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Boot sequence with typewriter effect and sound
+  // Boot sequence with typewriter effect, sound, and skip functionality
   useEffect(() => {
     // Clear any existing interval
     if (typewriterIntervalRef.current) {
       clearInterval(typewriterIntervalRef.current);
     }
 
+    // Skip handler - NEW
+    const handleBootSkip = (e) => {
+      if (e.code === 'Space' && !bootComplete) {
+        e.preventDefault();
+        // Skip to end of boot sequence
+        setBootLines(bootScript);
+        setCurrentBootLine("");
+        setCurrentBootIndex(bootScript.length);
+        setCurrentCharIndex(0);
+        setBootComplete(true);
+        
+        // Clear any ongoing typewriter interval
+        if (typewriterIntervalRef.current) {
+          clearTimeout(typewriterIntervalRef.current);
+        }
+      }
+    };
+
+    // Add event listener for spacebar during boot - NEW
+    if (!bootComplete) {
+      document.addEventListener('keydown', handleBootSkip);
+    }
+
     if (currentBootIndex >= bootScript.length) {
       setBootComplete(true);
-      return;
+      return () => {
+        document.removeEventListener('keydown', handleBootSkip);
+      };
     }
 
     const currentLine = bootScript[currentBootIndex];
@@ -145,8 +170,9 @@ export default function CorruptedAdminPanel() {
       if (typewriterIntervalRef.current) {
         clearTimeout(typewriterIntervalRef.current);
       }
+      document.removeEventListener('keydown', handleBootSkip); // NEW
     };
-  }, [currentBootIndex, currentCharIndex, audioEnabled]);
+  }, [currentBootIndex, currentCharIndex, audioEnabled, bootComplete]);
 
   // Auto-scroll
   useEffect(() => {
@@ -287,6 +313,13 @@ export default function CorruptedAdminPanel() {
                   <div className="text-amber-100">
                     {currentBootLine}
                     <span className="animate-pulse">|</span>
+                  </div>
+                )}
+
+                {/* Boot skip indicator - NEW */}
+                {!bootComplete && (
+                  <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-amber-100/60 text-xs font-mono animate-pulse">
+                    Press SPACE to skip boot
                   </div>
                 )}
 

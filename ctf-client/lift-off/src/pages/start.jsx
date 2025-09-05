@@ -339,6 +339,20 @@ function TerminalInterface() {
       "SYSTEM READY. Type 'help' for available commands.",
       ""
     ];
+    // NEW: Add skip handler
+    const handleBootSkip = (e) => {
+      if (e.code === 'Space' && isBooting) {
+          e.preventDefault();
+          // Skip to end of boot sequence
+          setBootLines(bootScript);
+          setCurrentBootLine("");
+          setCurrentBootIndex(bootScript.length);
+          setCurrentCharIndex(0);
+          setIsBooting(false);
+          setTimeout(() => inputRef.current?.focus(), 100);
+    }};
+    // NEW: Add event listener for spacebar during boot
+    document.addEventListener('keydown', handleBootSkip);
 
     if (currentBootIndex < bootScript.length) {
       const currentLine = bootScript[currentBootIndex];
@@ -370,6 +384,9 @@ function TerminalInterface() {
       setIsBooting(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
+    return () => {
+      document.removeEventListener('keydown', handleBootSkip);
+    };
   }, [currentBootIndex, currentCharIndex, audioEnabled, isBooting]);
 
   // Cursor blink
@@ -865,6 +882,14 @@ function TerminalInterface() {
                   disabled={isBooting || isExecutingCommand}
                 />
               </div>
+              {/* Boot skip indicator */}
+{isBooting && (
+  <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-amber-100/60 text-xs font-mono animate-pulse">
+    Press SPACE to skip boot
+  </div>
+)}
+
+
             </div>
           </div>
         </div>
