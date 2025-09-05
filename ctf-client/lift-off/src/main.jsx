@@ -33,7 +33,7 @@ function EventProvider({ children }) {
     };
 
     fetchStatus();
-    const interval = setInterval(fetchStatus, 1000);
+    const interval = setInterval(fetchStatus, 5000); // 5 sec 80% save on post 
     return () => clearInterval(interval);
   }, []);
 
