@@ -8,6 +8,9 @@ import SnakeAdmin from "./AdminComps/snakeAdmin";
 import SimonSaysGame from "./AdminComps/SimonSaysGame";
 
 export default function CorruptedAdminPanel() {
+  const skippedRef = useRef(false);      // true once user skips boot
+  const timeoutsRef = useRef([]);        // track scheduled timeouts
+
   const [bootLines, setBootLines] = useState([]);
   const [snakeEvent, setSnakeEvent] = useState(null);
   const [SimonEvent, setSimonEvent] = useState(null);
@@ -30,6 +33,17 @@ export default function CorruptedAdminPanel() {
     "CHECK> DISK   . . . unknown", 
     "CHECK> NET    . . . unknown",
   ];
+  const scheduleTimeout = (fn, delay) => {
+    const id = setTimeout(fn, delay);
+    timeoutsRef.current.push(id);
+    return id;
+  };
+  
+  const clearAllTimeouts = () => {
+    timeoutsRef.current.forEach(clearTimeout);
+    timeoutsRef.current = [];
+  };
+  
 
   // Initialize audio context after user interaction
   const initializeAudio = async () => {
@@ -72,7 +86,9 @@ export default function CorruptedAdminPanel() {
 
   // Terminal typing sound effect
   const playTypingSound = (charIndex = 0) => {
+    if (skippedRef.current) return;
     if (!audioEnabled || !audioContextRef.current) return;
+
     
     // Only play sound for every 4th character to reduce frequency
     if (charIndex % 4 !== 0) return;
@@ -242,12 +258,21 @@ export default function CorruptedAdminPanel() {
             <div className="text-white/40 text-xs mt-2">
               (You can continue without sound)
             </div>
-            <button
-              onClick={() => setShowAudioPrompt(false)}
-              className="text-white/60 hover:text-white/80 text-xs mt-2 block mx-auto"
-            >
-              Skip
-            </button>
+            
+<button
+  onClick={() => {
+    setShowAudioPrompt(false);
+    setAudioEnabled(false);
+    // Clean up audio context if it exists
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+  }}
+  className="text-white/60 hover:text-white/80 text-xs mt-2 block mx-auto"
+>
+  Skip
+</button>
           </div>
         </div>
       )}
