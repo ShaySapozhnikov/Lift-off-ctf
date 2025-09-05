@@ -1,14 +1,19 @@
 import React from "react";
 
-import Board from '../components/Board';
+import Board from "../components/Board";
 import CountDown from "../components/countDown";
 import TerminalChat from "../components/TerminalChat";
-import ChatLog from "../components/ChatLog"
+import ChatLog from "../components/ChatLog";
+import FlagIcon from "../components/FlagIcon";
 
-function home(){
-  return(
-    <div className="bg-zinc-900 min-h-screen flex justify-center items-center pt-20">
-      <div className="grid grid-cols-2 grid-rows-2 gap-5 w-[1100px]">
+function Home() {
+  return (
+    <div className="bg-zinc-900 min-h-screen relative pt-20 flex justify-center items-center">
+      {/* Flag icon component */}
+      <FlagIcon />
+
+      {/* Main content grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 grid-rows-4 md:grid-rows-2 gap-5 w-full max-w-[1100px] px-4">
         <Board />
         <CountDown />
         <TerminalChat />
@@ -18,4 +23,4 @@ function home(){
   );
 }
 
-export default home
+export default Home;
