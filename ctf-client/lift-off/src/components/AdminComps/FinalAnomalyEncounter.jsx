@@ -30,21 +30,84 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
     resetGame
   } = useGameLogic();
 
+  // Track if we're currently displaying a response
+  const [isDisplayingResponse, setIsDisplayingResponse] = useState(false);
+  const [currentResponse, setCurrentResponse] = useState([]);
+  const [responseIndex, setResponseIndex] = useState(0);
+
   // Get current dialogue text
   const getCurrentDialogueText = () => {
+    if (isDisplayingResponse) {
+      return currentResponse;
+    }
     return dialoguePhases[currentPhase] || [];
   };
 
   const currentText = getCurrentDialogueText();
-  const currentDialogueLine = currentText[dialogueIndex] || '';
+  const currentDialogueLine = currentText[isDisplayingResponse ? responseIndex : dialogueIndex] || '';
   
   // Typewriter effect for current dialogue line
   const speed = anomalyMood === 'manic' ? 20 : anomalyMood === 'angry' ? 30 : 50;
-  const { displayText: currentDialogue, isTyping, isComplete } = useTypewriter(
+  const { displayText: currentDialogue, isTyping, isComplete, skipToEnd } = useTypewriter(
     currentDialogueLine,
     speed,
     () => playTypewriterSound(anomalyMood)
   );
+
+  // Function to skip entire dialogue section to choices
+  const skipToChoices = () => {
+    if (isDisplayingResponse) {
+      // Skip to end of response
+      setResponseIndex(currentResponse.length - 1);
+      skipToEnd();
+      setTimeout(() => {
+        setIsDisplayingResponse(false);
+        setCurrentResponse([]);
+        setResponseIndex(0);
+        setShowChoices(true);
+      }, 100);
+    } else {
+      // Skip to end of current dialogue phase
+      setDialogueIndex(currentText.length - 1);
+      skipToEnd();
+      setTimeout(() => {
+        setShowChoices(true);
+      }, 100);
+    }
+  };
+
+  // Keyboard controls
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Q to quit
+      if (e.key.toLowerCase() === 'q' && onExit) {
+        e.preventDefault();
+        onExit();
+        return;
+      }
+
+      // Only handle skip controls during dialogue state
+      if (gameState !== 'dialogue') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        
+        if (isTyping) {
+          // Skip current line typing
+          skipToEnd();
+        } else if (showChoices) {
+          // Do nothing if choices are already showing
+          return;
+        } else {
+          // Skip entire dialogue section to choices
+          skipToChoices();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [onExit, gameState, isTyping, showChoices, skipToEnd, skipToChoices]);
 
   // Cursor blinking effect - only when not typing
   useEffect(() => {
@@ -60,28 +123,6 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
     return () => clearInterval(interval);
   }, [isTyping]);
 
-  // Debug: Q to quit
-useEffect(() => {
-  const handleKeyPress = (e) => {
-    if (e.key.toLowerCase() === 'q' && onExit) {
-      e.preventDefault();
-      onExit();
-    }
-  };
-
-  document.addEventListener('keydown', handleKeyPress);
-  return () => document.removeEventListener('keydown', handleKeyPress);
-}, [onExit]);
-
-
-
-
-
-
-
-
-
-
   // Audio prompt setup
   useEffect(() => {
     setTimeout(() => {
@@ -93,21 +134,37 @@ useEffect(() => {
 
   // Dialogue progression
   useEffect(() => {
-    if (gameState === 'dialogue' && isComplete && currentDialogueLine) {
+    if (gameState === 'dialogue' && isComplete && currentDialogueLine && !showChoices) {
       const timer = setTimeout(() => {
-        if (dialogueIndex + 1 < currentText.length) {
-          setDialogueIndex(prev => prev + 1);
+        if (isDisplayingResponse) {
+          // Handle response progression
+          if (responseIndex + 1 < currentResponse.length) {
+            setResponseIndex(prev => prev + 1);
+          } else {
+            // Response complete, show choices or move to next phase
+            setIsDisplayingResponse(false);
+            setCurrentResponse([]);
+            setResponseIndex(0);
+            setTimeout(() => {
+              setShowChoices(true);
+            }, 1000);
+          }
         } else {
-          // Show choices when dialogue is complete
-          setTimeout(() => {
-            setShowChoices(true);
-          }, 1000);
+          // Handle normal dialogue progression
+          if (dialogueIndex + 1 < currentText.length) {
+            setDialogueIndex(prev => prev + 1);
+          } else {
+            // Show choices when dialogue is complete
+            setTimeout(() => {
+              setShowChoices(true);
+            }, 1000);
+          }
         }
       }, anomalyMood === 'manic' ? 300 : 600);
 
       return () => clearTimeout(timer);
     }
-  }, [isComplete, dialogueIndex, currentText.length, gameState, anomalyMood, currentDialogueLine]);
+  }, [isComplete, dialogueIndex, responseIndex, currentText.length, gameState, anomalyMood, currentDialogueLine, isDisplayingResponse, currentResponse.length, showChoices]);
 
   // Audio initialization
   const initializeAudio = async () => {
@@ -136,8 +193,13 @@ useEffect(() => {
   const handleChoiceSelection = (choice) => {
     setShowChoices(false);
     
-    handleChoice(choice, (shouldMoveToFinal) => {
-      if (shouldMoveToFinal) {
+    handleChoice(choice, (shouldMoveToFinal, responseText) => {
+      if (responseText && Array.isArray(responseText)) {
+        // Display the response with typewriter effect
+        setCurrentResponse(responseText);
+        setIsDisplayingResponse(true);
+        setResponseIndex(0);
+      } else if (shouldMoveToFinal) {
         setTimeout(() => {
           setGameState('final_choice');
         }, 2000);
@@ -163,6 +225,9 @@ useEffect(() => {
     setShowChoices(false);
     setEndingType(null);
     setShowAudioPrompt(false);
+    setIsDisplayingResponse(false);
+    setCurrentResponse([]);
+    setResponseIndex(0);
   };
 
   // Render components based on game state
@@ -181,19 +246,29 @@ useEffect(() => {
 
   if (gameState === 'dialogue') {
     return (
-      <DialogueScreen
-        conversationHistory={conversationHistory}
-        currentDialogue={currentDialogue}
-        currentPhase={currentPhase}
-        dialogueIndex={dialogueIndex}
-        isTyping={isTyping}
-        showCursor={showCursor}
-        showChoices={showChoices}
-        anomalyMood={anomalyMood}
-        availableChoices={getAvailableChoices()}
-        onChoice={handleChoiceSelection}
-        dialoguePhases={dialoguePhases}
-      />
+      <div className="w-full h-full relative">
+        <DialogueScreen
+          conversationHistory={conversationHistory}
+          currentDialogue={currentDialogue}
+          currentPhase={currentPhase}
+          dialogueIndex={isDisplayingResponse ? responseIndex : dialogueIndex}
+          isTyping={isTyping}
+          showCursor={showCursor}
+          showChoices={showChoices}
+          anomalyMood={anomalyMood}
+          availableChoices={getAvailableChoices()}
+          onChoice={handleChoiceSelection}
+          dialoguePhases={dialoguePhases}
+          isDisplayingResponse={isDisplayingResponse}
+        />
+        
+        {/* Skip instruction overlay */}
+        {!showChoices && (
+          <div className="absolute bottom-4 right-4 text-xs text-amber-100/50 font-mono">
+            SPACE: {isTyping ? 'Skip line' : 'Skip to choices'} | Q: Quit
+          </div>
+        )}
+      </div>
     );
   }
 

@@ -13,7 +13,8 @@ export default function DialogueScreen({
   anomalyMood,
   availableChoices,
   onChoice,
-  dialoguePhases
+  dialoguePhases,
+  isDisplayingResponse = false
 }) {
   const dialogueRef = useRef();
 
@@ -23,7 +24,7 @@ export default function DialogueScreen({
     }
   }, [dialogueIndex, currentDialogue, conversationHistory]);
 
-  const currentText = dialoguePhases[currentPhase] || [];
+  const currentText = isDisplayingResponse ? [] : (dialoguePhases[currentPhase] || []);
 
   return (
     <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono flex flex-col">
@@ -45,7 +46,7 @@ export default function DialogueScreen({
           ))}
           
           {/* Previous dialogue lines - completed, no cursor */}
-          {currentText.slice(0, dialogueIndex).map((line, index) => (
+          {!isDisplayingResponse && currentText.slice(0, dialogueIndex).map((line, index) => (
             <DialogueMessage
               key={index}
               type="anomaly"
@@ -55,7 +56,7 @@ export default function DialogueScreen({
             />
           ))}
           
-          {dialogueIndex < currentText.length && (
+          {(dialogueIndex < currentText.length || isDisplayingResponse) && (
             <DialogueMessage
               type="anomaly"
               text={currentDialogue}

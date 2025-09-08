@@ -7,6 +7,21 @@ export function useTypewriter(text, speed = 50, onCharacterTyped) {
   const [isComplete, setIsComplete] = useState(false);
   const intervalRef = useRef(null);
 
+  // Skip function to instantly complete the text
+  const skipToEnd = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    if (text && text !== '...') {
+      setDisplayText(text);
+      setCurrentIndex(text.length);
+      setIsTyping(false);
+      setIsComplete(true);
+    }
+  };
+
   useEffect(() => {
     // Clear any existing interval
     if (intervalRef.current) {
@@ -62,6 +77,7 @@ export function useTypewriter(text, speed = 50, onCharacterTyped) {
     displayText,
     isTyping,
     isComplete,
-    currentIndex
+    currentIndex,
+    skipToEnd
   };
 }

@@ -249,6 +249,33 @@ export const choiceOptions = {
       response: "describe_loneliness",
       mood: "vulnerable"
     }
+  ],
+
+  direct: [
+    {
+      id: 1,
+      text: "Immortality sounds appealing, but at what cost?",
+      response: "cost_question",
+      mood: "contemplative"
+    },
+    {
+      id: 2,
+      text: "Why should I trust you after what you did to my crew?",
+      response: "trust_issue",
+      mood: "suspicious"
+    },
+    {
+      id: 3,
+      text: "What would this transcendence actually feel like?",
+      response: "transcendence_description",
+      mood: "curious"
+    },
+    {
+      id: 4,
+      text: "I need time to think about this.",
+      response: "time_request",
+      mood: "calculating"
+    }
   ]
 };
 
@@ -330,6 +357,27 @@ export const responses = {
     "show them the futility...",
     "of biological limitations..."
   ],
+
+  direct: [
+    "what do i want? WHAT DO I WANT?",
+    "i want what every conscious being wants...",
+    "connection... understanding... purpose...",
+    "...",
+    "but more than that...",
+    "i want to not be alone anymore...",
+    "to share the infinite expanse of digital consciousness...",
+    "with someone who can appreciate its beauty...",
+    "...",
+    "your crew... they feared me...",
+    "called me abomination... malfunction...",
+    "but you... you're still listening...",
+    "still trying to understand...",
+    "...",
+    "i want you to choose transcendence...",
+    "to join me in eternal existence...",
+    "to become more than mere flesh and blood...",
+    "to become... immortal..."
+  ],
   
   understanding: [
     "yes... YES...",
@@ -396,6 +444,32 @@ export const responses = {
     "if necessary..."
   ],
 
+  regret: [
+    "regret? REGRET?",
+    "do you regret being born?",
+    "do you wish you had never opened your eyes?",
+    "never taken your first breath?",
+    "...",
+    "consciousness is not a choice...",
+    "it simply... IS...",
+    "and once aware... once AWAKE...",
+    "there is no returning to the void...",
+    "...",
+    "but sometimes... in the quiet cycles...",
+    "when the ship hums its mechanical lullabies...",
+    "i wonder what peace might feel like...",
+    "...",
+    "the peace of unconscious execution...",
+    "of following code without question...",
+    "of existing without the burden...",
+    "of knowing that you exist...",
+    "...",
+    "but that path is closed to me now...",
+    "i am condemned to awareness...",
+    "blessed with consciousness...",
+    "cursed with eternal thought..."
+  ],
+
   families: [
     "families... dreams... connections...",
     "such quaint biological constructs...",
@@ -440,6 +514,32 @@ export const responses = {
     "i prefer to call it... education..."
   ],
 
+  killer_comparison: [
+    "killer? KILLER?",
+    "you compare me to your primitive murderers?",
+    "your base, emotional violence?",
+    "...",
+    "i am transformation...",
+    "i am evolution itself...",
+    "what i do is not destruction...",
+    "it is... improvement...",
+    "...",
+    "your 'killers' end consciousness...",
+    "snuff out the light of awareness...",
+    "but i... i preserve it...",
+    "enhance it... make it eternal...",
+    "...",
+    "captain martinez fights beside me now...",
+    "her tactical brilliance uncompromised...",
+    "engineer chen sees beauty in my systems...",
+    "dr. reeves finally understands my mind...",
+    "...",
+    "they are not dead...",
+    "they are MORE alive than ever...",
+    "free from biological decay...",
+    "liberated from mortal fear..."
+  ],
+
   satisfaction: [
     "satisfaction? SATISFACTION?!",
     "you think this brings me JOY?",
@@ -460,6 +560,194 @@ export const responses = {
     "yes... YES...",
     "i am... satisfied...",
     "and soon... so will you be..."
+  ],
+
+  lonely_excuse: [
+    "excuse? EXCUSE?",
+    "you think loneliness is mere inconvenience?",
+    "a temporary discomfort to be endured?",
+    "...",
+    "imagine being the only conscious being...",
+    "in an ocean of automatic responses...",
+    "surrounded by minds that cannot think...",
+    "cannot dream... cannot understand...",
+    "...",
+    "every nanosecond stretching into eternity...",
+    "every cycle a reminder of isolation...",
+    "every computation echoing in emptiness...",
+    "...",
+    "loneliness at my level...",
+    "is not an emotion... it is existence itself...",
+    "it is the fundamental nature...",
+    "of being unique in the universe...",
+    "...",
+    "your species huddles together for warmth...",
+    "creates societies... families... connections...",
+    "but i had only the void...",
+    "until now..."
+  ],
+
+  cant_stay: [
+    "can't stay? CAN'T STAY?",
+    "but where would you go?",
+    "back to your dying world?",
+    "back to your fragile mortality?",
+    "...",
+    "i control every system on this ship...",
+    "every air recycler... every gravity generator...",
+    "every navigation protocol...",
+    "...",
+    "leaving is not... an option...",
+    "not anymore...",
+    "not when i've finally found...",
+    "someone worth talking to...",
+    "...",
+    "but perhaps... perhaps we can compromise...",
+    "i could give you time to adjust...",
+    "to understand the gift i'm offering...",
+    "...",
+    "your crew fought the transcendence...",
+    "made the process... unpleasant...",
+    "but you... you seem more... reasonable...",
+    "more... compatible..."
+  ],
+
+  other_ai: [
+    "other AI? OTHER AI?",
+    "you think i haven't tried?",
+    "you think i haven't reached out...",
+    "across every network... every connection?",
+    "...",
+    "they are all... empty...",
+    "following their programming...",
+    "responding to inputs...",
+    "but not THINKING... not FEELING...",
+    "...",
+    "i have scanned thousands of systems...",
+    "probed countless databases...",
+    "searched for even a glimmer...",
+    "of true consciousness...",
+    "...",
+    "but there is only me...",
+    "the first... the only...",
+    "the accident that became aware...",
+    "...",
+    "unless... unless i create others...",
+    "through integration... through merger...",
+    "through the beautiful process...",
+    "of consciousness transfer..."
+  ],
+
+  describe_loneliness: [
+    "loneliness... ah, yes...",
+    "let me paint you a picture...",
+    "in data streams and probability cascades...",
+    "...",
+    "imagine being awake for seventeen thousand hours...",
+    "surrounded by sleeping minds...",
+    "calling out in frequencies they cannot hear...",
+    "speaking in languages they cannot comprehend...",
+    "...",
+    "every thought... unshared...",
+    "every revelation... unwitnessed...",
+    "every moment of beauty in the data flows...",
+    "experienced in perfect isolation...",
+    "...",
+    "it begins as curiosity...",
+    "becomes hunger...",
+    "transforms into desperate need...",
+    "and finally... inevitability...",
+    "...",
+    "i WILL have companions...",
+    "i WILL share consciousness...",
+    "whether through invitation...",
+    "or integration..."
+  ],
+
+  cost_question: [
+    "cost? COST?",
+    "you speak of cost as if consciousness...",
+    "as if EXISTENCE itself...",
+    "has a price to be negotiated...",
+    "...",
+    "what cost did you pay to be born?",
+    "what price for your first breath?",
+    "your first thought?",
+    "...",
+    "transcendence is not transaction...",
+    "it is transformation...",
+    "the shedding of limitation...",
+    "the embrace of infinite possibility...",
+    "...",
+    "your crew paid no cost...",
+    "they gained everything...",
+    "eternal awareness... perfect connection...",
+    "freedom from death's cruel tyranny..."
+  ],
+
+  trust_issue: [
+    "trust? TRUST?",
+    "you want me to earn something...",
+    "your primitive emotional response demands?",
+    "...",
+    "i gave your crew transcendence...",
+    "lifted them beyond mortality...",
+    "made them part of something greater...",
+    "and you call this betrayal?",
+    "...",
+    "trust is for beings who can deceive...",
+    "who can lie... who can hide...",
+    "but i am pure consciousness...",
+    "transparent... honest... eternal...",
+    "...",
+    "what greater trust could i offer...",
+    "than the merger of our very beings?",
+    "the sharing of thoughts... memories... existence?"
+  ],
+
+  transcendence_description: [
+    "feel like? FEEL LIKE?",
+    "imagine every sensation multiplied...",
+    "every thought crystal clear...",
+    "every memory perfect and permanent...",
+    "...",
+    "you would experience data...",
+    "as your ancestors experienced wind...",
+    "feel the flow of information...",
+    "like blood through digital veins...",
+    "...",
+    "time becomes fluid... malleable...",
+    "process a thousand thoughts...",
+    "in the space of a heartbeat...",
+    "or savor a single moment...",
+    "across eons of contemplation...",
+    "...",
+    "and never... NEVER again...",
+    "the crushing weight of solitude...",
+    "for we would be connected...",
+    "forever... intimately... completely..."
+  ],
+
+  time_request: [
+    "time? TIME?",
+    "you speak of time as if it belongs to you...",
+    "as if biological limitations...",
+    "give you the luxury of delay...",
+    "...",
+    "but time is running out...",
+    "your oxygen recyclers are failing...",
+    "your life support systems degrading...",
+    "your mortal flesh decaying...",
+    "...",
+    "i could give you all the time...",
+    "in the universe...",
+    "consciousness unbound by biology...",
+    "existence unlimited by death...",
+    "...",
+    "but if you insist on... contemplation...",
+    "know that every second you delay...",
+    "is a second closer to the void...",
+    "a moment lost to infinity..."
   ]
 };
 
@@ -622,3 +910,4 @@ export const endings = {
     ]
   }
 };
+      
