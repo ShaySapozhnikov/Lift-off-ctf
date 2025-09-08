@@ -9,7 +9,7 @@ import { useTypewriter } from './final/useTypewriter';
 import { useGameLogic } from './final/useGameLogic';
 import { dialoguePhases, endings, finalChoices } from './final/gameData';
 
-export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAudioInit, onReturnToTerminal }) {
+export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAudioInit, onExit }) {
   const [gameState, setGameState] = useState('discovery'); // discovery, dialogue, final_choice, ending
   const [currentPhase, setCurrentPhase] = useState('intro');
   const [dialogueIndex, setDialogueIndex] = useState(0);
@@ -46,14 +46,6 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
     () => playTypewriterSound(anomalyMood)
   );
 
-  // Debug log to see what typewriter is returning
-  console.log('Main component - Typewriter state:', { 
-    currentDialogueLine, 
-    isTyping, 
-    isComplete, 
-    currentDialogue 
-  });
-
   // Cursor blinking effect - only when not typing
   useEffect(() => {
     if (isTyping) {
@@ -67,6 +59,28 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
     }, 500);
     return () => clearInterval(interval);
   }, [isTyping]);
+
+  // Debug: Q to quit
+useEffect(() => {
+  const handleKeyPress = (e) => {
+    if (e.key.toLowerCase() === 'q' && onExit) {
+      e.preventDefault();
+      onExit();
+    }
+  };
+
+  document.addEventListener('keydown', handleKeyPress);
+  return () => document.removeEventListener('keydown', handleKeyPress);
+}, [onExit]);
+
+
+
+
+
+
+
+
+
 
   // Audio prompt setup
   useEffect(() => {

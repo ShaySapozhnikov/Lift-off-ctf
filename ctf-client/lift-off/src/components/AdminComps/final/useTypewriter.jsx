@@ -57,10 +57,7 @@ export function useTypewriter(text, speed = 50, onCharacterTyped) {
       }
     };
   }, [text, speed]); // Removed onCharacterTyped from dependencies to prevent constant re-renders
-
-  // Debug log
-  console.log('Typewriter state:', { text, isTyping, isComplete, displayText });
-
+  
   return {
     displayText,
     isTyping,
