@@ -29,6 +29,13 @@ export const fs = {
           owner: "user",
           permissions: "rw",
         },
+        
+        "pleasedont.exe": {
+          type: "exe",
+          content: "this is it?",
+          owner: "user",
+          permissions: "rw",
+        },
 
       },
     },
