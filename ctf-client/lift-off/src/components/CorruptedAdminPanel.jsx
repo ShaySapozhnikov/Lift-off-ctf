@@ -6,6 +6,7 @@ import Prompt from "./AdminComps/Prompt";
 import HelpBlock from "./AdminComps/HelpBlock";
 import SnakeAdmin from "./AdminComps/snakeAdmin";
 import SimonSaysGame from "./AdminComps/SimonSaysGame";
+import FinalAnomalyEncounter from "./AdminComps/FinalAnomalyEncounter";
 
 export default function CorruptedAdminPanel() {
   const skippedRef = useRef(false);      // true once user skips boot
@@ -21,6 +22,7 @@ export default function CorruptedAdminPanel() {
   const [currentBootIndex, setCurrentBootIndex] = useState(0);
   const [currentCharIndex, setCurrentCharIndex] = useState(0);
   const [bootComplete, setBootComplete] = useState(false);
+  const [anomalyEvent, setAnomalyEvent] = useState(null);
   
   const typedRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -33,6 +35,7 @@ export default function CorruptedAdminPanel() {
     "CHECK> DISK   . . . unknown", 
     "CHECK> NET    . . . unknown",
   ];
+
   const scheduleTimeout = (fn, delay) => {
     const id = setTimeout(fn, delay);
     timeoutsRef.current.push(id);
@@ -43,7 +46,6 @@ export default function CorruptedAdminPanel() {
     timeoutsRef.current.forEach(clearTimeout);
     timeoutsRef.current = [];
   };
-  
 
   // Initialize audio context after user interaction
   const initializeAudio = async () => {
@@ -88,7 +90,6 @@ export default function CorruptedAdminPanel() {
   const playTypingSound = (charIndex = 0) => {
     if (skippedRef.current) return;
     if (!audioEnabled || !audioContextRef.current) return;
-
     
     // Only play sound for every 4th character to reduce frequency
     if (charIndex % 4 !== 0) return;
@@ -211,10 +212,16 @@ export default function CorruptedAdminPanel() {
     console.log("Prompt triggered event:", event);
     if (event === "SimonGame") {
       setSimonEvent(event);
-      setSnakeEvent(null); // Clear snake event if simon starts
+      setSnakeEvent(null);
+      setAnomalyEvent(null); // Clear anomaly event
+    } else if (event === "aiConversation") {
+      setAnomalyEvent(event);
+      setSnakeEvent(null); // Clear other events
+      setSimonEvent(null);
     } else {
       setSnakeEvent(event);
-      setSimonEvent(null); // Clear simon event if snake starts
+      setSimonEvent(null);
+      setAnomalyEvent(null); // Clear anomaly event
     }
   };
   
@@ -226,6 +233,11 @@ export default function CorruptedAdminPanel() {
   const handleSimonExit = () => {
     console.log("Simon game exiting");
     setSimonEvent(null);
+  };
+
+  const handleAnomalyExit = () => {
+    console.log("Anomaly encounter exiting");
+    setAnomalyEvent(null);
   };
 
   const handleContainerClick = () => {
@@ -259,20 +271,20 @@ export default function CorruptedAdminPanel() {
               (You can continue without sound)
             </div>
             
-<button
-  onClick={() => {
-    setShowAudioPrompt(false);
-    setAudioEnabled(false);
-    // Clean up audio context if it exists
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-  }}
-  className="text-white/60 hover:text-white/80 text-xs mt-2 block mx-auto"
->
-  Skip
-</button>
+            <button
+              onClick={() => {
+                setShowAudioPrompt(false);
+                setAudioEnabled(false);
+                // Clean up audio context if it exists
+                if (audioContextRef.current) {
+                  audioContextRef.current.close();
+                  audioContextRef.current = null;
+                }
+              }}
+              className="text-white/60 hover:text-white/80 text-xs mt-2 block mx-auto"
+            >
+              Skip
+            </button>
           </div>
         </div>
       )}
@@ -383,6 +395,20 @@ export default function CorruptedAdminPanel() {
                   <div className="w-full h-full relative">
                     <SimonSaysGame
                       onExit={handleSimonExit}
+                      audioContext={audioContextRef.current}
+                      audioEnabled={audioEnabled}
+                      onAudioInit={initializeAudio}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Final Anomaly Encounter overlay */}
+              {anomalyEvent === "aiConversation" && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
+                  <div className="w-full h-full relative">
+                    <FinalAnomalyEncounter
+                      onExit={handleAnomalyExit}
                       audioContext={audioContextRef.current}
                       audioEnabled={audioEnabled}
                       onAudioInit={initializeAudio}

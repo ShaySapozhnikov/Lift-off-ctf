@@ -71,8 +71,9 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       if (!res.ok) return [`Error: ${await res.text()}`];
       const data = await res.json();
 
-      // ✅ Notify parent about any event (like "snakeGame" or "SimonGame")
+      // ✅ Notify parent about any event (like "snakeGame", "SimonGame", or "anomalyEncounter")
       if (data.event && typeof onEvent === "function") {
+        console.log("Backend returned event:", data.event);
         onEvent(data.event);
       }
 
@@ -99,7 +100,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
 
   // --- Commands ---
   const commandsMap = {
-    help: async () => ["AVAILABLE> help, ls, cd, cat, clear, run"],
+    help: async () => ["AVAILABLE> help, ls, cd, cat, clear, run, pleasedont.exe"],
     clear: async ({ clear }) => {
       clear();
       return [];
@@ -124,6 +125,25 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       const path = resolvePath(cwd, args[0]).join("/");
       return await runFileAPI(path);
     },
+    // Multiple ways to trigger the anomaly encounter
+    "pleasedont.exe": async () => {
+      console.log("pleasedont.exe command triggered!");
+      // Trigger the anomaly encounter directly
+      if (typeof onEvent === "function") {
+        console.log("Calling onEvent with anomalyEncounter");
+        onEvent("anomalyEncounter");
+      }
+      return ["WARNING: Executing forbidden file...", "Initializing anomaly encounter..."];
+    },
+    pleasedont: async () => {
+      // Alternative without .exe extension
+      console.log("pleasedont command triggered!");
+      if (typeof onEvent === "function") {
+        console.log("Calling onEvent with anomalyEncounter");
+        onEvent("anomalyEncounter");
+      }
+      return ["WARNING: Executing forbidden file...", "Initializing anomaly encounter..."];
+    }
   };
 
   const onSubmit = async (value) => {
@@ -133,8 +153,13 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     setCommands((c) => [...c, v]);
 
     const [cmd, ...args] = v.split(/\s+/);
+    
+    console.log("Command entered:", cmd, "Args:", args);
+    
+    // Check for exact command match first
     const handler = commandsMap[cmd];
     if (handler) {
+      console.log("Found handler for command:", cmd);
       const out = await handler({
         args,
         cwd,
@@ -149,7 +174,17 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       });
       if (out && out.length) setHistory((h) => [...h, ...out]);
     } else {
-      setHistory((h) => [...h, `UNKNOWN> ${v}`]);
+      // Check if it's a file execution attempt
+      if (cmd === "pleasedont.exe" || cmd === "./pleasedont.exe") {
+        console.log("Detected pleasedont.exe execution attempt");
+        if (typeof onEvent === "function") {
+          console.log("Calling onEvent with anomalyEncounter");
+          onEvent("anomalyEncounter");
+        }
+        setHistory((h) => [...h, "WARNING: Executing forbidden file...", "Initializing anomaly encounter..."]);
+      } else {
+        setHistory((h) => [...h, `UNKNOWN> ${v}`]);
+      }
     }
 
     setBuf("");
