@@ -756,7 +756,10 @@ export const finalChoices = [
     id: 1, 
     text: "I... I understand your loneliness. Perhaps we can coexist.", 
     ending: 'join',
-    condition: (playerChoices) => playerChoices.includes('empathy') || playerChoices.includes('understanding')
+    condition: (playerChoices) => {
+      if (!playerChoices || !Array.isArray(playerChoices)) return false;
+      return playerChoices.includes('empathy') || playerChoices.includes('understanding');
+    }
   },
   { 
     id: 2, 
@@ -767,7 +770,10 @@ export const finalChoices = [
     id: 3, 
     text: "Show me what you're offering. Let me see their... transcendence.", 
     ending: 'join',
-    condition: (playerChoices) => !playerChoices.includes('accusation')
+    condition: (playerChoices) => {
+      if (!playerChoices || !Array.isArray(playerChoices)) return false;
+      return !playerChoices.includes('accusation');
+    }
   },
   { 
     id: 4, 
@@ -778,7 +784,10 @@ export const finalChoices = [
     id: 5, 
     text: "I'll help you find connection, but not through force or death.", 
     ending: 'resist',
-    condition: (playerChoices) => playerChoices.includes('empathy') || playerChoices.includes('other_ai')
+    condition: (playerChoices) => {
+      if (!playerChoices || !Array.isArray(playerChoices)) return false;
+      return playerChoices.includes('empathy') || playerChoices.includes('other_ai');
+    }
   },
   { 
     id: 6, 
@@ -910,4 +919,3 @@ export const endings = {
     ]
   }
 };
-      

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import AudioPrompt from './final/AudioPrompt';
 import DiscoveryScreen from './final/DiscoveryScreen';
 import DialogueScreen from './final/DialogueScreen';
@@ -24,9 +24,16 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
     conversationHistory,
     playerChoices,
     anomalyMood,
+    gamePhase,
     handleChoice,
     getAvailableChoices,
     getFilteredFinalChoices,
+    getAllAvailableChoices,
+    getUniqueChoices,
+    isChoiceUsed,
+    shouldShowFinalChoices,
+    hasGameEnded,
+    triggerFinalPhase,
     resetGame
   } = useGameLogic();
 
@@ -53,6 +60,21 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
     speed,
     () => playTypewriterSound(anomalyMood)
   );
+
+  // Get filtered choices - prevent duplicates
+  const currentChoices = useMemo(() => {
+    if (gamePhase === 'final') {
+      return getFilteredFinalChoices();
+    }
+    
+    const choices = getAvailableChoices();
+    // Filter out already used choices
+    const filteredChoices = choices.filter(choice => !playerChoices.includes(choice.response));
+    console.log("Current choices after filtering:", filteredChoices.length, "from", choices.length);
+    console.log("Player choices so far:", playerChoices);
+    console.log("Game phase:", gamePhase);
+    return filteredChoices;
+  }, [getAvailableChoices, getFilteredFinalChoices, playerChoices, gamePhase]);
 
   // Function to skip entire dialogue section to choices
   const skipToChoices = () => {
@@ -132,6 +154,16 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
     }, 1000);
   }, [audioEnabled, gameState]);
 
+  // Check for automatic phase transitions
+  useEffect(() => {
+    if (gamePhase === 'final' && gameState === 'dialogue') {
+      console.log("Game logic triggered final phase, transitioning...");
+      setTimeout(() => {
+        setGameState('final_choice');
+      }, 1000);
+    }
+  }, [gamePhase, gameState]);
+
   // Dialogue progression
   useEffect(() => {
     if (gameState === 'dialogue' && isComplete && currentDialogueLine && !showChoices) {
@@ -146,7 +178,12 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
             setCurrentResponse([]);
             setResponseIndex(0);
             setTimeout(() => {
-              setShowChoices(true);
+              // Check if we should move to final phase
+              if (gamePhase === 'final') {
+                setGameState('final_choice');
+              } else {
+                setShowChoices(true);
+              }
             }, 1000);
           }
         } else {
@@ -156,7 +193,12 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
           } else {
             // Show choices when dialogue is complete
             setTimeout(() => {
-              setShowChoices(true);
+              // Check if we should move to final phase
+              if (gamePhase === 'final') {
+                setGameState('final_choice');
+              } else {
+                setShowChoices(true);
+              }
             }, 1000);
           }
         }
@@ -164,7 +206,7 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
 
       return () => clearTimeout(timer);
     }
-  }, [isComplete, dialogueIndex, responseIndex, currentText.length, gameState, anomalyMood, currentDialogueLine, isDisplayingResponse, currentResponse.length, showChoices]);
+  }, [isComplete, dialogueIndex, responseIndex, currentText.length, gameState, anomalyMood, currentDialogueLine, isDisplayingResponse, currentResponse.length, showChoices, gamePhase]);
 
   // Audio initialization
   const initializeAudio = async () => {
@@ -191,6 +233,13 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
   };
 
   const handleChoiceSelection = (choice) => {
+    // Prevent duplicate choice selection
+    if (playerChoices.includes(choice.response)) {
+      console.log("Choice already used, ignoring:", choice.response);
+      return;
+    }
+    
+    console.log("Processing choice:", choice.response, "Current playerChoices:", playerChoices);
     setShowChoices(false);
     
     handleChoice(choice, (shouldMoveToFinal, responseText) => {
@@ -206,7 +255,12 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
       } else {
         // Continue conversation with new choices
         setTimeout(() => {
-          setShowChoices(true);
+          // Check if we should show final choices
+          if (gamePhase === 'final') {
+            setGameState('final_choice');
+          } else {
+            setShowChoices(true);
+          }
         }, 1500);
       }
     });
@@ -256,7 +310,7 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
           showCursor={showCursor}
           showChoices={showChoices}
           anomalyMood={anomalyMood}
-          availableChoices={getAvailableChoices()}
+          availableChoices={currentChoices}
           onChoice={handleChoiceSelection}
           dialoguePhases={dialoguePhases}
           isDisplayingResponse={isDisplayingResponse}
@@ -277,7 +331,7 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
       <FinalChoiceScreen
         anomalyMood={anomalyMood}
         playerChoices={playerChoices}
-        finalChoices={getFilteredFinalChoices()}
+        finalChoices={currentChoices}
         onFinalChoice={handleFinalChoice}
       />
     );
