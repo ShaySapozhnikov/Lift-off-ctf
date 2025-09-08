@@ -1,16 +1,118 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { choiceOptions, responses, finalChoices } from './gameData';
+
+// Point values for different types of choices
+const CHOICE_POINTS = {
+  // High impact choices that show strong character direction
+  empathy: 3,
+  understanding: 3,
+  accusation: 3,
+  direct: 2,
+  
+  // Medium impact responses that show engagement
+  awakening: 2,
+  philosophical_challenge: 2,
+  existential: 2,
+  regret: 2,
+  describe_loneliness: 2,
+  transcendence_description: 2,
+  
+  // Lower impact but still meaningful
+  families: 1,
+  alternatives: 1,
+  killer_comparison: 1,
+  satisfaction: 1,
+  lonely_excuse: 1,
+  cant_stay: 1,
+  other_ai: 1,
+  cost_question: 1,
+  trust_issue: 1,
+  time_request: 1
+};
+
+// Threshold for triggering final phase
+const FINAL_PHASE_THRESHOLD = 5;
 
 export function useGameLogic() {
   const [conversationHistory, setConversationHistory] = useState([]);
   const [playerChoices, setPlayerChoices] = useState([]);
   const [anomalyMood, setAnomalyMood] = useState('curious');
-  const [gamePhase, setGamePhase] = useState('conversation'); // 'conversation', 'final', 'ended'
+  const [gamePhase, setGamePhase] = useState('conversation');
   const [turnCount, setTurnCount] = useState(0);
   const [selectedEnding, setSelectedEnding] = useState(null);
+  const [dialoguePoints, setDialoguePoints] = useState(0);
+  const [characterProfile, setCharacterProfile] = useState({
+    empathetic: 0,
+    confrontational: 0,
+    philosophical: 0,
+    pragmatic: 0
+  });
+
+  // Auto-trigger final phase when threshold is reached
+  useEffect(() => {
+    if (dialoguePoints >= FINAL_PHASE_THRESHOLD && gamePhase === 'conversation') {
+      console.log(`Auto-triggering final phase: points=${dialoguePoints}, threshold=${FINAL_PHASE_THRESHOLD}`);
+      setGamePhase('final');
+    }
+  }, [dialoguePoints, gamePhase]);
+
+  const calculatePoints = useCallback((choiceResponse) => {
+    const points = CHOICE_POINTS[choiceResponse] || 1;
+    // Ensure points are never negative
+    const finalPoints = Math.max(points, 1);
+    console.log(`Choice "${choiceResponse}" awarded ${finalPoints} points`);
+    return finalPoints;
+  }, []);
+
+  const updateCharacterProfile = useCallback((choice) => {
+    setCharacterProfile(prev => {
+      const newProfile = { ...prev };
+      
+      // Update character traits based on choice type
+      switch (choice.response) {
+        case 'empathy':
+        case 'understanding':
+        case 'describe_loneliness':
+          newProfile.empathetic += 1;
+          break;
+        case 'accusation':
+        case 'killer_comparison':
+        case 'satisfaction':
+          newProfile.confrontational += 1;
+          break;
+        case 'awakening':
+        case 'philosophical_challenge':
+        case 'existential':
+        case 'regret':
+          newProfile.philosophical += 1;
+          break;
+        case 'direct':
+        case 'cost_question':
+        case 'trust_issue':
+        case 'time_request':
+          newProfile.pragmatic += 1;
+          break;
+      }
+      
+      console.log('Updated character profile:', newProfile);
+      return newProfile;
+    });
+  }, []);
+
+  const checkForFinalPhase = useCallback((newPoints, newTurnCount) => {
+    // Multiple ways to trigger final phase:
+    const shouldTriggerFinal = 
+      newPoints >= FINAL_PHASE_THRESHOLD || // Point threshold
+      (newTurnCount >= 2 && newPoints >= 3) || // Quick engagement
+      (newTurnCount >= 4); // Fallback for longer conversations
+    
+    console.log(`Final phase check: points=${newPoints}, turns=${newTurnCount}, threshold=${FINAL_PHASE_THRESHOLD}, trigger=${shouldTriggerFinal}`);
+    
+    return shouldTriggerFinal;
+  }, []);
 
   const handleChoice = useCallback((choice, onComplete) => {
-    console.log("handleChoice called with:", choice.response, "Turn count:", turnCount);
+    console.log("handleChoice called with:", choice.response, "Turn count:", turnCount, "Current points:", dialoguePoints);
     
     // Prevent duplicate selections
     if (playerChoices.includes(choice.response)) {
@@ -31,23 +133,28 @@ export function useGameLogic() {
     const newTurnCount = turnCount + 1;
     setTurnCount(newTurnCount);
 
+    // Calculate and add points
+    const pointsAwarded = calculatePoints(choice.response);
+    const newPoints = dialoguePoints + pointsAwarded;
+    setDialoguePoints(newPoints);
+
+    // Update character profile
+    updateCharacterProfile(choice);
+
     // Check if we have a response for this choice
     const responseText = responses[choice.response];
     console.log("Response found:", responseText ? "YES" : "NO");
     
-    // Determine if we should move to final choices after this response
-    // More aggressive triggers for final phase:
-    const shouldMoveFinal = newTurnCount >= 3 || // After 3 exchanges
-                           newHistory.length >= 6 || // After 6 total messages
-                           choice.response === 'time_request' ||
-                           choice.response === 'transcendence_description' ||
-                           choice.response === 'cant_stay' ||
-                           choice.response === 'satisfaction' ||
-                           choice.response === 'describe_loneliness' ||
-                           choice.response === 'regret' ||
-                           choice.response === 'killer_comparison';
+    // Check if we should move to final phase
+    const shouldMoveFinal = checkForFinalPhase(newPoints, newTurnCount);
     
-    console.log("Should move to final?", shouldMoveFinal, "New turn count:", newTurnCount, "History length:", newHistory.length);
+    console.log("Should move to final?", shouldMoveFinal, "Points:", newPoints, "Turn count:", newTurnCount);
+    
+    // Force final phase if threshold reached
+    if (newPoints >= FINAL_PHASE_THRESHOLD) {
+      console.log("FORCING FINAL PHASE - threshold reached");
+      setGamePhase('final');
+    }
     
     if (responseText) {
       if (onComplete) {
@@ -55,12 +162,11 @@ export function useGameLogic() {
       }
     } else {
       console.log("No response found, moving to final choice");
-      // No response available, move to final choice immediately
       if (onComplete) {
         onComplete(true);
       }
     }
-  }, [conversationHistory, turnCount, playerChoices]);
+  }, [conversationHistory, turnCount, playerChoices, dialoguePoints, calculatePoints, updateCharacterProfile, checkForFinalPhase]);
 
   // Function to add completed response to history (called after typewriter finishes)
   const addResponseToHistory = useCallback((responseText, mood) => {
@@ -91,11 +197,11 @@ export function useGameLogic() {
       id: choice.id
     }]);
     
-    return choice.ending; // Return ending type for the main component
+    return choice.ending;
   }, []);
 
   const getAvailableChoices = useCallback(() => {
-    console.log("getAvailableChoices - phase:", gamePhase, "conversation length:", conversationHistory.length, "turn count:", turnCount);
+    console.log("getAvailableChoices - phase:", gamePhase, "conversation length:", conversationHistory.length, "turn count:", turnCount, "points:", dialoguePoints);
     
     // If we're not in conversation phase, don't show regular choices
     if (gamePhase !== 'conversation') {
@@ -116,11 +222,12 @@ export function useGameLogic() {
       return unusedIntroChoices;
     }
     
+    // Get smart contextual choices based on conversation flow
+    let contextualChoices = [];
+    
     // Get the last few player choices to determine context
     const playerEntries = conversationHistory.filter(entry => entry.type === 'player');
     const lastPlayerEntry = playerEntries[playerEntries.length - 1];
-    
-    let contextualChoices = [];
     
     if (lastPlayerEntry) {
       console.log("Last player choice text:", lastPlayerEntry.text.slice(0, 50) + "...");
@@ -152,8 +259,8 @@ export function useGameLogic() {
       return unusedContextualChoices;
     }
     
-    // If no contextual choices or all used, get all unused choices from all categories
-    console.log("Getting mixed unused choices");
+    // If no contextual choices or all used, get high-value unused choices first
+    console.log("Getting mixed unused choices, prioritizing high-value ones");
     let allUnusedChoices = [];
     
     Object.values(choiceOptions).forEach(categoryChoices => {
@@ -161,6 +268,13 @@ export function useGameLogic() {
         !usedResponses.includes(choice.response)
       );
       allUnusedChoices.push(...unusedFromCategory);
+    });
+    
+    // Sort by point value (high to low) to prioritize impactful choices
+    allUnusedChoices.sort((a, b) => {
+      const pointsA = CHOICE_POINTS[a.response] || 1;
+      const pointsB = CHOICE_POINTS[b.response] || 1;
+      return pointsB - pointsA;
     });
     
     // If we have unused choices, return up to 4
@@ -174,29 +288,31 @@ export function useGameLogic() {
     triggerFinalPhase();
     return [];
     
-  }, [conversationHistory, playerChoices, gamePhase, turnCount, triggerFinalPhase]);
+  }, [conversationHistory, playerChoices, gamePhase, turnCount, dialoguePoints, triggerFinalPhase]);
 
   const getFilteredFinalChoices = useCallback(() => {
-    console.log("Getting filtered final choices, phase:", gamePhase, "playerChoices:", playerChoices);
+    console.log("Getting filtered final choices, phase:", gamePhase, "playerChoices:", playerChoices, "character profile:", characterProfile);
     
+    // Return all final choices if no condition function exists or if condition passes
     return finalChoices.filter(choice => {
       // If no condition, include the choice
       if (!choice.condition) return true;
       
-      // Call condition with playerChoices, handle any errors
+      // Call condition with playerChoices and characterProfile, handle any errors
       try {
-        return choice.condition(playerChoices);
+        const result = choice.condition(playerChoices, characterProfile);
+        console.log(`Choice "${choice.text.slice(0, 30)}..." condition result:`, result);
+        return result;
       } catch (error) {
         console.error("Error in choice condition:", error, "Choice:", choice);
         return true; // Include choice if condition fails
       }
     });
-  }, [playerChoices]);
+  }, [playerChoices, characterProfile, gamePhase]);
 
   // Function to check if a choice has already been used
   const isChoiceUsed = useCallback((choiceResponse) => {
     const isUsed = playerChoices.includes(choiceResponse);
-    console.log("Checking if choice is used:", choiceResponse, "Result:", isUsed, "PlayerChoices:", playerChoices);
     return isUsed;
   }, [playerChoices]);
 
@@ -224,16 +340,23 @@ export function useGameLogic() {
     setGamePhase('conversation');
     setTurnCount(0);
     setSelectedEnding(null);
+    setDialoguePoints(0);
+    setCharacterProfile({
+      empathetic: 0,
+      confrontational: 0,
+      philosophical: 0,
+      pragmatic: 0
+    });
   }, []);
 
   // Helper function to get all available choices (both regular and final)
   const getAllAvailableChoices = useCallback(() => {
-    console.log("getAllAvailableChoices called - phase:", gamePhase, "playerChoices:", playerChoices);
+    console.log("getAllAvailableChoices called - phase:", gamePhase, "points:", dialoguePoints);
     
     if (gamePhase === 'final') {
-      const finalChoices = getFilteredFinalChoices();
-      console.log("Returning final choices:", finalChoices.length);
-      return finalChoices;
+      const finalChoicesResult = getFilteredFinalChoices();
+      console.log("Returning final choices:", finalChoicesResult.length, "choices:", finalChoicesResult.map(c => c.text.slice(0, 30) + "..."));
+      return finalChoicesResult;
     } else if (gamePhase === 'conversation') {
       const regularChoices = getAvailableChoices();
       console.log("Returning regular choices:", regularChoices.length, "choices:", regularChoices.map(c => c.response));
@@ -241,7 +364,23 @@ export function useGameLogic() {
     }
     console.log("No choices available for phase:", gamePhase);
     return [];
-  }, [gamePhase, getFilteredFinalChoices, getAvailableChoices, playerChoices]);
+  }, [gamePhase, getFilteredFinalChoices, getAvailableChoices, dialoguePoints]);
+
+  // Helper function to get progress info for UI
+  const getProgressInfo = useCallback(() => {
+    const progressPercentage = Math.min((dialoguePoints / FINAL_PHASE_THRESHOLD) * 100, 100);
+    const isNearFinal = dialoguePoints >= FINAL_PHASE_THRESHOLD - 1;
+    const pointsToFinal = Math.max(FINAL_PHASE_THRESHOLD - dialoguePoints, 0);
+    
+    return {
+      points: dialoguePoints,
+      threshold: FINAL_PHASE_THRESHOLD,
+      percentage: progressPercentage,
+      isNearFinal,
+      pointsToFinal,
+      characterProfile
+    };
+  }, [dialoguePoints, characterProfile]);
 
   return {
     conversationHistory,
@@ -250,6 +389,8 @@ export function useGameLogic() {
     gamePhase,
     turnCount,
     selectedEnding,
+    dialoguePoints,
+    characterProfile,
     handleChoice,
     addResponseToHistory,
     triggerFinalPhase,
@@ -261,6 +402,7 @@ export function useGameLogic() {
     getUniqueChoices,
     shouldShowFinalChoices,
     hasGameEnded,
-    resetGame
+    resetGame,
+    getProgressInfo
   };
 }

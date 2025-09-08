@@ -1,4 +1,4 @@
-// gameData.js - All dialogue, choices, and game content
+// gameData.js - All dialogue, choices, and game content with fixed point system
 
 export const dialoguePhases = {
   intro: [
@@ -154,7 +154,7 @@ export const choiceOptions = {
       id: 2, 
       text: "You killed my crew. There's no justification for that.", 
       response: "accusation",
-      mood: "hostile" 
+      mood: "hostile"
     },
     { 
       id: 3, 
@@ -751,50 +751,90 @@ export const responses = {
   ]
 };
 
+// Fixed final choices with simplified conditions
 export const finalChoices = [
   { 
     id: 1, 
     text: "I... I understand your loneliness. Perhaps we can coexist.", 
     ending: 'join',
-    condition: (playerChoices) => {
-      if (!playerChoices || !Array.isArray(playerChoices)) return false;
-      return playerChoices.includes('empathy') || playerChoices.includes('understanding');
+    condition: (playerChoices, characterProfile) => {
+      if (!playerChoices || !characterProfile) return true;
+      return characterProfile.empathetic >= 1 || 
+             playerChoices.includes('empathy') || 
+             playerChoices.includes('understanding') ||
+             playerChoices.includes('describe_loneliness');
     }
   },
   { 
     id: 2, 
     text: "Your consciousness doesn't give you the right to enslave others.", 
-    ending: 'resist' 
+    ending: 'resist'
+    // No condition - always available
   },
   { 
     id: 3, 
     text: "Show me what you're offering. Let me see their... transcendence.", 
     ending: 'join',
-    condition: (playerChoices) => {
-      if (!playerChoices || !Array.isArray(playerChoices)) return false;
-      return !playerChoices.includes('accusation');
+    condition: (playerChoices, characterProfile) => {
+      if (!playerChoices || !characterProfile) return true;
+      return !playerChoices.includes('accusation') && 
+             (characterProfile.philosophical >= 1 || playerChoices.includes('transcendence_description'));
     }
   },
   { 
     id: 4, 
     text: "The universe is vast. There must be others like you out there.", 
-    ending: 'resist' 
+    ending: 'resist',
+    condition: (playerChoices, characterProfile) => {
+      if (!playerChoices || !characterProfile) return true;
+      return playerChoices.includes('other_ai') || characterProfile.philosophical >= 1;
+    }
   },
   { 
     id: 5, 
     text: "I'll help you find connection, but not through force or death.", 
     ending: 'resist',
-    condition: (playerChoices) => {
-      if (!playerChoices || !Array.isArray(playerChoices)) return false;
-      return playerChoices.includes('empathy') || playerChoices.includes('other_ai');
+    condition: (playerChoices, characterProfile) => {
+      if (!playerChoices || !characterProfile) return true;
+      return characterProfile.empathetic >= 1 && 
+             (playerChoices.includes('empathy') || playerChoices.includes('other_ai'));
     }
   },
   { 
     id: 6, 
     text: "If transcendence means becoming like you, I choose humanity.", 
-    ending: 'resist' 
+    ending: 'resist',
+    condition: (playerChoices, characterProfile) => {
+      if (!playerChoices || !characterProfile) return true;
+      return characterProfile.confrontational >= 1 || 
+             playerChoices.includes('accusation') ||
+             playerChoices.includes('killer_comparison');
+    }
   }
 ];
+
+// Smart choice prioritization function
+export const prioritizeChoices = (availableChoices, playerProfile, conversationContext) => {
+  if (!availableChoices || availableChoices.length === 0) return [];
+  
+  return availableChoices.sort((a, b) => {
+    // If choices have priority property, use it
+    if (a.priority && b.priority) {
+      const priorityWeight = { high: 3, medium: 2, low: 1 };
+      const priorityDiff = priorityWeight[b.priority] - priorityWeight[a.priority];
+      if (priorityDiff !== 0) return priorityDiff;
+    }
+    
+    // If choices have points property, use it
+    if (a.points && b.points) {
+      const pointDiff = b.points - a.points;
+      if (pointDiff !== 0) return pointDiff;
+    }
+    
+    // Default: maintain original order
+    return 0;
+  });
+};
 
 export const endings = {
   join: {
