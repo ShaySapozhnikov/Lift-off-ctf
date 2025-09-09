@@ -9,78 +9,6 @@ import { useTypewriter } from './final/useTypewriter';
 import { useGameLogic } from './final/useGameLogic';
 import { dialoguePhases, endings } from './final/gameData';
 
-// Simple progress indicator component
-function ProgressIndicator({ points, threshold, characterProfile, pointsToFinal }) {
-  const progressPercentage = Math.min((points / threshold) * 100, 100);
-  const isNearFinal = points >= threshold - 1;
-  const isFinalReady = points >= threshold;
-  
-  // Find dominant character trait
-  const traits = Object.entries(characterProfile);
-  const dominantTrait = traits.reduce((max, current) => 
-    current[1] > max[1] ? current : max
-  );
-
-  const traitColors = {
-    empathetic: 'text-blue-400',
-    confrontational: 'text-red-400', 
-    philosophical: 'text-purple-400',
-    pragmatic: 'text-green-400'
-  };
-
-  const traitDescriptions = {
-    empathetic: 'Understanding',
-    confrontational: 'Defiant',
-    philosophical: 'Contemplative', 
-    pragmatic: 'Direct'
-  };
-
-  return (
-    <div className="font-mono text-xs space-y-2">
-      {/* Progress Bar */}
-      <div className="flex items-center space-x-2">
-        <span className="text-amber-100/70 text-xs">ANALYSIS:</span>
-        <div className="flex-1 bg-gray-800 h-1 rounded overflow-hidden">
-          <div 
-            className={`h-full transition-all duration-500 ${
-              isFinalReady ? 'bg-green-400' : isNearFinal ? 'bg-amber-400' : 'bg-amber-600'
-            }`}
-            style={{ width: `${progressPercentage}%` }}
-          />
-        </div>
-        <span className="text-amber-100/70 text-xs">
-          {points}/{threshold}
-        </span>
-      </div>
-
-      {/* Character Profile */}
-      {dominantTrait[1] > 0 && (
-        <div className="flex items-center space-x-2">
-          <span className="text-amber-100/50 text-xs">PROFILE:</span>
-          <span className={`text-xs ${traitColors[dominantTrait[0]]}`}>
-            {traitDescriptions[dominantTrait[0]].toUpperCase()}
-          </span>
-        </div>
-      )}
-
-      {/* Status */}
-      {isFinalReady ? (
-        <div className="text-green-400 text-xs animate-pulse">
-          › FINAL PHASE READY
-        </div>
-      ) : isNearFinal ? (
-        <div className="text-amber-400 text-xs animate-pulse">
-          › CRITICAL THRESHOLD APPROACHING
-        </div>
-      ) : pointsToFinal > 0 ? (
-        <div className="text-amber-100/70 text-xs">
-          › {pointsToFinal} more to final phase
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAudioInit, onExit }) {
   const [gameState, setGameState] = useState('discovery');
   const [currentPhase, setCurrentPhase] = useState('intro');
@@ -378,17 +306,8 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
           onChoice={handleChoiceSelection}
           dialoguePhases={dialoguePhases}
           isDisplayingResponse={isDisplayingResponse}
+          progressInfo={progressInfo}
         />
-        
-        {/* Progress indicator overlay */}
-        <div className="absolute top-4 left-4">
-          <ProgressIndicator
-            points={progressInfo.points}
-            threshold={progressInfo.threshold}
-            characterProfile={progressInfo.characterProfile}
-            pointsToFinal={progressInfo.pointsToFinal}
-          />
-        </div>
         
         {/* Skip instruction overlay */}
         {!showChoices && (
