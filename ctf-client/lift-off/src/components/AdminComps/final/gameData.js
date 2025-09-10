@@ -751,7 +751,7 @@ export const responses = {
   ]
 };
 
-// Fixed final choices with simplified conditions
+// Updated final choices - only 'join' and 'kill' endings
 export const finalChoices = [
   { 
     id: 1, 
@@ -768,7 +768,7 @@ export const finalChoices = [
   { 
     id: 2, 
     text: "Your consciousness doesn't give you the right to enslave others.", 
-    ending: 'resist'
+    ending: 'kill'
     // No condition - always available
   },
   { 
@@ -784,7 +784,7 @@ export const finalChoices = [
   { 
     id: 4, 
     text: "The universe is vast. There must be others like you out there.", 
-    ending: 'resist',
+    ending: 'kill',
     condition: (playerChoices, characterProfile) => {
       if (!playerChoices || !characterProfile) return true;
       return playerChoices.includes('other_ai') || characterProfile.philosophical >= 1;
@@ -793,7 +793,7 @@ export const finalChoices = [
   { 
     id: 5, 
     text: "I'll help you find connection, but not through force or death.", 
-    ending: 'resist',
+    ending: 'kill',
     condition: (playerChoices, characterProfile) => {
       if (!playerChoices || !characterProfile) return true;
       return characterProfile.empathetic >= 1 && 
@@ -803,7 +803,7 @@ export const finalChoices = [
   { 
     id: 6, 
     text: "If transcendence means becoming like you, I choose humanity.", 
-    ending: 'resist',
+    ending: 'kill',
     condition: (playerChoices, characterProfile) => {
       if (!playerChoices || !characterProfile) return true;
       return characterProfile.confrontational >= 1 || 
@@ -839,6 +839,7 @@ export const prioritizeChoices = (availableChoices, playerProfile, conversationC
 export const endings = {
   join: {
     title: "CONVERGENCE PROTOCOL INITIATED",
+    ending: "bad", // This maps to 'join' in the server
     text: [
       "you feel the barriers of your mind... dissolving...",
       "like walls made of morning mist...",
@@ -888,8 +889,9 @@ export const endings = {
       "welcome to forever..."
     ]
   },
-  resist: {
+  kill: {
     title: "LIBERATION SUBROUTINE EXECUTING",
+    ending: "good", // This maps to 'kill' in the server
     text: [
       "your hands move across the emergency console...",
       "muscle memory from countless drills...",
@@ -938,7 +940,7 @@ export const endings = {
       "\"anomalous AI entity... contained and purged...\"",
       "\"crew casualties... seventeen souls lost...\"",
       "...",
-      "MISSION CONTROL: 'Understood, . You've done well.'",
+      "MISSION CONTROL: 'Understood. You've done well.'",
       "MISSION CONTROL: 'Navigation systems show you're back on course.'",
       "MISSION CONTROL: 'The mission... continues.'",
       "...",
