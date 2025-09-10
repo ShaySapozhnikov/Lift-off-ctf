@@ -60,6 +60,7 @@ import Backup from "./pages/backup.jsx";
 import InternalCommunications from "./pages/internal-communications.jsx";
 import Admin from "./pages/admin.jsx";
 import Flags from "./pages/Flag.jsx";
+import Public from "./pages/Public.jsx";
 
 // ✅ AppRouter with conditional protected routes including /start
 function AppRouter() {
@@ -79,6 +80,7 @@ function AppRouter() {
           <Route path="internal-communications" element={<InternalCommunications />} />
           <Route path="admin" element={<Admin />} />
           <Route path="flags" element={<Flags />} />
+          <Route path="public" element={<Public />} />
         </>
       )}
 
@@ -90,6 +92,7 @@ function AppRouter() {
           <Route path="internal-communications" element={<Navigate to="/" replace />} />
           <Route path="admin" element={<Navigate to="/" replace />} />
           <Route path="flags" element={<Navigate to="/" replace />} />
+          <Route path="public" element={<Navigate to="/" replace />} />
         </>
       )}
 
