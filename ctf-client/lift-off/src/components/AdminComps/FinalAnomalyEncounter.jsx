@@ -350,10 +350,6 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
         characterProfile={characterProfile}
         finalPoints={dialoguePoints}
         onRestart={handleRestart}
-        audioContext={audioContext}   
-        audioEnabled={audioEnabled} 
-        aiChoice={endingType} // Add this - should be 'join' or 'kill'
-        score={dialoguePoints} // Add this - the player's score
       />
     );
   }
