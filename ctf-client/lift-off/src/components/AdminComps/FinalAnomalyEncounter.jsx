@@ -350,6 +350,8 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
         characterProfile={characterProfile}
         finalPoints={dialoguePoints}
         onRestart={handleRestart}
+        audioContext={audioContext}   
+        audioEnabled={audioEnabled} 
       />
     );
   }
