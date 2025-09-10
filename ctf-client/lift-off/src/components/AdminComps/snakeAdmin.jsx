@@ -348,6 +348,45 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
       setDebugInfo(`Connection error: ${error.message}`);
     }
   };
+  useEffect(() => {
+    const handleSkipDialogue = (e) => {
+      if (e.code === "Space") {
+        e.preventDefault();
+  
+        if (phase === "dialogue") {
+          if (isTyping) {
+            // Finish current line instantly
+            setCurrentDialogue(dialogues[dialogueIndex]);
+            setIsTyping(false);
+          } else {
+            // Jump to next line immediately
+            if (dialogueIndex < dialogues.length - 1) {
+              setDialogueIndex((prev) => prev + 1);
+            } else {
+              // End of dialogues → start game
+              setPhase("game");
+              setGameState("playing");
+            }
+          }
+        }
+  
+        if (showingVictoryDialogue) {
+          if (isVictoryTyping) {
+            setCurrentVictoryDialogue(victoryDialogues[victoryDialogueIndex]);
+            setIsVictoryTyping(false);
+          } else {
+            if (victoryDialogueIndex < victoryDialogues.length - 1) {
+              setVictoryDialogueIndex((prev) => prev + 1);
+            }
+          }
+        }
+      }
+    };
+  
+    window.addEventListener("keydown", handleSkipDialogue);
+    return () => window.removeEventListener("keydown", handleSkipDialogue);
+  }, [phase, dialogueIndex, isTyping, showingVictoryDialogue, victoryDialogueIndex, isVictoryTyping, dialogues, victoryDialogues]);
+  
 
   // Victory condition - 50 points
   useEffect(() => {
