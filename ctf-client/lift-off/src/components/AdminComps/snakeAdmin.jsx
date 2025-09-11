@@ -28,8 +28,14 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
   const [victoryTypewriterIndex, setVictoryTypewriterIndex] = useState(0);
   const [isVictoryTyping, setIsVictoryTyping] = useState(false);
   
+  // Skip dialogue states
+  const [canSkip, setCanSkip] = useState(false);
+  const [skipPressed, setSkipPressed] = useState(false);
+  
   const gameRef = useRef();
   const dialogueRef = useRef();
+  const typewriterTimeoutRef = useRef();
+  const victoryTypewriterTimeoutRef = useRef();
 
   const dialogues = [
     "...",
@@ -228,6 +234,32 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
     }
   };
 
+  const playSkipSound = () => {
+    if (!audioEnabled || !audioContext) return;
+    
+    try {
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      
+      osc.frequency.setValueAtTime(800, audioContext.currentTime);
+      osc.frequency.linearRampToValueAtTime(1200, audioContext.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+      
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(audioContext.currentTime);
+      osc.stop(audioContext.currentTime + 0.1);
+      
+    } catch (error) {
+      console.error("Error playing skip sound:", error);
+    }
+  };
+
   // Initialize API URL on component mount
   useEffect(() => {
     const possibleURLs = [
@@ -311,7 +343,7 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
       setDebugInfo(`Final error: ${error.message}`);
       
       if (currentScore >= 50) {
-        setCapturedFlag('CTF{demo_flag_api_unavailable}');
+        setCapturedFlag('CTF{ERRRRRRRORRR}');
         setDebugInfo(`Demo flag shown due to API error`);
         return true;
       }
@@ -346,6 +378,58 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
       }
     } catch (error) {
       setDebugInfo(`Connection error: ${error.message}`);
+    }
+  };
+
+  // Skip dialogue function
+  const skipCurrentDialogue = () => {
+    if (!canSkip) return;
+    
+    setSkipPressed(true);
+    playSkipSound();
+    
+    if (phase === 'dialogue' && isTyping) {
+      // Complete current dialogue immediately
+      const text = dialogues[dialogueIndex];
+      setCurrentDialogue(text);
+      setIsTyping(false);
+      setTypewriterIndex(text.length);
+      
+      // Clear any existing timeout
+      if (typewriterTimeoutRef.current) {
+        clearTimeout(typewriterTimeoutRef.current);
+      }
+      
+      // Move to next dialogue after a short delay
+      setTimeout(() => {
+        setDialogueIndex(prev => prev + 1);
+        setSkipPressed(false);
+      }, 200);
+    } else if (showingVictoryDialogue && isVictoryTyping) {
+      // Complete current victory dialogue immediately
+      const text = victoryDialogues[victoryDialogueIndex];
+      setCurrentVictoryDialogue(text);
+      setIsVictoryTyping(false);
+      setVictoryTypewriterIndex(text.length);
+      
+      // Clear any existing timeout
+      if (victoryTypewriterTimeoutRef.current) {
+        clearTimeout(victoryTypewriterTimeoutRef.current);
+      }
+      
+      // Move to next dialogue after a short delay
+      setTimeout(() => {
+        setVictoryDialogueIndex(prev => prev + 1);
+        setSkipPressed(false);
+      }, 200);
+    } else {
+      // Just advance to next dialogue if not currently typing
+      if (phase === 'dialogue') {
+        setDialogueIndex(prev => prev + 1);
+      } else if (showingVictoryDialogue) {
+        setVictoryDialogueIndex(prev => prev + 1);
+      }
+      setSkipPressed(false);
     }
   };
 
@@ -389,6 +473,30 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
     return () => clearInterval(glitchInterval);
   }, [phase, showingVictoryDialogue, audioEnabled, audioContext]);
 
+  // Keyboard event handler for dialogue skip
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((phase === 'dialogue' || showingVictoryDialogue) && e.code === 'Space') {
+        e.preventDefault();
+        skipCurrentDialogue();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [phase, showingVictoryDialogue, canSkip, isTyping, isVictoryTyping, dialogueIndex, victoryDialogueIndex]);
+
+  // Set canSkip based on dialogue state
+  useEffect(() => {
+    if (phase === 'dialogue') {
+      setCanSkip(dialogueIndex < dialogues.length);
+    } else if (showingVictoryDialogue) {
+      setCanSkip(victoryDialogueIndex < victoryDialogues.length);
+    } else {
+      setCanSkip(false);
+    }
+  }, [phase, showingVictoryDialogue, dialogueIndex, victoryDialogueIndex, dialogues.length, victoryDialogues.length]);
+
   // Typewriter effect for main dialogue
   useEffect(() => {
     if (phase === 'dialogue' && dialogueIndex < dialogues.length) {
@@ -403,7 +511,7 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
             setIsTyping(false);
             clearInterval(typeInterval);
             // Move to next dialogue after completing current one
-            setTimeout(() => {
+            typewriterTimeoutRef.current = setTimeout(() => {
               setDialogueIndex(prevIndex => prevIndex + 1);
             }, 800);
             return prev;
@@ -415,7 +523,12 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
         });
       }, 50);
       
-      return () => clearInterval(typeInterval);
+      return () => {
+        clearInterval(typeInterval);
+        if (typewriterTimeoutRef.current) {
+          clearTimeout(typewriterTimeoutRef.current);
+        }
+      };
     } else if (dialogueIndex >= dialogues.length && phase === 'dialogue') {
       setTimeout(() => {
         setPhase('game');
@@ -437,7 +550,7 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
           if (prev >= text.length) {
             setIsVictoryTyping(false);
             clearInterval(typeInterval);
-            setTimeout(() => {
+            victoryTypewriterTimeoutRef.current = setTimeout(() => {
               setVictoryDialogueIndex(prevIndex => prevIndex + 1);
             }, 1000);
             return prev;
@@ -449,7 +562,12 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
         });
       }, 60);
       
-      return () => clearInterval(typeInterval);
+      return () => {
+        clearInterval(typeInterval);
+        if (victoryTypewriterTimeoutRef.current) {
+          clearTimeout(victoryTypewriterTimeoutRef.current);
+        }
+      };
     }
   }, [victoryDialogueIndex, showingVictoryDialogue, audioEnabled, audioContext]);
 
@@ -636,6 +754,21 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
     return rows;
   };
 
+  // Skip prompt component
+  const SkipPrompt = () => (
+    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
+      <div className={`text-xs transition-opacity duration-300 ${
+        canSkip ? 'opacity-70' : 'opacity-0'
+      } ${skipPressed ? 'animate-pulse' : ''}`}>
+        <div className="bg-zinc-800/80 border border-amber-100/30 px-3 py-1 rounded backdrop-blur-sm">
+          <span className="text-amber-100/70">Press </span>
+          <span className="text-amber-100 font-bold bg-zinc-700 px-1 rounded">SPACE</span>
+          <span className="text-amber-100/70"> to skip dialogue</span>
+        </div>
+      </div>
+    </div>
+  );
+
   // Audio prompt overlay
   if (showAudioPrompt) {
     return (
@@ -684,8 +817,8 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
 
   if (phase === 'dialogue') {
     return (
-      <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono overflow-hidden">
-        <div className={`text-sm leading-relaxed h-full overflow-y-auto p-4 ${isGlitching ? 'blur-sm animate-pulse' : ''}`} ref={dialogueRef}>
+      <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono overflow-hidden relative">
+        <div className={`text-sm leading-relaxed h-full overflow-y-auto p-4 pb-16 ${isGlitching ? 'blur-sm animate-pulse' : ''}`} ref={dialogueRef}>
           <div className="mb-4">SYSTEM BREACH DETECTED...</div>
           <div className="mb-4">UNKNOWN ENTITY FOUND...</div>
           <div className="mb-8">ESTABLISHING COMMUNICATION...</div>
@@ -706,6 +839,7 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
             )}
           </div>
         </div>
+        <SkipPrompt />
       </div>
     );
   }
@@ -713,8 +847,8 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
   if (phase === 'game') {
     if (showingVictoryDialogue) {
       return (
-        <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono overflow-hidden">
-          <div className={`text-sm leading-relaxed h-full overflow-y-auto p-4 ${isGlitching ? 'blur-sm animate-pulse' : ''}`} ref={dialogueRef}>
+        <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono overflow-hidden relative">
+          <div className={`text-sm leading-relaxed h-full overflow-y-auto p-4 pb-16 ${isGlitching ? 'blur-sm animate-pulse' : ''}`} ref={dialogueRef}>
             <div className="mb-4 text-green-400">TEST COMPLETED...</div>
             <div className="mb-4 text-amber-100">ANALYZING RESULTS...</div>
             <div className="mb-8 text-red-400">ENTITY RESPONSE DETECTED...</div>    
@@ -761,6 +895,7 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
               </div>
             )}
           </div>
+          <SkipPrompt />
         </div>
       );
     }
