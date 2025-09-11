@@ -2,6 +2,20 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useTypewriter } from './useTypewriter';
 import { useAudioManager } from './useAudioManager'; // Fixed import path
 
+const SkipPrompt = ({ canSkip, skipPressed, isTyping }) => (
+  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
+    <div className={`text-xs transition-opacity duration-300 ${
+      canSkip ? 'opacity-70' : 'opacity-0'
+    } ${skipPressed ? 'animate-pulse' : ''}`}>
+      <div className="bg-zinc-800/80 border border-amber-100/30 px-3 py-1 rounded backdrop-blur-sm">
+        <span className="text-amber-100/70">Press </span>
+        <span className="text-amber-100 font-bold bg-zinc-700 px-1 rounded">SPACE</span>
+        <span className="text-amber-100/70"> to {isTyping ? 'skip line' : 'skip to end'}</span>
+      </div>
+    </div>
+  </div>
+);
+
 export default function EndingScreen({ ending, onRestart, audioContext, audioEnabled, aiChoice, score }) {
   const dialogueRef = useRef();
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
@@ -10,6 +24,7 @@ export default function EndingScreen({ ending, onRestart, audioContext, audioEna
   const [capturedFlag, setCapturedFlag] = useState(null);
   const [flagLoading, setFlagLoading] = useState(false);
   const [expandedText, setExpandedText] = useState([]);
+  const [skipPressed, setSkipPressed] = useState(false);
 
   // Feedback for copied flag
   const [copied, setCopied] = useState(false);
@@ -31,11 +46,6 @@ const handleCopyFlag = async (flag) => {
     console.error("Failed to copy flag:", err);
   }
 };
-
-
-
-  
-
 
   // Backend connection function for flag retrieval
   const fetchEndingFlag = async () => {
@@ -222,6 +232,11 @@ const handleCopyFlag = async (flag) => {
     const handleKeyPress = async (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
+        setSkipPressed(true);
+        
+        // Reset skip pressed state after animation
+        setTimeout(() => setSkipPressed(false), 200);
+        
         if (isTyping) {
           skipToEnd();
         } else if (!allLinesComplete) {
@@ -266,6 +281,9 @@ const handleCopyFlag = async (flag) => {
     }
   };
 
+  // Determine if skip prompt should be shown
+  const canShowSkipPrompt = !allLinesComplete && currentLine;
+
   return (
     <div className="w-full h-full bg-zinc-900 text-amber-100 font-mono overflow-hidden relative">
       <div className="text-sm leading-relaxed h-full overflow-y-auto p-4" ref={dialogueRef}>
@@ -305,18 +323,19 @@ const handleCopyFlag = async (flag) => {
 
         {showRestart && (
           <div className="text-center mt-8 text-xs text-amber-100/50">
-            Mission complete. Thank you for playing.
           </div>
         )}
 
-        {!allLinesComplete && (
-          <div className="absolute bottom-4 right-4 text-xs text-amber-100/50 font-mono">
-            SPACE: {isTyping ? 'Skip line' : 'Skip to end'}
-          </div>
-        )}
+        {/* New SkipPrompt component */}
+        <SkipPrompt 
+          canSkip={canShowSkipPrompt} 
+          skipPressed={skipPressed} 
+          isTyping={isTyping} 
+        />
 
+        {/* Audio status (moved to top-right to avoid overlap) */}
         {audioEnabled && (
-          <div className="absolute bottom-4 left-4 text-xs text-amber-100/30 font-mono">AUDIO ACTIVE</div>
+          <div className="absolute top-4 right-4 text-xs text-amber-100/30 font-mono">AUDIO ACTIVE</div>
         )}
       </div>
 

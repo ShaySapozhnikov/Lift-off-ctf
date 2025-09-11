@@ -9,6 +9,20 @@ import { useTypewriter } from './final/useTypewriter';
 import { useGameLogic } from './final/useGameLogic';
 import { dialoguePhases, endings } from './final/gameData';
 
+const SkipPrompt = ({ canSkip, skipPressed, isTyping }) => (
+  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
+    <div className={`text-xs transition-opacity duration-300 ${
+      canSkip ? 'opacity-70' : 'opacity-0'
+    } ${skipPressed ? 'animate-pulse' : ''}`}>
+      <div className="bg-zinc-800/80 border border-amber-100/30 px-3 py-1 rounded backdrop-blur-sm">
+        <span className="text-amber-100/70">Press </span>
+        <span className="text-amber-100 font-bold bg-zinc-700 px-1 rounded">SPACE</span>
+        <span className="text-amber-100/70"> to {isTyping ? 'skip line' : 'skip to choices'}</span>
+      </div>
+    </div>
+  </div>
+);
+
 export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAudioInit, onExit }) {
   const [gameState, setGameState] = useState('discovery');
   const [currentPhase, setCurrentPhase] = useState('intro');
@@ -17,6 +31,7 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
   const [endingType, setEndingType] = useState(null);
   const [showCursor, setShowCursor] = useState(true);
   const [showAudioPrompt, setShowAudioPrompt] = useState(false);
+  const [skipPressed, setSkipPressed] = useState(false);
 
   // Custom hooks
   const { playTypewriterSound } = useAudioManager(audioContext, audioEnabled);
@@ -110,6 +125,10 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
 
       if (e.code === 'Space') {
         e.preventDefault();
+        setSkipPressed(true);
+        
+        // Reset skip pressed state after animation
+        setTimeout(() => setSkipPressed(false), 200);
         
         if (isTyping) {
           skipToEnd();
@@ -274,7 +293,11 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
     setIsDisplayingResponse(false);
     setCurrentResponse([]);
     setResponseIndex(0);
+    setSkipPressed(false);
   };
+
+  // Determine if skip prompt should be shown
+  const canShowSkipPrompt = gameState === 'dialogue' && !showChoices && currentDialogueLine;
 
   // Render components based on game state
   if (showAudioPrompt) {
@@ -309,10 +332,16 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
           progressInfo={progressInfo}
         />
         
-        {/* Skip instruction overlay */}
+        {/* New SkipPrompt component */}
+        <SkipPrompt 
+          canSkip={canShowSkipPrompt} 
+          skipPressed={skipPressed} 
+          isTyping={isTyping} 
+        />
+        
+        {/* Progress info overlay (moved to top-right to avoid overlap) */}
         {!showChoices && (
-          <div className="absolute bottom-4 right-4 text-xs text-amber-100/50 font-mono space-y-1">
-            <div>SPACE: {isTyping ? 'Skip line' : 'Skip to choices'}</div>
+          <div className="absolute top-4 right-4 text-xs text-amber-100/50 font-mono space-y-1">
             <div>Q: Quit</div>
             {progressInfo.pointsToFinal > 0 && (
               <div className="text-amber-400 animate-pulse">
