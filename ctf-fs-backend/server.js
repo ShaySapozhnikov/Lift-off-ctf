@@ -135,8 +135,11 @@ app.post("/run", (req, res) => {
   if (node.type !== "exe") return res.status(400).json({ error: "Not executable" });
   if (!hasPermission(node, user, 'x')) return res.status(403).json({ error: "Permission denied" });
   
+  // Extract filename from path for passkey checking
+  const filename = path.split('/').pop();
+  
   // Check passkey if required
-  if (node.passkey_required && !checkPasskeyAccess(node, passkey)) {
+  if (node.passkey_required && !checkPasskeyAccess(node, passkey, filename)) {
     return res.status(401).json({ 
       error: "Passkey required to execute", 
       hint: node.unlock_hint 
