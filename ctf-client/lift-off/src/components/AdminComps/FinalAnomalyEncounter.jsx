@@ -378,15 +378,8 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
         {/* Progress info overlay (moved to top-right to avoid overlap) */}
         {!showChoices && (
           <div className="absolute top-4 right-4 text-xs text-amber-100/50 font-mono space-y-1">
-            <div>Q: Quit</div>
-            {progressInfo.pointsToFinal > 0 && (
-              <div className="text-amber-400 animate-pulse">
-                › {progressInfo.pointsToFinal} more to final phase
-              </div>
-            )}
             {progressInfo.points >= progressInfo.threshold && (
               <div className="text-green-400 animate-pulse">
-                › Final phase ready - space to continue
               </div>
             )}
           </div>
