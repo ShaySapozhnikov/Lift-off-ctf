@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import AudioPrompt from './final/AudioPrompt';
 import DiscoveryScreen from './final/DiscoveryScreen';
 import DialogueScreen from './final/DialogueScreen';
 import FinalChoiceScreen from './final/FinalChoiceScreen';
 import EndingScreen from './final/EndingScreen';
-import { useAudioManager } from './final/useAudioManager';
 import { useTypewriter } from './final/useTypewriter';
 import { useGameLogic } from './final/useGameLogic';
 import { dialoguePhases, endings } from './final/gameData';
@@ -33,8 +32,45 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
   const [showAudioPrompt, setShowAudioPrompt] = useState(false);
   const [skipPressed, setSkipPressed] = useState(false);
 
+  // Audio functionality integrated directly
+  const ensureContext = useCallback(async () => {
+    if (audioContext && audioContext.state === 'suspended') {
+      try {
+        await audioContext.resume();
+        console.log("AudioContext resumed");
+      } catch (err) {
+        console.warn("Failed to resume AudioContext:", err);
+      }
+    }
+  }, [audioContext]);
+
+  const playTypewriterSound = useCallback(async (anomalyMood = 'curious') => {
+    if (!audioEnabled || !audioContext) return;
+    await ensureContext();
+
+    try {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      const frequency = 1000 + Math.random() * 500;
+      const volume =
+        anomalyMood === 'manic' ? 0.05 :
+        anomalyMood === 'angry' ? 0.06 : 0.03;
+
+      osc.frequency.setValueAtTime(frequency, audioContext.currentTime);
+      gain.gain.setValueAtTime(volume, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.05);
+
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(audioContext.currentTime);
+      osc.stop(audioContext.currentTime + 0.05);
+    } catch (error) {
+      console.error("Error playing typewriter sound:", error);
+    }
+  }, [audioContext, audioEnabled, ensureContext]);
+
   // Custom hooks
-  const { playTypewriterSound } = useAudioManager(audioContext, audioEnabled);
   const {
     conversationHistory,
     playerChoices,
@@ -376,9 +412,11 @@ export default function FinalAnomalyEncounter({ audioContext, audioEnabled, onAu
     return (
       <EndingScreen
         ending={endings[endingType]}
-        characterProfile={characterProfile}
-        finalPoints={dialoguePoints}
         onRestart={handleRestart}
+        audioContext={audioContext}
+        audioEnabled={audioEnabled}
+        aiChoice={playerChoices[playerChoices.length - 1]} // Pass the last choice as AI choice
+        score={dialoguePoints} // Pass the dialogue points as score
       />
     );
   }

@@ -1,6 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useTypewriter } from './useTypewriter';
-import { useAudioManager } from './useAudioManager'; // Fixed import path
 
 const SkipPrompt = ({ canSkip, skipPressed, isTyping }) => (
   <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
@@ -25,31 +24,295 @@ export default function EndingScreen({ ending, onRestart, audioContext, audioEna
   const [flagLoading, setFlagLoading] = useState(false);
   const [expandedText, setExpandedText] = useState([]);
   const [skipPressed, setSkipPressed] = useState(false);
-
-  // Feedback for copied flag
   const [copied, setCopied] = useState(false);
 
-  // Audio manager with proper error handling
-  const { 
-    playCharacterTypewriter, 
-    playAnomalyEffect, 
-    playMissionControlBeep, 
-    playSystemAlert 
-  } = useAudioManager(audioContext, audioEnabled);
+  // Audio Functions - Integrated directly into the component
+  const ensureContext = useCallback(async () => {
+    if (audioContext && audioContext.state === 'suspended') {
+      try {
+        await audioContext.resume();
+        console.log("AudioContext resumed");
+      } catch (err) {
+        console.warn("Failed to resume AudioContext:", err);
+      }
+    }
+  }, [audioContext]);
+
+  const playCharacterTypewriter = useCallback(async (character = 'anomaly', mood = 'curious') => {
+    if (!audioEnabled || !audioContext) {
+      console.log('Audio disabled or no context:', { audioEnabled, audioContext: !!audioContext });
+      return;
+    }
+    await ensureContext();
+
+    try {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      let frequency, volume, duration;
+
+      switch (character) {
+        case 'anomaly':
+          frequency = 800 + Math.random() * 600;
+          volume = mood === 'manic' ? 0.06 :
+                   mood === 'angry' ? 0.07 :
+                   mood === 'desperate' ? 0.04 : 0.03;
+          duration = mood === 'manic' ? 0.03 : 0.05;
+          osc.type = 'square';
+          break;
+
+        case 'mission_control':
+          frequency = 300 + Math.random() * 200;
+          volume = 0.04;
+          duration = 0.08;
+          osc.type = 'sine';
+          break;
+
+        case 'player':
+          frequency = 600 + Math.random() * 300;
+          volume = 0.035;
+          duration = 0.06;
+          osc.type = 'triangle';
+          break;
+
+        case 'system':
+          frequency = 1200 + Math.random() * 400;
+          volume = 0.025;
+          duration = 0.04;
+          osc.type = 'sawtooth';
+          break;
+
+        default:
+          frequency = 1000 + Math.random() * 500;
+          volume = 0.03;
+          duration = 0.05;
+          osc.type = 'square';
+      }
+
+      osc.frequency.setValueAtTime(frequency, audioContext.currentTime);
+      gain.gain.setValueAtTime(volume, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(audioContext.currentTime);
+      osc.stop(audioContext.currentTime + duration);
+    } catch (error) {
+      console.error("Error playing character typewriter sound:", error);
+    }
+  }, [audioContext, audioEnabled, ensureContext]);
+
+  const playAnomalyEffect = useCallback(async (effectType = 'glitch') => {
+    if (!audioEnabled || !audioContext) return;
+    await ensureContext();
+
+    try {
+      const playEffect = () => {
+        switch (effectType) {
+          case 'glitch':
+            const osc1 = audioContext.createOscillator();
+            const gain1 = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+
+            osc1.type = 'square';
+            osc1.frequency.setValueAtTime(800, audioContext.currentTime);
+            osc1.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.3);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(2000, audioContext.currentTime);
+            filter.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.3);
+
+            gain1.gain.setValueAtTime(0.08, audioContext.currentTime);
+            gain1.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+
+            osc1.connect(filter);
+            filter.connect(gain1);
+            gain1.connect(audioContext.destination);
+
+            osc1.start(audioContext.currentTime);
+            osc1.stop(audioContext.currentTime + 0.3);
+            break;
+
+          case 'digital_scream':
+            for (let i = 0; i < 5; i++) {
+              setTimeout(() => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(1500 + Math.random() * 1000, audioContext.currentTime);
+
+                gain.gain.setValueAtTime(0.06, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + 0.1);
+              }, i * 50);
+            }
+            break;
+
+          case 'consciousness_merge':
+            const frequencies = [220, 330, 440, 660];
+            frequencies.forEach((freq, index) => {
+              setTimeout(() => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+
+                gain.gain.setValueAtTime(0.02, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 2);
+
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + 2);
+              }, index * 200);
+            });
+            break;
+
+          case 'cascade_failure':
+            for (let i = 0; i < 10; i++) {
+              setTimeout(() => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(2000 - (i * 150), audioContext.currentTime);
+
+                gain.gain.setValueAtTime(0.04, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.2);
+
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + 0.2);
+              }, i * 100);
+            }
+            break;
+
+          case 'static_burst':
+            const bufferSize = audioContext.sampleRate * 0.1;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+              data[i] = (Math.random() * 2 - 1) * 0.1;
+            }
+
+            const source = audioContext.createBufferSource();
+            const gain = audioContext.createGain();
+
+            source.buffer = buffer;
+            gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+
+            source.connect(gain);
+            gain.connect(audioContext.destination);
+            source.start(audioContext.currentTime);
+            break;
+
+          default:
+            // Default glitch effect
+            const oscDefault = audioContext.createOscillator();
+            const gainDefault = audioContext.createGain();
+
+            oscDefault.type = 'square';
+            oscDefault.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscDefault.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.3);
+
+            gainDefault.gain.setValueAtTime(0.08, audioContext.currentTime);
+            gainDefault.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+
+            oscDefault.connect(gainDefault);
+            gainDefault.connect(audioContext.destination);
+
+            oscDefault.start(audioContext.currentTime);
+            oscDefault.stop(audioContext.currentTime + 0.3);
+        }
+      };
+
+      playEffect();
+    } catch (error) {
+      console.error("Error playing anomaly effect:", error);
+    }
+  }, [audioContext, audioEnabled, ensureContext]);
+
+  const playMissionControlBeep = useCallback(async () => {
+    if (!audioEnabled || !audioContext) return;
+    await ensureContext();
+
+    try {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, audioContext.currentTime);
+
+      gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.2);
+
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(audioContext.currentTime);
+      osc.stop(audioContext.currentTime + 0.2);
+    } catch (error) {
+      console.error("Error playing mission control beep:", error);
+    }
+  }, [audioContext, audioEnabled, ensureContext]);
+
+  const playSystemAlert = useCallback(async (alertType = 'warning') => {
+    if (!audioEnabled || !audioContext) return;
+    await ensureContext();
+
+    try {
+      const frequencies = {
+        warning: [800, 600],
+        critical: [1000, 500],
+        success: [600, 800],
+        error: [400, 300]
+      };
+
+      const freqs = frequencies[alertType] || frequencies.warning;
+
+      freqs.forEach((freq, index) => {
+        setTimeout(() => {
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+
+          gain.gain.setValueAtTime(0.05, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.15);
+
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+          osc.start(audioContext.currentTime);
+          osc.stop(audioContext.currentTime + 0.15);
+        }, index * 200);
+      });
+    } catch (error) {
+      console.error("Error playing system alert:", error);
+    }
+  }, [audioContext, audioEnabled, ensureContext]);
 
   // Copy-to-clipboard handler
-const handleCopyFlag = async (flag) => {
-  try {
-    await navigator.clipboard.writeText(flag);
-    alert("Flag copied to clipboard!"); // <-- browser alert
-  } catch (err) {
-    console.error("Failed to copy flag:", err);
-  }
-};
+  const handleCopyFlag = async (flag) => {
+    try {
+      await navigator.clipboard.writeText(flag);
+      alert("Flag copied to clipboard!");
+    } catch (err) {
+      console.error("Failed to copy flag:", err);
+    }
+  };
 
   // Backend connection function for flag retrieval
   const fetchEndingFlag = async () => {
-    if (flagLoading || capturedFlag) return; // Prevent duplicate calls
+    if (flagLoading || capturedFlag) return;
     
     setFlagLoading(true);
     
@@ -234,7 +497,6 @@ const handleCopyFlag = async (flag) => {
         e.preventDefault();
         setSkipPressed(true);
         
-        // Reset skip pressed state after animation
         setTimeout(() => setSkipPressed(false), 200);
         
         if (isTyping) {
@@ -281,7 +543,6 @@ const handleCopyFlag = async (flag) => {
     }
   };
 
-  // Determine if skip prompt should be shown
   const canShowSkipPrompt = !allLinesComplete && currentLine;
 
   return (
@@ -326,14 +587,12 @@ const handleCopyFlag = async (flag) => {
           </div>
         )}
 
-        {/* New SkipPrompt component */}
         <SkipPrompt 
           canSkip={canShowSkipPrompt} 
           skipPressed={skipPressed} 
           isTyping={isTyping} 
         />
 
-        {/* Audio status (moved to top-right to avoid overlap) */}
         {audioEnabled && (
           <div className="absolute top-4 right-4 text-xs text-amber-100/30 font-mono">AUDIO ACTIVE</div>
         )}
