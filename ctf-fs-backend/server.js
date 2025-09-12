@@ -42,7 +42,9 @@ function hasPermission(node, user, operation = 'r') {
   switch(operation) {
     case 'r': return permissions.includes('r');
     case 'w': return permissions.includes('w');
-    case 'x': return permissions.includes('x');
+    case 'x': 
+      // For executable files, check if it's marked as "exe" type or has 'x' permission
+      return permissions.includes('x') || node.type === 'exe';
     default: return false;
   }
 }

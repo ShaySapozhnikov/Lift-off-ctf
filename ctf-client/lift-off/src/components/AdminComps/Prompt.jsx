@@ -37,7 +37,18 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       );
       if (!res.ok) return [`Error: ${await res.text()}`];
       const data = await res.json();
-      return data.files;
+      
+      // ✅ CLEAN: Just show filenames like a real terminal
+      if (Array.isArray(data.files) && data.files.length > 0 && typeof data.files[0] === 'object') {
+        // New format: array of file objects - just show names
+        return data.files.map(file => {
+          const lockIndicator = file.passkey_required ? ' [LOCKED]' : '';
+          return `${file.name}${lockIndicator}`;
+        });
+      } else {
+        // Old format: array of strings (fallback)
+        return data.files || ['No files found'];
+      }
     } catch (e) {
       return [`Network error: ${e.message}`];
     }
@@ -50,7 +61,13 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       );
       if (!res.ok) return [`Error: ${await res.text()}`];
       const data = await res.json();
-      return [data.content];
+      
+      // Show hint if available
+      const output = [data.content];
+      if (data.hint) {
+        output.push(`💡 Hint: ${data.hint}`);
+      }
+      return output;
     } catch (e) {
       return [`Network error: ${e.message}`];
     }
@@ -81,7 +98,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
 
       // Handle flags from completed games
       if (data.flag) {
-        return [data.output, `FLAG: ${data.flag}`];
+        return [data.output, `🏁 FLAG: ${data.flag}`];
       }
 
       return [data.output];
@@ -100,20 +117,41 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
 
   // --- Commands ---
   const commandsMap = {
-    help: async () => ["AVAILABLE> help, ls, cd, cat, clear, run, pleasedont.exe"],
+    help: async () => [
+      "AVAILABLE COMMANDS:",
+      "  help       - Show this help message",
+      "  ls         - List directory contents", 
+      "  cd <dir>   - Change directory",
+      "  cat <file> - Display file contents",
+      "  run <file> - Execute a file",
+      "  clear      - Clear screen",
+      "  pwd        - Show current directory",
+      "  whoami     - Show current user",
+      "",
+      "SPECIAL FILES:",
+      "  2nak3.bat       - Level 1 challenge",
+      "  LEAVE.bat       - Level 2 challenge", 
+      "  pleasedont.exe  - Level 3 challenge"
+    ],
     clear: async ({ clear }) => {
       clear();
       return [];
     },
-    ls: async ({ cwd }) => await lsDir(cwd.join("/")),
+    pwd: async ({ cwd }) => [cwd.join("/")],
+    whoami: async () => [currentUser],
+    ls: async ({ cwd }) => {
+      const result = await lsDir(cwd.join("/"));
+      // Add some spacing for better readability
+      return ["", ...result, ""];
+    },
     cd: async ({ cwd, args, setCwd }) => {
       if (!args[0]) return [];
       const newPath = resolvePath(cwd, args[0]);
       const dirCheck = await lsDir(newPath.join("/"));
       if (dirCheck[0]?.startsWith("Error"))
-        return [`cd: permission denied: ${args[0]}`];
+        return [`cd: cannot access '${args[0]}': Permission denied`];
       setCwd(newPath);
-      return [];
+      return [`Changed directory to: ${newPath.join("/")}`];
     },
     cat: async ({ cwd, args }) => {
       if (!args[0]) return ["cat: missing filename"];
@@ -123,6 +161,27 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     run: async ({ cwd, args }) => {
       if (!args[0]) return ["run: missing filename"];
       const path = resolvePath(cwd, args[0]).join("/");
+      
+      // Check if this is a locked file that needs a passkey
+      const filename = args[0];
+      if (filename === "2nak3.bat" || filename === "LEAVE.bat" || filename === "pleasedont.exe") {
+        const passkey = args[1]; // Second argument should be the passkey
+        if (!passkey) {
+          return [
+            `Error: ${filename} requires a passkey`,
+            `Usage: run ${filename} <passkey>`,
+            `Example: run 2nak3.bat crypto_master`,
+            "",
+            "Find passkeys by exploring the CTF challenges in:",
+            "  crypto/     - cryptography challenges", 
+            "  reversing/  - reverse engineering",
+            "  forensics/  - digital forensics",
+            "  web/        - web exploitation"
+          ];
+        }
+        return await runFileAPI(path, undefined, passkey);
+      }
+      
       return await runFileAPI(path);
     },
     // Multiple ways to trigger the anomaly encounter
@@ -133,7 +192,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         console.log("Calling onEvent with anomalyEncounter");
         onEvent("anomalyEncounter");
       }
-      return ["WARNING: Executing forbidden file...", "Initializing anomaly encounter..."];
+      return ["⚠️  WARNING: Executing forbidden file...", "🤖 Initializing anomaly encounter..."];
     },
     pleasedont: async () => {
       // Alternative without .exe extension
@@ -142,14 +201,14 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         console.log("Calling onEvent with anomalyEncounter");
         onEvent("anomalyEncounter");
       }
-      return ["WARNING: Executing forbidden file...", "Initializing anomaly encounter..."];
+      return ["⚠️  WARNING: Executing forbidden file...", "🤖 Initializing anomaly encounter..."];
     }
   };
 
   const onSubmit = async (value) => {
     const v = value.trim();
     if (!v) return;
-    setHistory((h) => [...h, `> ${v}`]);
+    setHistory((h) => [...h, `${cwd.join("/")}> ${v}`]);
     setCommands((c) => [...c, v]);
 
     const [cmd, ...args] = v.split(/\s+/);
@@ -181,9 +240,9 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
           console.log("Calling onEvent with anomalyEncounter");
           onEvent("anomalyEncounter");
         }
-        setHistory((h) => [...h, "WARNING: Executing forbidden file...", "Initializing anomaly encounter..."]);
+        setHistory((h) => [...h, "⚠️  WARNING: Executing forbidden file...", "🤖 Initializing anomaly encounter..."]);
       } else {
-        setHistory((h) => [...h, `UNKNOWN> ${v}`]);
+        setHistory((h) => [...h, `command not found: ${cmd}`]);
       }
     }
 
@@ -239,7 +298,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       {/* history */}
       <div className="space-y-0.5">
         {history.map((h, i) => (
-          <div key={i} className="text-white/80">
+          <div key={i} className="text-white/80 font-mono">
             {h}
           </div>
         ))}
@@ -247,7 +306,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
 
       {/* prompt row */}
       <div className="flex items-center gap-2 pt-2 pb-2">
-        <span className="text-white/70">{cwd.join("/")}&gt;</span>
+        <span className="text-amber-100/70 font-mono">{cwd.join("/")}&gt;</span>
         <input
           ref={inputRef}
           value={buf}
@@ -262,24 +321,29 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         <TerminalInput value={buf} />
       </div>
 
-      <div className="mt-1 text-white/50">Current User: {currentUser}</div>
+      <div className="mt-1 text-white/50 font-mono">
+        Current User: <span className="text-amber-100">{currentUser}</span>
+      </div>
     </div>
   );
 }
 
-function TerminalInput({ value }) {
+function TerminalInput({ value, isPassword }) {
   const [cursorOn, setCursorOn] = useState(true);
   useEffect(() => {
     const t = setInterval(() => setCursorOn((c) => !c), 550);
     return () => clearInterval(t);
   }, []);
+  
+  const displayValue = isPassword ? '*'.repeat(value.length) : value;
+  
   return (
     <div className="font-mono text-white/90">
-      <span>{value}</span>
+      <span>{displayValue}</span>
       <span
         className={
           "ml-0.5 inline-block w-2 h-4 align-[-2px] " +
-          (cursorOn ? "bg-white/80" : "bg-transparent border border-white/30")
+          (cursorOn ? "bg-amber-100/80" : "bg-transparent border border-amber-100/30")
         }
       />
     </div>
