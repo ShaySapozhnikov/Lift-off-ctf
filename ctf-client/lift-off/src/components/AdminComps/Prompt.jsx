@@ -18,6 +18,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     level2_unlocked: false,
     level3_unlocked: false
   });
+  const inputRef = useRef(null);
 
   useEffect(() => inputRef.current?.focus(), []);
   useEffect(() => inputRef.current?.focus(), [history]);
@@ -33,13 +34,44 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       const res = await fetch(`${BACKEND_URL}/progress`);
       if (res.ok) {
         const progress = await res.json();
-        setUserProgress(progress);
+        
+        // Calculate correct access level based on flags collected
+        let accessLevel = 1;
+        if (progress.flags_collected && progress.flags_collected.includes("CTF{snake_victory_flag}")) {
+          accessLevel = 2;
+        }
+        if (progress.flags_collected && progress.flags_collected.includes("CTF{simon_says_flag}")) {
+          accessLevel = 3;
+        }
+        
+        // Update backend with correct progress if needed
+        if (accessLevel > (progress.current_access_level || 1)) {
+          await fetch(`${BACKEND_URL}/progress`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user: currentUser,
+              progress: {
+                ...progress,
+                current_access_level: accessLevel,
+                level1_unlocked: accessLevel >= 1,
+                level2_unlocked: accessLevel >= 2,
+                level3_unlocked: accessLevel >= 3
+              }
+            })
+          });
+        }
+        
+        setUserProgress({
+          ...progress,
+          current_access_level: accessLevel
+        });
         
         // Show welcome message with progress
         const welcomeMessages = [
           "=== DEEP SPACE VESSEL UNHACKABLE - TERMINAL ACCESS ===",
           "",
-          `Access Level: ${progress.current_access_level}/3`,
+          `Access Level: ${accessLevel}/3`,
           `Flags Collected: ${progress.total_flags || 0}`,
           `Challenges Solved: ${progress.total_challenges || 0}`,
           "",
@@ -81,13 +113,24 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       
       const data = await res.json();
       
-      // Update progress if returned
+      // Update progress if returned, but preserve our corrected access level
       if (data.current_access_level) {
-        setUserProgress(prev => ({
-          ...prev,
-          current_access_level: data.current_access_level,
-          total_flags: data.flags_collected || prev.total_flags
-        }));
+        setUserProgress(prev => {
+          // Calculate the correct access level based on flags
+          let correctAccessLevel = 1;
+          if (prev.flags_collected && prev.flags_collected.includes("CTF{snake_victory_flag}")) {
+            correctAccessLevel = 2;
+          }
+          if (prev.flags_collected && prev.flags_collected.includes("CTF{simon_says_flag}")) {
+            correctAccessLevel = 3;
+          }
+          
+          return {
+            ...prev,
+            current_access_level: Math.max(correctAccessLevel, data.current_access_level),
+            total_flags: data.flags_collected || prev.total_flags
+          };
+        });
       }
       
       if (Array.isArray(data.files) && data.files.length > 0) {

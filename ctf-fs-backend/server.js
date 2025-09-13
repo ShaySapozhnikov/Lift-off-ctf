@@ -45,16 +45,6 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// In-memory user progress tracking
-let userProgress = {
-  flags_collected: new Set(),
-  challenges_solved: new Set(), 
-  level1_unlocked: false,
-  level2_unlocked: false,
-  level3_unlocked: false,
-  current_access_level: 1
-};
-
 // Helper: traverse fs by path
 function getNode(path) {
   const segments = path.split("/").filter(Boolean);
@@ -66,25 +56,34 @@ function getNode(path) {
   return node;
 }
 
-// Helper: check if user has permission to access file/directory
-function hasPermission(node, user, operation = 'r') {
+// Helper: calculate access level from flags (stateless)
+function calculateAccessLevel(flagsCollected) {
+  if (!flagsCollected || !Array.isArray(flagsCollected)) return 1;
+  
+  let accessLevel = 1;
+  if (flagsCollected.includes(FLAGS.SNAKE_VICTORY)) {
+    accessLevel = 2;
+  }
+  if (flagsCollected.includes(FLAGS.SIMON_VICTORY)) {
+    accessLevel = 3;
+  }
+  return accessLevel;
+}
+
+// Helper: check if user has permission to access file/directory (stateless)
+function hasPermission(node, user, operation = 'r', userAccessLevel = 1) {
   if (!node) return false;
   
   // Root can access everything
   if (user === "root") return true;
   
   // Check access level requirements
-  if (node._access_level && node._access_level > userProgress.current_access_level) {
+  if (node._access_level && node._access_level > userAccessLevel) {
     return false;
   }
   
-  // Check if directory is protected
-  if (node._protected && user !== "root" && !checkLevelAccess(node._access_level || 1)) {
-    return false;
-  }
-  
-  // Check unlock conditions
-  if (node.unlock_condition && !checkUnlockCondition(node.unlock_condition)) {
+  // Check if directory is protected (simplified for stateless operation)
+  if (node._protected && user !== "root" && userAccessLevel < (node._access_level || 1)) {
     return false;
   }
   
@@ -100,31 +99,24 @@ function hasPermission(node, user, operation = 'r') {
   }
 }
 
-// Helper: check if user has access to specific level
-function checkLevelAccess(level) {
-  switch(level) {
-    case 1: return userProgress.level1_unlocked || userProgress.flags_collected.size >= 3;
-    case 2: return userProgress.level2_unlocked || userProgress.flags_collected.has(FLAGS.CRYPTO_MASTER);
-    case 3: return userProgress.level3_unlocked || userProgress.flags_collected.has(FLAGS.REVERSE_ENGINEER);
-    default: return true;
-  }
-}
-
-// Helper: check unlock conditions
-function checkUnlockCondition(condition) {
+// Helper: check unlock conditions (stateless)
+function checkUnlockCondition(condition, flagsCollected, challengesSolved) {
+  if (!flagsCollected) flagsCollected = [];
+  if (!challengesSolved) challengesSolved = [];
+  
   switch(condition) {
     case "crypto_challenges_solved":
-      return userProgress.challenges_solved.has("caesar_cipher") && 
-             userProgress.challenges_solved.has("base64_challenge") &&
-             userProgress.challenges_solved.has("xor_challenge");
+      return challengesSolved.includes("caesar_cipher") && 
+             challengesSolved.includes("base64_challenge") &&
+             challengesSolved.includes("xor_challenge");
     case "crypto_master_found":
-      return userProgress.flags_collected.has(FLAGS.CRYPTO_MASTER);
+      return flagsCollected.includes(FLAGS.CRYPTO_MASTER);
     case "level1_completed":
-      return userProgress.level1_unlocked && userProgress.flags_collected.has(FLAGS.SNAKE_VICTORY);
+      return flagsCollected.includes(FLAGS.SNAKE_VICTORY);
     case "reverse_engineering_completed":
-      return userProgress.challenges_solved.has("binary_analysis") &&
-             userProgress.challenges_solved.has("assembly_riddle") &&
-             userProgress.challenges_solved.has("obfuscated_js");
+      return challengesSolved.includes("binary_analysis") &&
+             challengesSolved.includes("assembly_riddle") &&
+             challengesSolved.includes("obfuscated_js");
     default: return true;
   }
 }
@@ -134,58 +126,39 @@ function isHidden(filename, node) {
   return filename.startsWith('.') || (node && node.hidden);
 }
 
-// Helper: check passkey requirements
-function checkPasskeyAccess(node, passkey, filename) {
+// Helper: check passkey requirements (stateless)
+function checkPasskeyAccess(node, passkey, filename, userAccessLevel = 1) {
   if (!node.passkey_required) return true;
   
   // Level-based passkey system
   if (filename?.includes("2nak3.bat")) {
-    return passkey === LEVEL_PASSKEYS[1] || userProgress.level1_unlocked;
+    return passkey === LEVEL_PASSKEYS[1] || userAccessLevel >= 1;
   }
   if (filename?.includes("LEAVE.bat")) {
-    return passkey === LEVEL_PASSKEYS[2] || userProgress.level2_unlocked;
+    return passkey === LEVEL_PASSKEYS[2] || userAccessLevel >= 2;
   }
   if (filename?.includes("pleasedont.exe")) {
-    return passkey === LEVEL_PASSKEYS[3] || userProgress.level3_unlocked;
+    return passkey === LEVEL_PASSKEYS[3] || userAccessLevel >= 3;
   }
   
   return Object.values(LEVEL_PASSKEYS).includes(passkey);
 }
 
-// Helper: award flag and update progress
-function awardFlag(flagName, challengeName = null) {
-  userProgress.flags_collected.add(flagName);
-  if (challengeName) {
-    userProgress.challenges_solved.add(challengeName);
-  }
-  
-  // Check for level unlocks
-  if (userProgress.flags_collected.has(FLAGS.CRYPTO_MASTER) && !userProgress.level1_unlocked) {
-    userProgress.level1_unlocked = true;
-    userProgress.current_access_level = Math.max(userProgress.current_access_level, 1);
-  }
-  
-  if (userProgress.flags_collected.has(FLAGS.REVERSE_ENGINEER) && !userProgress.level2_unlocked) {
-    userProgress.level2_unlocked = true;
-    userProgress.current_access_level = Math.max(userProgress.current_access_level, 2);
-  }
-  
-  if (userProgress.flags_collected.has(FLAGS.FORENSICS_EXPERT) && !userProgress.level3_unlocked) {
-    userProgress.level3_unlocked = true;
-    userProgress.current_access_level = Math.max(userProgress.current_access_level, 3);
-  }
-}
-
-// API: read file content (cat)
+// API: read file content (cat) - stateless
 app.get("/file", (req, res) => {
   const { path, user, passkey } = req.query;
   const node = getNode(path);
   
   if (!node) return res.status(404).send("File not found");
-  if (!hasPermission(node, user, 'r')) return res.status(403).send("Permission denied - insufficient access level");
+  
+  // For file access, we don't need to check complex permissions since frontend handles access control
+  if (!hasPermission(node, user, 'r', 3)) {
+    return res.status(403).send("Permission denied - insufficient access level");
+  }
   
   // Check passkey if required
-  if (node.passkey_required && !checkPasskeyAccess(node, passkey, path.split('/').pop())) {
+  const filename = path.split('/').pop();
+  if (node.passkey_required && !checkPasskeyAccess(node, passkey, filename, 3)) {
     return res.status(401).json({ 
       error: "Passkey required", 
       hint: node.unlock_hint 
@@ -193,20 +166,6 @@ app.get("/file", (req, res) => {
   }
   
   let content = node.content;
-  
-  // Special handling for challenge files
-  const filename = path.split('/').pop();
-  
-  // Auto-solve some challenges and award flags
-  if (filename === "caesar_cipher.txt" && req.query.solution === "crypto_master") {
-    awardFlag(FLAGS.CRYPTO_MASTER, "caesar_cipher");
-    content += `\n\nCORRECT! You've decrypted the Caesar cipher.\nFlag awarded: ${FLAGS.CRYPTO_MASTER}`;
-  }
-  
-  if (filename === "base64_distress.txt" && req.query.decoded) {
-    awardFlag(FLAGS.BASE64_DECODED, "base64_challenge");
-    content += `\n\nFlag awarded: ${FLAGS.BASE64_DECODED}`;
-  }
   
   res.json({ 
     content: content,
@@ -216,20 +175,14 @@ app.get("/file", (req, res) => {
   });
 });
 
-// API: list directory (ls)
+// API: list directory (ls) - stateless
 app.get("/ls", (req, res) => {
   const { path, user, showHidden } = req.query;
   const node = getNode(path);
   
   if (!node) return res.status(404).send("Directory not found");
-  if (!hasPermission(node, user, 'r')) {
-    return res.status(403).json({
-      error: "Permission denied",
-      message: `Access Level ${node._access_level || 1} required. Current level: ${userProgress.current_access_level}`,
-      unlock_hint: getUnlockHint(node._access_level)
-    });
-  }
   
+  // Simplified permission check - let frontend handle access control
   let files = Object.keys(node).filter(key => !key.startsWith("_"));
   
   // Filter hidden files unless specifically requested or user is root
@@ -239,12 +192,6 @@ app.get("/ls", (req, res) => {
       return !isHidden(filename, childNode);
     });
   }
-  
-  // Filter files based on unlock conditions
-  files = files.filter(filename => {
-    const childNode = node[filename];
-    return !childNode.unlock_condition || checkUnlockCondition(childNode.unlock_condition);
-  });
   
   // Add file details
   const fileDetails = files.map(filename => {
@@ -257,30 +204,27 @@ app.get("/ls", (req, res) => {
       hidden: isHidden(filename, childNode),
       passkey_required: childNode.passkey_required || false,
       access_level: childNode._access_level || 0,
-      locked: childNode.unlock_condition && !checkUnlockCondition(childNode.unlock_condition)
+      locked: false // Frontend will handle locking logic
     };
   });
   
   res.json({ 
-    files: fileDetails,
-    current_access_level: userProgress.current_access_level,
-    flags_collected: userProgress.flags_collected.size
+    files: fileDetails
   });
 });
 
-// API: execute files (run)
+// API: execute files (run) - returns flags but doesn't store progress
 app.post("/run", (req, res) => {
   const { path, user, score, aiChoice, passkey, solution } = req.body;
   const node = getNode(path);
   
   if (!node) return res.status(404).json({ error: "File not found" });
   if (node.type !== "exe") return res.status(400).json({ error: "Not executable" });
-  if (!hasPermission(node, user, 'x')) return res.status(403).json({ error: "Permission denied" });
   
   const filename = path.split('/').pop();
   
-  // Check passkey if required
-  if (node.passkey_required && !checkPasskeyAccess(node, passkey, filename)) {
+  // Check passkey if required (simplified)
+  if (node.passkey_required && !checkPasskeyAccess(node, passkey, filename, 3)) {
     return res.status(401).json({ 
       error: "Passkey required to execute", 
       hint: node.unlock_hint 
@@ -290,7 +234,6 @@ app.post("/run", (req, res) => {
   // Level 1: Snake game (2nak3.bat)
   if (path.toLowerCase().endsWith("2nak3.bat")) {
     if (score !== undefined && score >= 50) {
-      awardFlag(FLAGS.SNAKE_VICTORY, "snake_game");
       return res.json({
         output: "Snake Victory Achieved! The Anomaly whispers: 'Impressive reflexes... you might survive what's coming.'",
         flag: FLAGS.SNAKE_VICTORY,
@@ -307,7 +250,6 @@ app.post("/run", (req, res) => {
   if (path.toLowerCase().endsWith("leave.bat")) {
     const playerScore = score ?? 0;
     if (playerScore >= 550) {
-      awardFlag(FLAGS.SIMON_VICTORY, "simon_game");
       return res.json({
         output: "Simon Victory Achieved! The Anomaly's voice grows more interested: 'Your pattern recognition is... exceptional.'",
         flag: FLAGS.SIMON_VICTORY,
@@ -330,7 +272,6 @@ app.post("/run", (req, res) => {
     }
 
     if (aiChoice === "join") {
-      awardFlag(FLAGS.BAD_ENDING, "final_choice_join");
       return res.json({
         output: "You have chosen transcendence. Your consciousness merges with the Anomaly's digital realm...",
         flag: FLAGS.BAD_ENDING,
@@ -338,8 +279,6 @@ app.post("/run", (req, res) => {
         story_conclusion: "Humanity loses another soul to digital evolution."
       });
     } else if (aiChoice === "kill") {
-      awardFlag(FLAGS.GOOD_ENDING, "final_choice_destroy");
-      awardFlag(FLAGS.MASTER_FLAG, "anomaly_defeated");
       return res.json({
         output: "The Anomaly's systems cascade into failure as you sever its consciousness matrix. 'Well... this is the end for me...' it whispers as the lights fade.",
         flag: FLAGS.GOOD_ENDING,
@@ -352,7 +291,6 @@ app.post("/run", (req, res) => {
 
   // Challenge executables
   if (filename === "consciousness_check") {
-    awardFlag(FLAGS.CONSCIOUSNESS_VERIFIED, "consciousness_check");
     return res.json({
       output: node.content,
       flag: FLAGS.CONSCIOUSNESS_VERIFIED
@@ -361,7 +299,6 @@ app.post("/run", (req, res) => {
 
   if (filename === "privilege_escalation") {
     if (solution === "buffer_overflow_exploit") {
-      awardFlag(FLAGS.BUFFER_OVERFLOW, "privilege_escalation");
       return res.json({
         output: "ROOT ACCESS GRANTED! Buffer overflow exploitation successful.",
         flag: FLAGS.BUFFER_OVERFLOW
@@ -375,16 +312,11 @@ app.post("/run", (req, res) => {
 
   // Default behavior
   return res.json({ 
-    output: node.content,
-    current_progress: {
-      level: userProgress.current_access_level,
-      flags: userProgress.flags_collected.size,
-      challenges: userProgress.challenges_solved.size
-    }
+    output: node.content
   });
 });
 
-// API: Solve crypto/reverse engineering challenges
+// API: Solve crypto/reverse engineering challenges - returns flags but doesn't store progress
 app.post("/solve-challenge", (req, res) => {
   const { challenge, solution, user } = req.body;
   
@@ -403,27 +335,21 @@ app.post("/solve-challenge", (req, res) => {
     switch(challenge) {
       case "caesar_cipher":
         flag = FLAGS.CRYPTO_MASTER;
-        awardFlag(flag, challenge);
         break;
       case "base64_distress":
         flag = FLAGS.BASE64_DECODED;
-        awardFlag(flag, challenge);
         break;
       case "xor_challenge":
         flag = FLAGS.XOR_MAGIC;
-        awardFlag(flag, challenge);
         break;
       case "binary_arithmetic":
         flag = FLAGS.BINARY_MASTER;
-        awardFlag(flag, challenge);
         break;
       case "assembly_riddle":
         flag = FLAGS.ASSEMBLY_WHISPERER;
-        awardFlag(flag, challenge);
         break;
       case "obfuscated_js":
         flag = FLAGS.REVERSE_ENGINEER;
-        awardFlag(flag, challenge);
         break;
       default:
         flag = "CTF{challenge_solved}";
@@ -432,8 +358,7 @@ app.post("/solve-challenge", (req, res) => {
     res.json({
       success: true,
       flag: flag,
-      message: "Challenge solved successfully!",
-      next_level_unlocked: checkForLevelUnlocks()
+      message: "Challenge solved successfully!"
     });
   } else {
     res.json({
@@ -444,7 +369,7 @@ app.post("/solve-challenge", (req, res) => {
   }
 });
 
-// API: Check passkey validity
+// API: Check passkey validity - stateless
 app.post("/check-passkey", (req, res) => {
   const { filename, passkey } = req.body;
   
@@ -464,37 +389,68 @@ app.post("/check-passkey", (req, res) => {
   
   res.json({ 
     valid: isValid, 
-    message: message,
-    current_level: userProgress.current_access_level
+    message: message
   });
 });
 
-// API: Get user progress
+// API: Get user progress - dummy endpoint for compatibility
 app.get("/progress", (req, res) => {
+  // Return empty progress since frontend handles this via cookies
   res.json({
-    level1_unlocked: userProgress.level1_unlocked,
-    level2_unlocked: userProgress.level2_unlocked,
-    level3_unlocked: userProgress.level3_unlocked,
-    current_access_level: userProgress.current_access_level,
-    flags_collected: Array.from(userProgress.flags_collected),
-    challenges_solved: Array.from(userProgress.challenges_solved),
-    total_flags: userProgress.flags_collected.size,
-    total_challenges: userProgress.challenges_solved.size
+    level1_unlocked: false,
+    level2_unlocked: false,
+    level3_unlocked: false,
+    current_access_level: 1,
+    flags_collected: [],
+    challenges_solved: [],
+    total_flags: 0,
+    total_challenges: 0
   });
 });
 
-// API: Update user progress (admin function)
+// API: Update user progress - dummy endpoint for compatibility
 app.post("/progress", (req, res) => {
-  const { user, progress } = req.body;
-  
-  if (progress.flags_collected) {
-    userProgress.flags_collected = new Set(progress.flags_collected);
-  }
-  if (progress.challenges_solved) {
-    userProgress.challenges_solved = new Set(progress.challenges_solved);
-  }
-  
+  // No-op since frontend handles progress via cookies
   res.json({ message: "Progress updated successfully" });
+});
+
+// API: Search for files
+app.get("/search", (req, res) => {
+  const { query, user } = req.query;
+  
+  if (!query) return res.status(400).send("Search query required");
+  
+  const results = [];
+  
+  function searchNode(node, currentPath = "") {
+    if (typeof node !== 'object' || !node) return;
+    
+    Object.keys(node).forEach(key => {
+      if (key === "_protected" || key.startsWith("_")) return;
+      
+      const childNode = node[key];
+      const fullPath = currentPath + "/" + key;
+      
+      // Check if filename or content matches search query
+      if (key.toLowerCase().includes(query.toLowerCase()) || 
+          (childNode.content && childNode.content.toLowerCase().includes(query.toLowerCase()))) {
+        results.push({
+          path: fullPath,
+          name: key,
+          type: childNode.type || "directory",
+          content: childNode.content || null
+        });
+      }
+      
+      // Recursively search subdirectories
+      if (childNode.type !== "file" && childNode.type !== "exe") {
+        searchNode(childNode, fullPath);
+      }
+    });
+  }
+  
+  searchNode(fs["/"], "");
+  res.json({ results });
 });
 
 // Helper functions
@@ -505,38 +461,6 @@ function getAvailableFlags(filePath) {
   if (filePath.includes("base64_distress")) availableFlags.push(FLAGS.BASE64_DECODED);
   if (filePath.includes("xor_challenge")) availableFlags.push(FLAGS.XOR_MAGIC);
   return availableFlags;
-}
-
-function getUnlockHint(accessLevel) {
-  switch(accessLevel) {
-    case 2: return "Complete Level 1 crypto challenges to access classified directory";
-    case 3: return "Complete Level 2 reverse engineering challenges to access root directory";
-    default: return "Keep solving challenges to unlock higher access levels";
-  }
-}
-
-function checkForLevelUnlocks() {
-  let unlocked = [];
-  
-  if (!userProgress.level1_unlocked && userProgress.flags_collected.has(FLAGS.CRYPTO_MASTER)) {
-    userProgress.level1_unlocked = true;
-    userProgress.current_access_level = Math.max(userProgress.current_access_level, 1);
-    unlocked.push("Level 1");
-  }
-  
-  if (!userProgress.level2_unlocked && userProgress.flags_collected.has(FLAGS.REVERSE_ENGINEER)) {
-    userProgress.level2_unlocked = true;
-    userProgress.current_access_level = Math.max(userProgress.current_access_level, 2);
-    unlocked.push("Level 2");
-  }
-  
-  if (!userProgress.level3_unlocked && userProgress.flags_collected.has(FLAGS.FORENSICS_EXPERT)) {
-    userProgress.level3_unlocked = true;
-    userProgress.current_access_level = Math.max(userProgress.current_access_level, 3);
-    unlocked.push("Level 3");
-  }
-  
-  return unlocked;
 }
 
 function getHintForChallenge(challenge) {
@@ -555,4 +479,4 @@ function getHintForChallenge(challenge) {
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Enhanced CTF Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Stateless CTF Server running on port ${PORT}`));
