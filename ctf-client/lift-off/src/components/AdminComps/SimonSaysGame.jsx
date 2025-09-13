@@ -644,9 +644,8 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
   const handleLeave = async () => {
     try {
       const requestBody = {
-        path: '/home/user/LEAVE.bat',
+        path: '/home/classified/LEAVE.bat',
         user: 'player',
-        passkey: 'reverse_engineer',
         score: score,
       };
 
@@ -665,6 +664,9 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
       if (data.flag && score >= 550) {
         setCapturedFlag(data.flag);
         navigator.clipboard.writeText(data.flag);
+        window.submitGameScore("/home/classified/LEAVE.bat", score);
+
+
       } else {
         // If score is not high enough, reset the game
         setShowingVictoryDialogue(false);
