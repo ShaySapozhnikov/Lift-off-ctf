@@ -248,7 +248,7 @@ export default function CorruptedAdminPanel() {
 
   return (
     <div 
-      className={`min-h-screen w-full bg-zinc-900 text-white flex items-center justify-center p-4 select-none transition-opacity duration-1000 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}
+      className={`min-h-screen w-full bg-zinc-900 text-white flex items-center justify-center p-4 select-text transition-opacity duration-1000 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}
       onClick={handleContainerClick}
     >
       {/* Audio Enable Overlay */}

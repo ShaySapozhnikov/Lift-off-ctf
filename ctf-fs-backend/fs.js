@@ -7,7 +7,7 @@ export const fs = {
       user: {
         "readme.txt": {
           type: "file",
-          content: "Welcome to the CTF! Find the hidden passkeys to unlock each level.",
+          content: "Congratulations! You’ve made it this far—enjoy this freebie as a reward. CTF{adm1n_m0d3_unl0ck3d}",
           owner: "user",
           permissions: "r",
         },
@@ -124,7 +124,7 @@ export const fs = {
         forensics: {
           "image.png": {
             type: "file",
-            content: "PNG image with steganographically hidden data",
+            content: "steganographically",
             owner: "user",
             permissions: "r",
             metadata: {

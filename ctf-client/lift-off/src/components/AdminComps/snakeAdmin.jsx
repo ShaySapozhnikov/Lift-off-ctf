@@ -304,6 +304,7 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
             body: JSON.stringify({
               path: 'home/user/2nak3.bat',
               user: 'player',
+              passkey: 'crypto_master',
               score: currentScore
             }),
             signal: AbortSignal.timeout(10000)

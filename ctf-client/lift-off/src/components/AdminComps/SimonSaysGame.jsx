@@ -646,6 +646,7 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
       const requestBody = {
         path: '/home/user/LEAVE.bat',
         user: 'player',
+        passkey: 'reverse_engineer',
         score: score,
       };
 

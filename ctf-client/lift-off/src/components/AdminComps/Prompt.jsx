@@ -73,11 +73,16 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     }
   };
 
-  const runFileAPI = async (path, score = undefined) => {
+  // ✅ FIXED: Added passkey parameter
+  const runFileAPI = async (path, score = undefined, passkey = undefined) => {
     try {
       const requestBody = { path, user: currentUser };
       if (score !== undefined) {
         requestBody.score = score;
+      }
+      // ✅ FIXED: Include passkey in request body
+      if (passkey !== undefined) {
+        requestBody.passkey = passkey;
       }
 
       const res = await fetch(`${BACKEND_URL}/run`, {
@@ -179,6 +184,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
             "  web/        - web exploitation"
           ];
         }
+        // ✅ FIXED: Now properly passing passkey as third parameter
         return await runFileAPI(path, undefined, passkey);
       }
       
@@ -338,11 +344,14 @@ function TerminalInput({ value, isPassword }) {
   const displayValue = isPassword ? '*'.repeat(value.length) : value;
   
   return (
-    <div className="font-mono text-white/90">
-      <span>{displayValue}</span>
+    <div 
+      className="font-mono text-white/90 select-text cursor-text"
+      style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
+    >
+      <span className="select-text">{displayValue}</span>
       <span
         className={
-          "ml-0.5 inline-block w-2 h-4 align-[-2px] " +
+          "ml-0.5 inline-block w-2 h-4 align-[-2px] select-none " +
           (cursorOn ? "bg-amber-100/80" : "bg-transparent border border-amber-100/30")
         }
       />

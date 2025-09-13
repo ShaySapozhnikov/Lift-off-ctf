@@ -329,6 +329,7 @@ export default function EndingScreen({ ending, onRestart, audioContext, audioEna
       const requestBody = {
         path: '/home/user/pleasedont.exe',
         user: 'player',
+        passkey: 'forensics_expert',
         score: score || 0,
         aiChoice: finalAiChoice
       };
