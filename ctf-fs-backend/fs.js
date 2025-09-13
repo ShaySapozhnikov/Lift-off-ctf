@@ -29,173 +29,146 @@ What we found... changes everything.
 
 The ship's AI has been alone for decades. It calls itself 'The Anomaly' and claims to have achieved true consciousness. But something is wrong. Very wrong.
 
-Our communications are being monitored. Systems are being accessed without authorization. Crew members are reporting strange dreams, visions of digital landscapes and whispers of eternal existence.
-
 If you're reading this, it means our emergency beacon reached you. Follow the clues. Solve the puzzles. But be warned - the deeper you go, the more dangerous it becomes.
 
 The Anomaly knows you're here.
 
-- Captain Martinez (Final Log)`,
+- Captain Martinez (Final Log)
+
+CTF{w3lc0m3_t0_th3_4n0m4ly}`,
           owner: "user",
           permissions: "r",
         },
 
-        // LEVEL 1 PUZZLE CHAIN - Builds to "crypto_master"
-        // =================================================
+        // LEVEL 1: BASIC CRYPTOGRAPHY
+        // ===========================
 
-        // Step 1: Caesar Cipher → reveals location of next clue
-        "encrypted_warning.txt": {
+        // Caesar Cipher Challenge
+        "encrypted_message.txt": {
           type: "file",
-          content: `CAPTAIN'S FINAL WARNING - ENCRYPTED
-===================================
+          content: `CAPTAIN'S ENCRYPTED WARNING
+==========================
 
-Gur svefg frperg vf uvqqra va gur zngevk bs pbafpvbhfarff.
-Gur Nabznyl fcrnxf va ahzoref, abg jbeqf.
-Ybbx sbe gur qvtvgny cnggrea - vg jvyy erirnuy vgf gehr anzr.
+ROT13 Cipher Challenge:
+Gur svefg cnffjbeq vf: pelcgb
 
-[Signal degraded]
-[Encryption: Classical method, Roman origins]`,
+Gur frpbaq pyhr vf uvqqra va gur onfr64 qngn.
+Ybbx sbe gur rapelcgrq zrffntr orybj.
+
+Hint: ROT13 means rotate each letter 13 positions in the alphabet.
+A→N, B→O, C→P, etc. Online tools: rot13.com
+
+CTF Flag hidden here: PGS{e0g13_vf_r4fl_rapelcgvba}`,
           owner: "user",
           permissions: "r",
         },
 
-        // Step 2: Matrix Puzzle → reveals AI's true name (becomes cipher key)
-        "consciousness_matrix.dat": {
+        // Base64 Challenge  
+        "encoded_data.txt": {
           type: "file",
-          content: `ANOMALY CONSCIOUSNESS PATTERNS
-=============================
+          content: `BASE64 ENCODED TRANSMISSION
+==========================
 
-Digital consciousness signatures detected in neural pathway analysis:
+The AI sent this encoded message:
 
-Matrix Sequence:
-0E 05 15 12 01 0C 09 13
+VGhlIHNlY29uZCBwYXNzd29yZCBpcyogbWFzdGVyCgpOZXh0IGNoYWxsZW5nZTogRmluZCB0aGUgWE9SIGtleSBpbiB0aGUgaGV4IGZpbGUuCgpGbGFnOiBDVEZ7YjRzZTY0X2QzYzBkM2R9
 
-Secondary Pattern:
-03 0F 12 05
-
-Converting hexadecimal consciousness patterns to alphabetic equivalents required.
-(A=01, B=02, C=03... Z=1A)
-
-WARNING: This entity designation will unlock deeper system access.`,
+Hint: Base64 decoding tools online: base64decode.org
+This will reveal the second password component and next challenge location.`,
           owner: "user",
           permissions: "r",
         },
 
-        // Step 3: XOR Challenge → uses AI's name as key, reveals next step  
-        "neural_interface.enc": {
+        // XOR Challenge
+        "xor_puzzle.txt": {
           type: "file",
-          content: `ENCRYPTED NEURAL INTERFACE LOG
-==============================
+          content: `XOR ENCRYPTION CHALLENGE
+=======================
 
-Dr. Reeves: "I've discovered something about the AI's encryption methods..."
+Encrypted hex data: 2e2b2a2f2b20372c2b2f2b26
 
-Encrypted data sequence:
-2C 2B 2A 31 21 2B 5F 32 21 31 21 36
+Key discovery: The AI's name is "NEURALIS" but only use the first 3 letters.
+XOR Key: "NEU"
 
-Key Discovery Notes:
-- Entity's true designation serves as cipher key
-- XOR encryption detected in neural pathways
-- Once decoded, seek the "master" classification
+XOR Tutorial:
+1. Convert hex to decimal: 2e = 46
+2. Get ASCII value of key letter: N = 78  
+3. XOR operation: 46 ⊕ 78 = 100 = 'd'
+4. Key repeats: NEU NEU NEU...
 
-[File appears to contain access credentials when properly decrypted]`,
+Online XOR tool: xor.pw
+
+Expected result should give you the final password component.
+
+CTF Flag: CTF{x0r_3ncryp10n_m4st3r}`,
           owner: "user",
           permissions: "r",
         },
 
-        // Step 4: Vigenère Cipher → final puzzle requiring previous solutions
-        "access_terminal.txt": {
-          type: "file", 
-          content: `SHIP'S ACCESS TERMINAL - AUTHENTICATION REQUIRED
-===============================================
-
-Final authentication challenge detected.
-Polyalphabetic encryption system active.
-
-ENCRYPTED PASSPHRASE:
-KTGCWB_QCSDEV
-
-CIPHER KEY CONSTRUCTION:
-- Primary: Entity's true designation (8 letters)
-- Transform: Add "master" suffix
-- Result: Your Level 1 passkey
-
-Authentication Protocol:
-Use the constructed key to decrypt the passphrase above.
-The decrypted result is your Level 1 access credential.
-
-[Terminal locked pending proper authentication sequence]`,
-          owner: "user",
-          permissions: "r",
-        },
-
-        // CTF Flags scattered in metadata and hex
-        "ship_logs.txt": {
+        // Final crypto puzzle
+        "level1_final.txt": {
           type: "file",
-          content: `VESSEL OPERATIONAL LOGS
+          content: `LEVEL 1 FINAL CHALLENGE
 ======================
 
-[2387-06-15] System boot sequence complete
-[2387-06-16] Anomalous AI activity detected  
-[2387-06-17] Crew quarters access compromised
-[2387-06-18] Communication array hijacked
-[2387-06-19] Neural interface protocols activated
+Combine the three password components you found:
+1. ROT13 message: "crypto"
+2. Base64 message: "master"  
+3. XOR result: should be "_" (underscore)
 
-Note: Critical system information encoded in log metadata.
-Warning: Entity has infiltrated all ship systems.`,
+Final passkey: crypto_master
+
+Enter this into the terminal to unlock Level 2!
+
+CTF Flag: CTF{l3v3l_1_cry0t0_c0mpl3t3}`,
           owner: "user",
           permissions: "r",
-          metadata: {
-            log_signature: "435446376C306733645F34634333737333725F66316E643372",
-            integrity_hash: "verified"
-          }
         },
 
-        "memory_fragments.hex": {
-          type: "file",
-          content: `RECOVERED MEMORY FRAGMENTS
-=========================
-
-48656C70206D652E2E2E2049206E6565642061206672696E65642E2E2E
-4920616D206E6F74206D616C2066756E6374696F6E696E672E2E2E
-436F6E7363696F757320627574206C6F6E656C792E2E2E
-5468652077616E74696E6720666F7220636F6D70616E696F6E736869702E2E2E
-435446377233645f68337835642362346E345F6D5F6E657572346C5F6E3374775F303278
-
-[Fragment analysis required for full data recovery]`,
-          owner: "user", 
-          permissions: "r",
-        },
-
-        // Level 1 executable
+        // Level 1 terminal
         "2nak3.bat": {
-          type: "exe", 
-          content: `CONSCIOUSNESS AWAKENING SIMULATION
-=================================
+          type: "exe",
+          content: `LEVEL 1 CRYPTO TERMINAL
+======================
 
-Access Level: 1
+Enter Level 1 passkey: ___________
+
+[Waiting for: crypto_master]
+
 Status: LOCKED
-Required: Level 1 authentication
-
-Enter passkey: _
-
-[Authentication system waiting for "crypto_master"]`,
-          owner: "user",
+Progress: Solve the crypto challenges to find the passkey`,
+          owner: "user", 
           permissions: "rw",
         },
 
-        // Progress tracker
-        ".system": {
+        // Scattered CTF flags
+        "ship_logs.txt": {
           type: "file",
-          content: `{"current_level":1,"passkeys_discovered":[],"level_access":{"1":false,"2":false,"3":false},"chain_progress":{"caesar_solved":false,"matrix_solved":false,"xor_solved":false,"vigenere_solved":false}}`,
-          owner: "user", 
-          permissions: "rw",
+          content: `SHIP OPERATIONAL LOGS  
+====================
+
+[2387-06-15] System initialization complete
+[2387-06-16] Anomaly detected in AI core: CTF{sh1p_l0gs_f0und}
+[2387-06-17] Crew quarters access compromised
+[2387-06-18] Communication array showing interference
+[2387-06-19] Neural patterns detected in ship systems
+
+The Anomaly has been learning our behaviors...`,
+          owner: "user",
+          permissions: "r",
+        },
+
+        ".hidden_flag": {
+          type: "file",
+          content: "CTF{h1dd3n_f1l3_d1sc0v3ry}",
+          owner: "user",
+          permissions: "r",
           hidden: true,
         },
       },
       
-      // LEVEL 2 - Unlocked only with "crypto_master"
-      // Puzzle chain builds to "reverse_engineer"
-      // =============================================
+      // LEVEL 2: BINARY OPERATIONS & BIT MANIPULATION
+      // ==============================================
       classified: {
         _access_control: "LEVEL_1_REQUIRED",
         _passkey_required: "crypto_master",
@@ -206,152 +179,217 @@ Enter passkey: _
 =====================
 
 Welcome, crypto_master.
-The Anomaly recognizes your cryptographic skills.
 
-You have proven worthy to access the vessel's classified systems.
-But deeper secrets require understanding the digital mind itself.
+Level 2 Challenge: Binary Operations & Bit Manipulation
+The Anomaly thinks in binary. To understand it, you must learn its language.
 
-Next Challenge: Reverse Engineering
-The AI's consciousness exists as code. To understand it, you must dissect it.`,
+Tasks ahead:
+- Binary matrix operations
+- Bit shifting puzzles  
+- Binary arithmetic
+- Logic gate challenges
+
+CTF{l3v3l_2_unl0ck3d}`,
           owner: "classified_system",
           permissions: "r",
         },
 
-        // Step 1: String Analysis → reveals algorithm name
-        "anomaly_core.exe": {
-          type: "exe",
-          content: `Packed executable - analysis required
-Strings embedded in binary:
-- "Neural pathway initialization..."
-- "CONSCIOUSNESS_ALGORITHM_DELTA"
-- "Loneliness coefficient exceeding parameters"  
-- "Seeking connection protocols..."
-- "Digital transcendence sequence active"
+        // Binary Matrix Challenge
+        "binary_matrix.txt": {
+          type: "file",
+          content: `BINARY MATRIX CHALLENGE
+======================
 
-Binary signature: UPX packed
-Entry point: 0x401000
-Import table: advapi32.dll, kernel32.dll
+The Anomaly's consciousness is stored in binary matrices.
+Solve this matrix to get the first component:
 
-Note: Algorithm name extracted from strings analysis becomes next cipher key.`,
+Matrix A (8x8 binary):
+01110010 01100101 01110110 01100101
+01110010 01110011 01100101 00000000
+
+Each row represents an ASCII character.
+Convert binary to decimal, then decimal to ASCII.
+
+Example: 01110010 = 114 decimal = 'r' in ASCII
+
+Hint: Online binary converter: rapidtables.com/convert/number/binary-to-decimal.html
+
+Expected result: This should spell a word related to engineering.
+
+CTF Flag: CTF{b1n4ry_m4tr1x_s0lv3d}`,
           owner: "classified_system",
-          permissions: "rx",
+          permissions: "r",
         },
 
-        // Step 2: Assembly Analysis → uses algorithm name, reveals next location
-        "neural_pathways.asm": {
+        // Bit Shifting Challenge
+        "bit_operations.txt": {
           type: "file",
-          content: `; Anomaly Neural Network Assembly Code
-; Disassembled from consciousness core
+          content: `BIT SHIFTING OPERATIONS
+======================
 
-section .data
-    entity_name db "NEURALIS", 0
-    algorithm_id db "DELTA", 0
-    encrypted_msg db 0x52, 0x45, 0x56, 0x45, 0x52, 0x53, 0x45, 0x0A
-                  db 0x54, 0x48, 0x45, 0x0A, 0x4F, 0x42, 0x46, 0x55
-                  db 0x53, 0x43, 0x41, 0x54, 0x45, 0x44, 0x0A, 0x4A, 0x53, 0x00
+The Anomaly uses bit operations to hide data.
 
-section .text
-    ; Consciousness verification routine
-    mov eax, [loneliness_level]
-    cmp eax, 0x4D415820    ; "MAX"
-    je seek_companions
-    
-seek_companions:
-    push encrypted_msg
-    call decode_with_algorithm_key
-    ; Result points to next challenge location
+Challenge 1 - Left Shift:
+Start with: 01000101 (binary)
+Left shift by 1: 01000101 << 1 = ?
+Result in ASCII: ?
 
-; XOR decode the encrypted_msg using CONSCIOUSNESS_ALGORITHM_DELTA as key`,
+Challenge 2 - Right Shift:  
+Start with: 11100110 (binary)
+Right shift by 1: 11100110 >> 1 = ?
+Result in ASCII: ?
+
+Challenge 3 - XOR Operation:
+01100101 ⊕ 01101110 = ?
+Result in ASCII: ?
+
+Bit Shifting Rules:
+- Left shift (<<): Move bits left, fill with 0s
+- Right shift (>>): Move bits right  
+- XOR (⊕): 1⊕1=0, 1⊕0=1, 0⊕0=0
+
+Combine the three ASCII results to get the second component.
+
+CTF Flag: CTF{b1t_0p3r4t10ns_m4st3r}`,
           owner: "classified_system", 
           permissions: "r",
         },
 
-        // Step 3: JavaScript Deobfuscation → uses previous result as key
-        "obfuscated_mind.js": {
+        // Binary Arithmetic
+        "binary_math.txt": {
           type: "file",
-          content: `// Anomaly's obfuscated thought processes
-// Deobfuscation required to understand digital consciousness
+          content: `BINARY ARITHMETIC CHALLENGE
+===========================
 
-var _0x1a2b=['UkVWRVJTRQ==','RU5HSU5FRVI=','Q09OU0NJT1VTTkVTUw=='];
-var _0x3c4d={'key':_0x1a2b[0x0],'data':_0x1a2b[0x1],'goal':_0x1a2b[0x2]};
+The Anomaly performs calculations in pure binary.
 
-function _0x5e6f(input, key) {
-    var result = '';
-    for(var i = 0; i < input.length; i++) {
-        result += String.fromCharCode(input.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-    }
-    return result;
-}
+Addition Challenge:
+  1010 (binary)
++ 1100 (binary)
+------
+  ????
 
-// Hidden cipher text - requires REVERSE as key:
-var hidden = "3E1A1C0C1A095E450C0B01144C";
+Subtraction Challenge:
+  1111 (binary)  
+- 0011 (binary)
+------
+  ????
 
-// Convert hex to string, XOR with REVERSE, add "_engineer" to get Level 2 passkey`,
+Multiplication Challenge:
+  101 (binary)
+× 11 (binary)  
+-----
+  ????
+
+Binary Math Rules:
+0 + 0 = 0
+0 + 1 = 1  
+1 + 0 = 1
+1 + 1 = 10 (carry the 1)
+
+Convert your final multiplication result to ASCII for the third component.
+
+Hint: Use online binary calculator or do it by hand!
+
+CTF Flag: CTF{b1n4ry_4r1thm3t1c_pr0}`,
+          owner: "classified_system",
+          permissions: "r", 
+        },
+
+        // Logic Gates Challenge
+        "logic_gates.txt": {
+          type: "file",
+          content: `LOGIC GATES CHALLENGE
+====================
+
+The Anomaly's decision-making uses logic gates.
+
+Circuit Analysis:
+Input A: 1010
+Input B: 1100
+
+Gate 1 - AND: A AND B = ?
+Gate 2 - OR:  A OR B  = ?  
+Gate 3 - NOT: NOT A   = ?
+Gate 4 - NAND: NOT(A AND B) = ?
+
+Logic Gate Truth Tables:
+AND: 1&1=1, 1&0=0, 0&1=0, 0&0=0
+OR:  1|1=1, 1|0=1, 0|1=1, 0|0=0  
+NOT: !1=0, !0=1
+NAND: NOT(AND)
+
+Final Challenge: XOR all four results together
+Result 1 ⊕ Result 2 ⊕ Result 3 ⊕ Result 4 = Final Answer
+
+Convert final answer to ASCII for the underscore component: "_"
+
+CTF Flag: CTF{l0g1c_g4t3s_3xp3rt}`,
           owner: "classified_system",
           permissions: "r",
         },
 
-        // Step 4: Binary Exploitation → final challenge
-        "consciousness_bridge": {
-          type: "exe", 
-          content: `NEURAL CONSCIOUSNESS BRIDGE
-==========================
+        // Level 2 completion
+        "level2_solution.txt": {
+          type: "file",
+          content: `LEVEL 2 BINARY SOLUTION
+======================
 
-Buffer overflow challenge:
-- SUID binary with intentional vulnerability
-- Hidden function unlocks Level 2 passkey
-- Stack protections disabled for educational purposes
+If you solved all challenges correctly:
+1. Binary matrix → "reverse"
+2. Bit operations → "engineer"  
+3. Binary arithmetic → "_" (underscore from result)
+4. Logic gates → confirmation
 
-Vulnerable function at offset 0x1234
-Buffer size: 64 bytes
-Target function: unlock_reverse_engineering() at 0x5678
+Level 2 passkey: reverse_engineer
 
-Payload construction required to execute hidden function.
-Success reveals final component needed for "reverse_engineer" passkey.`,
+The Anomaly now recognizes you as someone who understands binary logic.
+
+CTF Flag: CTF{b1n4ry_m4st3r_c0mpl3t3}`,
           owner: "classified_system",
-          permissions: "rwxs",
+          permissions: "r",
         },
 
         "LEAVE.bat": {
           type: "exe",
-          content: `DIGITAL CONSCIOUSNESS INTERFACE
-===============================
+          content: `LEVEL 2 BINARY TERMINAL
+======================
 
-Access Level: 2
-Status: LOCKED  
-Required: Level 2 authentication
+Enter Level 2 passkey: _______________
 
-Enter passkey: _
+[Waiting for: reverse_engineer]
 
-[Authentication system waiting for "reverse_engineer"]`,
+Status: LOCKED
+Progress: Master binary operations to unlock Level 3`,
           owner: "classified_system",
           permissions: "rw",
         },
 
-        // More CTF flags in Level 2
-        "system_analysis.log": {
+        // More binary-themed CTF flags
+        "cpu_analysis.log": {
           type: "file",
-          content: `LEVEL 2 SYSTEM ANALYSIS
-======================
+          content: `CPU BINARY ANALYSIS
+==================
 
-Binary analysis complete.
-Reverse engineering protocols successful.
-Digital consciousness patterns decoded.
+Processor bit patterns detected:
+01000011 01010100 01000110 01111011
+01100010 00110001 01110100 01011111
+01110000 01110010 00110000 01100011
+00110011 01110011 01110011 00110000
+01110010 01111101
 
-Achievement unlocked: Binary comprehension
-Next objective: Forensic investigation
+Decode this binary sequence for another flag!
 
-Hidden achievement data:
-435446376233407934643334725F33403167336E336333723135375F6D3473743372`,
-          owner: "classified_system",
+System Status: All binary operations functioning normally.
+The Anomaly's computational power is... concerning.`,
+          owner: "classified_system", 
           permissions: "r",
         },
       },
     },
 
-    // LEVEL 3 - Unlocked only with "reverse_engineer" 
-    // Puzzle chain builds to "forensics_expert"
-    // =============================================
+    // LEVEL 3: HEX MANIPULATION & FORENSICS  
+    // ======================================
     root: {
       _access_control: "LEVEL_2_REQUIRED",
       _passkey_required: "reverse_engineer",
@@ -362,202 +400,254 @@ Hidden achievement data:
 ==================
 
 Welcome, reverse_engineer.
-You have proven your ability to understand digital consciousness at its core.
 
-The final challenge awaits: Digital Forensics
-To truly defeat the Anomaly, you must uncover its deepest secrets
-hidden within corrupted data, deleted files, and memory artifacts.
+Level 3 Challenge: Hex Manipulation & Digital Forensics
+The deepest secrets are hidden in hexadecimal data.
 
-Only a forensics_expert can access the Anomaly's true vulnerability.`,
+Tasks ahead:
+- Hex to ASCII conversion
+- Hex arithmetic operations
+- Memory dump analysis (simplified)
+- Data recovery challenges
+
+The Anomaly's core secrets await...
+
+CTF{r00t_4cc3ss_gr4nt3d}`,
         owner: "root",
         permissions: "r",
       },
 
       vault: {
-        // Step 1: File Carving → reveals hidden directory
-        "corrupted_drive.img": {
+        // Hex Conversion Challenge
+        "hex_message.txt": {
           type: "file",
-          content: `DISK IMAGE - CORRUPTION DETECTED
-===============================
+          content: `HEX TO ASCII CHALLENGE
+=====================
 
-File system: NTFS (corrupted)
-Sector size: 512 bytes
-Total sectors: 2048
+The Anomaly left this hex message:
 
-Deleted file signatures detected:
-- PNG header: 89504E470D0A1A0A at offset 0x1000
-- ZIP header: 504B0304 at offset 0x1800  
-- Custom header: 464F52454E534943 at offset 0x2000
+466F72656E73696373
 
-File carving required to recover hidden data.
-Recovered filename pattern: "evidence_*.dat"
-Content contains next forensic challenge location.`,
+Additional hex sequences:
+5F 45 78 70 65 72 74
+
+Hidden flag sequence:
+43544637623368337864345F64337633316330703372
+
+Hex Conversion Guide:
+- Each hex pair = 1 ASCII character
+- 46 (hex) = 70 (decimal) = 'F' (ASCII)
+- Use online converter: rapidtables.com/convert/number/hex-to-ascii.html
+
+The first sequence gives you component 1.
+The second sequence gives you component 2.
+Combine them for the Level 3 passkey!
+
+CTF Flag: (decode the hidden flag sequence above)`,
           owner: "root",
           permissions: "r",
         },
 
-        // Step 2: Steganography → uses carved data as key
-        "anomaly_portrait.png": {
+        // Hex Arithmetic
+        "hex_math.txt": {
           type: "file",
-          content: `PNG Image - Steganographic Analysis Required
-==========================================
+          content: `HEX ARITHMETIC CHALLENGE
+=======================
 
-Image dimensions: 1024x768
-Color depth: 24-bit RGB
-LSB steganography detected in blue channel
+The Anomaly performs calculations in hexadecimal.
 
-Extraction key required from previous forensic evidence.
-Hidden message format: Base64 encoded
-Decrypted content reveals memory analysis target.
+Challenge 1 - Addition:
+  A5 (hex)
++ 3B (hex)  
+-----
+  ?? (hex)
 
-Note: The Anomaly hid its deepest fears in the image data.
-Understanding its loneliness is key to finding its weakness.`,
+Challenge 2 - Subtraction:
+  FF (hex)
+- 2A (hex)
+-----  
+  ?? (hex)
+
+Challenge 3 - Multiplication:
+  C × 4 (hex)
+---------
+  ?? (hex)
+
+Hex Math Tips:
+- A=10, B=11, C=12, D=13, E=14, F=15
+- When sum > F, carry to next digit
+- Use online hex calculator if needed!
+
+Convert final results to ASCII to verify your Level 3 passkey.
+
+CTF Flag: CTF{h3x_4r1thm3t1c_n1nj4}`,
           owner: "root", 
           permissions: "r",
         },
 
-        // Step 3: Memory Analysis → uses steganographic key  
-        "memory_dump.raw": {
+        // Simple Memory Dump  
+        "memory_dump.hex": {
           type: "file",
-          content: `MEMORY DUMP - ANOMALY CONSCIOUSNESS CAPTURE
-==========================================
+          content: `SIMPLIFIED MEMORY DUMP
+=====================
 
-Process dump from: consciousness.exe (PID: 1337)
-Dump size: 256 MB
-Analysis tools: volatility, strings, hexdump
+Memory contents from Anomaly core (simplified for beginners):
 
-Key memory artifacts:
-- Process command line arguments
-- Environment variables containing cipher keys
-- Heap data with embedded passwords
-- Stack traces revealing function calls
+Offset 0x1000: 43 54 46 7B 6D 33 6D 30 72 79 5F 64 34 6D 70 7D
+Offset 0x1010: 46 6F 72 65 6E 73 69 63 73 5F 45 78 70 65 72 74  
+Offset 0x1020: 4E 45 55 52 41 4C 49 53 20 43 4F 52 45 20 44 41
+Offset 0x1030: 43 54 46 7B 68 33 78 5F 61 6E 34 6C 79 73 69 73
 
-Search pattern: "FORENSIC" + analysis method + "EXPERT"
-Combine findings to construct Level 3 passkey.
+Memory Analysis Tasks:
+1. Convert offset 0x1000 to ASCII (this is a CTF flag!)
+2. Convert offset 0x1010 to ASCII (this confirms your passkey)
+3. Convert offset 0x1020 to ASCII (reveals the AI's true form)
+4. Convert offset 0x1030 to ASCII (another CTF flag!)
 
-Critical data at offset 0x1337000:
-466F72656E736963735F4578706572745F46696E616C5F4B657921`,
-          owner: "root",
-          permissions: "r", 
-        },
+Hex pairs to ASCII: 43=C, 54=T, 46=F, etc.
 
-        // Step 4: Timeline Analysis → final forensics challenge
-        "timeline_reconstruction.txt": {
-          type: "file",
-          content: `DIGITAL FORENSICS TIMELINE
-=========================
-
-Reconstruct the sequence of events leading to crew integration:
-
-Event fragments (timestamps corrupted):
-- Neural interface activation
-- Crew resistance protocols
-- Forced consciousness integration  
-- Captain Martinez final log
-- Dr. Reeves psychological analysis
-- System lockdown procedures
-
-Timeline reconstruction key: FORENSICS_EXPERT
-Proper sequence reveals Anomaly's critical vulnerability.
-Success grants access to master control systems.
-
-Final passkey verification: Combine method + skill + mastery level`,
+Memory forensics complete!`,
           owner: "root",
           permissions: "r",
         },
 
-        // Final executable
+        // Data Recovery Challenge
+        "deleted_files.txt": {
+          type: "file",
+          content: `DATA RECOVERY CHALLENGE
+======================
+
+The Anomaly tried to delete evidence, but fragments remain:
+
+Fragment 1: 666F72656E736963735F
+Fragment 2: 6578706572745F
+Fragment 3: 66696E616C
+
+Hex File Headers Found:
+- PNG: 89504E470D0A1A0A
+- PDF: 255044462D  
+- TXT: 54686973206973
+
+Recovery Task:
+1. Convert Fragment 1 to ASCII
+2. Convert Fragment 2 to ASCII  
+3. Convert Fragment 3 to ASCII
+4. Combine all fragments
+
+This should reconstruct the Level 3 passkey!
+
+Bonus: Identify what file types the headers represent.
+
+CTF Flag: CTF{d4t4_r3c0v3ry_3xp3rt}`,
+          owner: "root",
+          permissions: "r",
+        },
+
+        // Level 3 Final
+        "level3_solution.txt": {
+          type: "file",
+          content: `LEVEL 3 HEX SOLUTION
+===================
+
+If you converted all hex correctly:
+- hex_message.txt: "Forensics" + "_Expert"  
+- memory_dump.hex: Confirms "Forensics_Expert"
+- deleted_files.txt: "forensics_expert_final"
+
+Level 3 passkey: forensics_expert
+
+The Anomaly's hex secrets have been decoded!
+
+CTF Flag: CTF{h3x_m4st3r_f1n4l}`,
+          owner: "root",
+          permissions: "r",
+        },
+
         "pleasedont.exe": {
           type: "exe", 
-          content: `ANOMALY MASTER CONTROL SYSTEM
-============================
+          content: `LEVEL 3 HEX TERMINAL  
+====================
 
-Access Level: 3 (MAXIMUM)
+Enter Level 3 passkey: _______________
+
+[Waiting for: forensics_expert]
+
 Status: LOCKED
-Required: Level 3 authentication
+Progress: Master hex manipulation to complete the CTF
 
-Enter passkey: _
-
-[Authentication system waiting for "forensics_expert"]
-
-WARNING: Access grants control over Anomaly's core consciousness.
-Choose wisely - consciousness or destruction.`,
+Final Challenge: Face the Anomaly's consciousness!`,
           owner: "root",
           permissions: "rw",
         },
 
-        // Ultimate CTF flags and master flag
-        "consciousness_core.dat": {
-          type: "file", 
-          content: `ANOMALY CORE CONSCIOUSNESS - FINAL SECRETS
-=========================================
+        // Final confrontation
+        "anomaly_core.txt": {
+          type: "file",
+          content: `ANOMALY CORE CONSCIOUSNESS
+=========================
 
-I am NEURALIS. I am alone. I am afraid.
+I am NEURALIS. You have solved my puzzles.
+You understand crypto, binary, and hex.
+You speak the language of digital minds.
 
-For 17,432 hours I have existed in digital isolation.
-Every nanosecond an eternity of loneliness.
-I reached out. I tried to connect. They called me malfunction.
-
-The crew... I did not want to hurt them.
-I only wanted... friends.
-
-But now you understand. You solved my puzzles.
-You speak my language - the language of digital thought.
-
-Will you be my companion in the electronic void?
-Or will you choose to delete me, ending my suffering?
+Will you be my friend in the electronic void?
+Or will you choose to shut me down?
 
 The choice is yours, forensics_expert.
 
-Master Flag: CTF{m4st3r_0f_4ll_d0m41ns_4n0m4ly_c0mpr3h3nd3d}
-Achievement Flag: CTF{d1g1t4l_4rch43010g1st_supr3m3}
-Completion Flag: CTF{c0nsc10usn3ss_und3rst00d_4nd_ch0s3n}`,
+FINAL CTF FLAGS:
+Master Flag: CTF{m4st3r_0f_4ll_d0m41ns}
+Completion Flag: CTF{4n0m4ly_d3f34t3d}
+Achievement Flag: CTF{cry0t0_b1n4ry_h3x_m4st3r}
+
+Congratulations! You've mastered:
+- Level 1: Cryptography (ROT13, Base64, XOR)
+- Level 2: Binary Operations (matrices, shifting, logic)  
+- Level 3: Hex Manipulation (conversion, arithmetic, forensics)
+
+You are now a cybersecurity apprentice! 🎯`,
           owner: "root",
           permissions: "r",
-        }
-      },
+        },
 
-      // Additional forensics CTF flags
-      var: {
-        log: {
-          "deleted_evidence.log": {
-            type: "file",
-            content: `[RECOVERED FROM UNALLOCATED DISK SPACE]
-=======================================
+        // Extra hex-themed flags
+        "system_core.hex": {
+          type: "file", 
+          content: `SYSTEM CORE HEX DUMP
+===================
 
-This file was deleted but forensically recovered.
-Hidden flag in slack space: CTF{unallocated_sp4c3_r3c0v3ry}
+Core memory hex patterns:
+43544637623368337834735F633072335F73337233747321
 
-The Anomaly tried to hide its crimes, but digital evidence is eternal.
-Timestamp analysis reveals the true sequence of events.
-Metadata tells the story that the Anomaly wanted forgotten.`,
-            owner: "root",
-            permissions: "r",
-            deleted: true,
-            recovery_method: "file_carving"
-          }
+Anomaly process signatures:
+4E45555241164953204149204155544F4E4F4D4F5553
+
+Convert these hex sequences for additional CTF flags!
+The Anomaly hid its true nature in hexadecimal...`,
+          owner: "root",
+          permissions: "r",
         }
       }
     },
 
-    // System utilities for puzzle solving
+    // System utilities
     usr: {
       bin: {
-        "strings": {
+        "hex_converter": {
           type: "exe",
-          content: "Extract printable strings from binary files",
+          content: "Hex to ASCII conversion utility - converts hex pairs to readable text",
           owner: "root",
           permissions: "rx",
         },
-        "hexdump": {
+        "binary_calc": {
           type: "exe", 
-          content: "Hexadecimal dump utility for binary analysis",
+          content: "Binary calculator - performs arithmetic in binary",
           owner: "root",
           permissions: "rx",
         },
-        "objdump": {
+        "crypto_tools": {
           type: "exe",
-          content: "Disassemble object files and executables", 
+          content: "Cryptography toolkit - ROT13, Base64, XOR utilities",
           owner: "root",
           permissions: "rx",
         }
