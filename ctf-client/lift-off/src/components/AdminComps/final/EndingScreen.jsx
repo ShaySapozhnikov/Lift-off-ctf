@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useTypewriter } from './useTypewriter';
 
+
 const SkipPrompt = ({ canSkip, skipPressed, isTyping }) => (
   <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
     <div className={`text-xs transition-opacity duration-300 ${
