@@ -3,6 +3,54 @@ import { useEffect, useRef, useState } from "react";
 // Replace localhost with your Render-hosted backend
 const BACKEND_URL = "https://lift-off-ctf.onrender.com";
 
+// Cookie-based progress management functions
+const loadProgressFromCookie = () => {
+  try {
+    const cookieData = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('ctf_progress='));
+    
+    if (cookieData) {
+      return JSON.parse(decodeURIComponent(cookieData.split('=')[1]));
+    }
+  } catch (e) {
+    console.error("Failed to load progress from cookie:", e);
+  }
+  
+  return {
+    current_access_level: 1,
+    flags_collected: [],
+    challenges_solved: [],
+    level1_unlocked: true,
+    level2_unlocked: false,
+    level3_unlocked: false,
+    total_flags: 0,
+    total_challenges: 0
+  };
+};
+
+const saveProgressToCookie = (progress) => {
+  try {
+    const cookieValue = encodeURIComponent(JSON.stringify(progress));
+    document.cookie = `ctf_progress=${cookieValue}; path=/; max-age=${30*24*60*60}`; // 30 days
+  } catch (e) {
+    console.error("Failed to save progress to cookie:", e);
+  }
+};
+
+const calculateAccessLevel = (progress) => {
+  if (!progress.flags_collected) return 1;
+  
+  let accessLevel = 1;
+  if (progress.flags_collected.includes("CTF{snake_victory_flag}")) {
+    accessLevel = 2;
+  }
+  if (progress.flags_collected.includes("CTF{simon_says_flag}")) {
+    accessLevel = 3;
+  }
+  return accessLevel;
+};
+
 export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudioInit }) {
   const [buf, setBuf] = useState("");
   const [history, setHistory] = useState([]);
@@ -10,14 +58,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
   const [cursor, setCursor] = useState(0);
   const [cwd, setCwd] = useState(["/"]);
   const [currentUser, setCurrentUser] = useState("user");
-  const [userProgress, setUserProgress] = useState({
-    current_access_level: 1,
-    flags_collected: [],
-    challenges_solved: [],
-    level1_unlocked: false,
-    level2_unlocked: false,
-    level3_unlocked: false
-  });
+  const [userProgress, setUserProgress] = useState(loadProgressFromCookie());
   const inputRef = useRef(null);
 
   useEffect(() => inputRef.current?.focus(), []);
@@ -26,65 +67,23 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
 
   // Load user progress on startup
   useEffect(() => {
-    loadUserProgress();
+    const progress = loadProgressFromCookie();
+    setUserProgress(progress);
+    
+    // Show welcome message with actual progress
+    const welcomeMessages = [
+      "=== DEEP SPACE VESSEL UNHACKABLE - TERMINAL ACCESS ===",
+      "",
+      `Access Level: ${progress.current_access_level}/3`,
+      `Flags Collected: ${progress.total_flags || 0}`,
+      `Challenges Solved: ${progress.total_challenges || 0}`,
+      "",
+      "Type 'help' for available commands.",
+      "Begin your investigation with 'cat mission_briefing.txt'",
+      ""
+    ];
+    setHistory(welcomeMessages);
   }, []);
-
-  const loadUserProgress = async () => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/progress`);
-      if (res.ok) {
-        const progress = await res.json();
-        
-        // Calculate correct access level based on flags collected
-        let accessLevel = 1;
-        if (progress.flags_collected && progress.flags_collected.includes("CTF{snake_victory_flag}")) {
-          accessLevel = 2;
-        }
-        if (progress.flags_collected && progress.flags_collected.includes("CTF{simon_says_flag}")) {
-          accessLevel = 3;
-        }
-        
-        // Update backend with correct progress if needed
-        if (accessLevel > (progress.current_access_level || 1)) {
-          await fetch(`${BACKEND_URL}/progress`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              user: currentUser,
-              progress: {
-                ...progress,
-                current_access_level: accessLevel,
-                level1_unlocked: accessLevel >= 1,
-                level2_unlocked: accessLevel >= 2,
-                level3_unlocked: accessLevel >= 3
-              }
-            })
-          });
-        }
-        
-        setUserProgress({
-          ...progress,
-          current_access_level: accessLevel
-        });
-        
-        // Show welcome message with progress
-        const welcomeMessages = [
-          "=== DEEP SPACE VESSEL UNHACKABLE - TERMINAL ACCESS ===",
-          "",
-          `Access Level: ${accessLevel}/3`,
-          `Flags Collected: ${progress.total_flags || 0}`,
-          `Challenges Solved: ${progress.total_challenges || 0}`,
-          "",
-          "Type 'help' for available commands.",
-          "Begin your investigation with 'cat mission_briefing.txt'",
-          ""
-        ];
-        setHistory(welcomeMessages);
-      }
-    } catch (e) {
-      console.error("Failed to load progress:", e);
-    }
-  };
 
   // --- Helper: resolve relative paths ---
   const resolvePath = (cwd, input) => {
@@ -99,8 +98,49 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     return newPath;
   };
 
+  // Check if user can access a path based on their current access level
+  const canAccessPath = (path) => {
+    const pathStr = Array.isArray(path) ? path.join("/") : path;
+    
+    // Level 1 areas (always accessible)
+    if (pathStr.startsWith("/home/user") && !pathStr.includes("/crypto/level1_key.txt")) {
+      return true;
+    }
+    
+    // Level 2 areas (require level 2 access)
+    if (pathStr.startsWith("/home/classified")) {
+      return userProgress.current_access_level >= 2;
+    }
+    
+    // Level 3 areas (require level 3 access)  
+    if (pathStr.startsWith("/root")) {
+      return userProgress.current_access_level >= 3;
+    }
+    
+    // Other system directories based on access level
+    if (pathStr.startsWith("/usr") || pathStr.startsWith("/tmp")) {
+      return userProgress.current_access_level >= 1;
+    }
+    
+    return true; // Default allow for other paths
+  };
+
+  // Helper function to determine required access level for a path
+  const getRequiredLevel = (path) => {
+    const pathStr = Array.isArray(path) ? path.join("/") : path;
+    
+    if (pathStr.startsWith("/home/classified")) return 2;
+    if (pathStr.startsWith("/root")) return 3;
+    return 1;
+  };
+
   // --- API Calls ---
   const lsDir = async (path, showHidden = false) => {
+    // Check access before making API call
+    if (!canAccessPath(path)) {
+      return [`Access denied: Level ${getRequiredLevel(path)} clearance required`];
+    }
+
     try {
       const res = await fetch(
         `${BACKEND_URL}/ls?path=${encodeURIComponent(path)}&user=${currentUser}&showHidden=${showHidden}`
@@ -113,41 +153,26 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       
       const data = await res.json();
       
-      // Update progress if returned, but preserve our corrected access level
-      if (data.current_access_level) {
-        setUserProgress(prev => {
-          // Calculate the correct access level based on flags
-          let correctAccessLevel = 1;
-          if (prev.flags_collected && prev.flags_collected.includes("CTF{snake_victory_flag}")) {
-            correctAccessLevel = 2;
-          }
-          if (prev.flags_collected && prev.flags_collected.includes("CTF{simon_says_flag}")) {
-            correctAccessLevel = 3;
-          }
-          
-          return {
-            ...prev,
-            current_access_level: Math.max(correctAccessLevel, data.current_access_level),
-            total_flags: data.flags_collected || prev.total_flags
-          };
-        });
-      }
-      
       if (Array.isArray(data.files) && data.files.length > 0) {
         const output = [];
         
-        // Add access level info for directories with restrictions
-        if (data.current_access_level) {
-          output.push(`Access Level: ${data.current_access_level}/3`);
-          output.push("");
-        }
+        // Add access level info
+        output.push(`Access Level: ${userProgress.current_access_level}/3`);
+        output.push("");
         
         data.files.forEach(file => {
           let indicator = "";
           if (file.type === "directory") indicator = "/";
-          if (file.passkey_required) indicator += " [LOCKED]";
-          if (file.locked) indicator += " [REQUIRES UNLOCK]";
-          if (file.access_level > data.current_access_level) indicator += " [ACCESS DENIED]";
+          
+          // Check access restrictions
+          const filePath = `${path}/${file.name}`.replace("//", "/");
+          const requiredLevel = getRequiredLevel(filePath);
+          
+          if (requiredLevel > userProgress.current_access_level) {
+            indicator += " [ACCESS DENIED - LEVEL " + requiredLevel + " REQUIRED]";
+          } else if (file.passkey_required) {
+            indicator += " [PASSKEY REQUIRED]";
+          }
           
           output.push(`${file.name}${indicator}`);
         });
@@ -162,6 +187,11 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
   };
 
   const catFile = async (path) => {
+    // Check access before making API call
+    if (!canAccessPath(path)) {
+      return [`Access denied: Level ${getRequiredLevel(path)} clearance required`];
+    }
+
     try {
       const res = await fetch(
         `${BACKEND_URL}/file?path=${encodeURIComponent(path)}&user=${currentUser}`
@@ -186,12 +216,12 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       
       // Show hint if available
       if (data.hint) {
-        output.push("", `💡 Hint: ${data.hint}`);
+        output.push("", `Hint: ${data.hint}`);
       }
       
       // Show available flags
       if (data.flags_available && data.flags_available.length > 0) {
-        output.push("", "🏁 Flags available in this file:");
+        output.push("", "Flags available in this file:");
         data.flags_available.forEach(flag => output.push(`   ${flag}`));
       }
       
@@ -202,6 +232,11 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
   };
 
   const runFileAPI = async (path, score = undefined, passkey = undefined, aiChoice = undefined) => {
+    // Check access before making API call
+    if (!canAccessPath(path)) {
+      return [`Access denied: Level ${getRequiredLevel(path)} clearance required`];
+    }
+
     try {
       const requestBody = { path, user: currentUser };
       
@@ -235,31 +270,51 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
 
       const output = [data.output];
       
-      // Handle flags
+      // Handle flags and update cookie-based progress
       if (data.flag) {
-        output.push(`🏁 FLAG CAPTURED: ${data.flag}`);
+        const updatedProgress = {
+          ...userProgress,
+          flags_collected: [...(userProgress.flags_collected || []), data.flag],
+          total_flags: (userProgress.total_flags || 0) + 1
+        };
+        
+        // Recalculate access level
+        const accessLevel = calculateAccessLevel(updatedProgress);
+        updatedProgress.current_access_level = accessLevel;
+        updatedProgress.level1_unlocked = accessLevel >= 1;
+        updatedProgress.level2_unlocked = accessLevel >= 2;
+        updatedProgress.level3_unlocked = accessLevel >= 3;
+        
+        setUserProgress(updatedProgress);
+        saveProgressToCookie(updatedProgress);
+        
+        output.push(`FLAG CAPTURED: ${data.flag}`);
+        
+        if (accessLevel > userProgress.current_access_level) {
+          output.push("", "NEW LEVEL UNLOCKED!");
+          output.push(`   Level ${accessLevel} access granted!`);
+        }
       }
       
       if (data.master_flag) {
-        output.push(`👑 MASTER FLAG: ${data.master_flag}`);
+        const updatedProgress = {
+          ...userProgress,
+          flags_collected: [...(userProgress.flags_collected || []), data.master_flag],
+          total_flags: (userProgress.total_flags || 0) + 1
+        };
+        setUserProgress(updatedProgress);
+        saveProgressToCookie(updatedProgress);
+        output.push(`MASTER FLAG: ${data.master_flag}`);
       }
       
       // Handle story progression
       if (data.story_progression) {
-        output.push("", `📖 Story: ${data.story_progression}`);
+        output.push("", `Story: ${data.story_progression}`);
       }
       
       if (data.story_conclusion) {
-        output.push("", `🎬 ${data.story_conclusion}`);
+        output.push("", `${data.story_conclusion}`);
       }
-      
-      // Handle progress updates
-      if (data.current_progress) {
-        output.push("", `Progress: Level ${data.current_progress.level} | Flags: ${data.current_progress.flags} | Challenges: ${data.current_progress.challenges}`);
-      }
-
-      // Reload progress after successful execution
-      await loadUserProgress();
 
       return output;
     } catch (e) {
@@ -280,21 +335,35 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       const output = [data.message];
       
       if (data.success && data.flag) {
-        output.push(`🏁 FLAG CAPTURED: ${data.flag}`);
+        // Update local progress with new flag
+        const updatedProgress = {
+          ...userProgress,
+          flags_collected: [...(userProgress.flags_collected || []), data.flag],
+          challenges_solved: [...(userProgress.challenges_solved || []), challenge],
+          total_flags: (userProgress.total_flags || 0) + 1,
+          total_challenges: (userProgress.total_challenges || 0) + 1
+        };
         
-        if (data.next_level_unlocked && data.next_level_unlocked.length > 0) {
-          output.push("", "🔓 NEW LEVEL UNLOCKED!");
-          data.next_level_unlocked.forEach(level => {
-            output.push(`   ${level} access granted!`);
-          });
+        // Recalculate access level
+        const accessLevel = calculateAccessLevel(updatedProgress);
+        updatedProgress.current_access_level = accessLevel;
+        updatedProgress.level1_unlocked = accessLevel >= 1;
+        updatedProgress.level2_unlocked = accessLevel >= 2;
+        updatedProgress.level3_unlocked = accessLevel >= 3;
+        
+        setUserProgress(updatedProgress);
+        saveProgressToCookie(updatedProgress);
+        
+        output.push(`FLAG CAPTURED: ${data.flag}`);
+        
+        if (accessLevel > userProgress.current_access_level) {
+          output.push("", "NEW LEVEL UNLOCKED!");
+          output.push(`   Level ${accessLevel} access granted!`);
         }
-        
-        // Reload progress
-        await loadUserProgress();
       }
       
       if (data.hint) {
-        output.push("", `💡 Hint: ${data.hint}`);
+        output.push("", `HINT: ${data.hint}`);
       }
       
       return output;
@@ -344,7 +413,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       "  LEAVE.bat       - Level 2: Digital Interface", 
       "  pleasedont.exe  - Level 3: Final Confrontation",
       "",
-      "🎯 START HERE: cat mission_briefing.txt",
+      "START HERE: cat mission_briefing.txt",
     ],
     clear: async ({ clear }) => {
       clear();
@@ -364,16 +433,21 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         "LEVEL STATUS:"
       ];
       
-      output.push(`  Level 1 (Crypto): ${userProgress.level1_unlocked ? '✅ UNLOCKED' : '🔒 LOCKED'}`);
-      output.push(`  Level 2 (Reverse): ${userProgress.level2_unlocked ? '✅ UNLOCKED' : '🔒 LOCKED'}`);
-      output.push(`  Level 3 (Forensics): ${userProgress.level3_unlocked ? '✅ UNLOCKED' : '🔒 LOCKED'}`);
+      output.push(`  Level 1 (Crypto): ${userProgress.level1_unlocked ? 'UNLOCKED' : 'LOCKED'}`);
+      output.push(`  Level 2 (Reverse): ${userProgress.level2_unlocked ? 'UNLOCKED' : 'LOCKED'}`);
+      output.push(`  Level 3 (Forensics): ${userProgress.level3_unlocked ? 'UNLOCKED' : 'LOCKED'}`);
       
       if (userProgress.flags_collected && userProgress.flags_collected.length > 0) {
         output.push("", "FLAGS COLLECTED:");
         userProgress.flags_collected.forEach(flag => {
-          output.push(`  🏁 ${flag}`);
+          output.push(`  ${flag}`);
         });
       }
+      
+      output.push("", "ACCESS AREAS:");
+      output.push(`  /home/user/           - Always accessible`);
+      output.push(`  /home/classified/     - ${userProgress.current_access_level >= 2 ? 'ACCESSIBLE' : 'LOCKED'} Level 2 required`);
+      output.push(`  /root/                - ${userProgress.current_access_level >= 3 ? 'ACCESSIBLE' : 'LOCKED'} Level 3 required`);
       
       return output;
     },
@@ -385,8 +459,14 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     cd: async ({ cwd, args, setCwd }) => {
       if (!args[0]) return [];
       const newPath = resolvePath(cwd, args[0]);
+      
+      // Check access before attempting to change directory
+      if (!canAccessPath(newPath)) {
+        return [`cd: access denied: Level ${getRequiredLevel(newPath)} clearance required for '${args[0]}'`];
+      }
+      
       const dirCheck = await lsDir(newPath.join("/"));
-      if (dirCheck[0]?.startsWith("Error")) {
+      if (dirCheck[0]?.startsWith("Error") || dirCheck[0]?.startsWith("Access denied")) {
         return [`cd: cannot access '${args[0]}': ${dirCheck[0].replace("Error: ", "")}`];
       }
       setCwd(newPath);
@@ -402,12 +482,37 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       const path = resolvePath(cwd, args[0]).join("/");
       const filename = args[0];
       
+      // Check access before running
+      if (!canAccessPath(path)) {
+        return [`run: access denied: Level ${getRequiredLevel(path)} clearance required for '${filename}'`];
+      }
+      
       // Handle locked executables
       if (filename === "2nak3.bat" || filename === "LEAVE.bat" || filename === "pleasedont.exe") {
         const passkey = args[1];
         if (!passkey) {
+          let requiredLevel = 1;
+          let skillDomain = "cryptography";
+          
+          if (filename === "LEAVE.bat") {
+            requiredLevel = 2;
+            skillDomain = "reverse engineering";
+          } else if (filename === "pleasedont.exe") {
+            requiredLevel = 3;
+            skillDomain = "forensics";
+          }
+          
+          if (userProgress.current_access_level < requiredLevel) {
+            return [
+              `${filename} requires Level ${requiredLevel} clearance`,
+              `You currently have Level ${userProgress.current_access_level} access.`,
+              "",
+              `Complete ${skillDomain} challenges to unlock this level.`
+            ];
+          }
+          
           return [
-            `⚠️  ${filename} requires a passkey to execute`,
+            `${filename} requires a passkey to execute`,
             `Usage: run ${filename} <passkey>`,
             "",
             "Find passkeys by solving challenges in:",
@@ -415,7 +520,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
             "  • /home/classified/reversing/ - reverse engineering", 
             "  • /root/anomaly_core/ - forensics challenges",
             "",
-            "💡 Hint: Passkeys are earned by mastering each skill domain"
+            "Hint: Passkeys are earned by mastering each skill domain"
           ];
         }
         return await runFileAPI(path, undefined, passkey);
@@ -506,10 +611,13 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         
         const output = [`Found ${data.results.length} results for '${args[0]}':`, ""];
         data.results.forEach(result => {
-          output.push(`📁 ${result.path} (${result.type})`);
-          if (result.content) {
-            const snippet = result.content.substring(0, 100);
-            output.push(`   ${snippet}${result.content.length > 100 ? '...' : ''}`);
+          // Filter results based on access level
+          if (canAccessPath(result.path)) {
+            output.push(`${result.path} (${result.type})`);
+            if (result.content) {
+              const snippet = result.content.substring(0, 100);
+              output.push(`   ${snippet}${result.content.length > 100 ? '...' : ''}`);
+            }
           }
         });
         
@@ -522,11 +630,16 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       if (!args[0]) return ["su: missing username"];
       
       if (args[0] === "root") {
-        return [
-          "su: root access requires privilege escalation",
-          "💡 Hint: Look for SUID binaries or exploitable services",
-          "Try: find / -perm -4000 2>/dev/null"
-        ];
+        if (userProgress.current_access_level >= 3) {
+          setCurrentUser("root");
+          return ["su: switched to root user"];
+        } else {
+          return [
+            "su: root access requires Level 3 clearance",
+            "Hint: Complete all challenges to gain root access",
+            `Current access level: ${userProgress.current_access_level}/3`
+          ];
+        }
       }
       
       return [`su: user '${args[0]}' not found`];
@@ -534,6 +647,10 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     strings: async ({ cwd, args }) => {
       if (!args[0]) return ["strings: missing filename"];
       const path = resolvePath(cwd, args[0]).join("/");
+      
+      if (!canAccessPath(path)) {
+        return [`strings: access denied: Level ${getRequiredLevel(path)} clearance required`];
+      }
       
       // This is a simplified version - in reality would extract strings from binary
       return [
@@ -550,6 +667,10 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       if (!args[0]) return ["hexdump: missing filename"];
       const path = resolvePath(cwd, args[0]).join("/");
       
+      if (!canAccessPath(path)) {
+        return [`hexdump: access denied: Level ${getRequiredLevel(path)} clearance required`];
+      }
+      
       // Simplified hex dump simulation
       return [
         `Hex dump of: ${path}`,
@@ -558,7 +679,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         "00000020: 416e6f6d 616c7920 636f6e73 63696f75  Anomaly consciou",
         "00000030: 736e6573 73206461 74610000 00000000  sness data......",
         "",
-        "💡 Look for ASCII patterns and hidden flags in hex data"
+        "Look for ASCII patterns and hidden flags in hex data"
       ];
     }
   };
@@ -590,12 +711,16 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     } else {
       // Check for direct file execution
       if (cmd === "pleasedont.exe" || cmd === "./pleasedont.exe") {
-        if (typeof onEvent === "function") {
-          onEvent("aiConversation");
+        if (userProgress.current_access_level >= 3) {
+          if (typeof onEvent === "function") {
+            onEvent("aiConversation");
+          }
+          setHistory((h) => [...h, "Executing forbidden file...", "Establishing neural link with the Anomaly..."]);
+        } else {
+          setHistory((h) => [...h, "Access denied: Level 3 clearance required for pleasedont.exe"]);
         }
-        setHistory((h) => [...h, "⚠️  Executing forbidden file...", "🤖 Establishing neural link with the Anomaly..."]);
       } else {
-        setHistory((h) => [...h, `command not found: ${cmd}`, "💡 Type 'help' for available commands"]);
+        setHistory((h) => [...h, `command not found: ${cmd}`, "Type 'help' for available commands"]);
       }
     }
 

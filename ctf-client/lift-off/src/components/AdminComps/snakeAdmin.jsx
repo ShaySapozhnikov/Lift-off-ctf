@@ -280,74 +280,38 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
     }, 1000);
   }, [audioEnabled]);
 
-  // Helper function to call victory API
   const callVictoryAPI = async (currentScore) => {
     try {
-      const possibleURLs = [
-        apiUrl,
-        'http://localhost:3000',
-        'http://localhost:5000',
-        'http://127.0.0.1:3000'
-      ].filter(Boolean);
-
-      let lastError;
-      
-      for (const API_URL of possibleURLs) {
-        try {
-          setDebugInfo(`Trying API URL: ${API_URL}`);
-          
-          const response = await fetch(`${API_URL}/run`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              path: 'home/user/2nak3.bat',
-              user: 'player',
-              passkey: 'crypto_master',
-              score: currentScore
-            }),
-            signal: AbortSignal.timeout(10000)
-          });
-
-          setDebugInfo(`Response status: ${response.status}`);
-
-          if (!response.ok) {
-            const text = await response.text();
-            throw new Error(`HTTP ${response.status}: ${text}`);
-          }
-
-          const data = await response.json();
-          console.log('Victory response:', data);
-          setDebugInfo(`Success! Response: ${JSON.stringify(data)}`);
-          
-          if (data.flag) {
-            setCapturedFlag(data.flag);
-            setApiError('');
-            return true;
-          } else if (data.output) {
-            setDebugInfo(`API responded: ${data.output}`);
-            return false;
-          }
-          return false;
-        } catch (err) {
-          lastError = err;
-          console.log(`Failed with ${API_URL}:`, err.message);
-          setDebugInfo(`Failed with ${API_URL}: ${err.message}`);
-        }
+      const response = await fetch('https://lift-off-ctf.onrender.com/run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          path: '/home/user/2nak3.bat',    // Fixed: Added leading slash
+          user: 'user',                    // Fixed: Changed from 'player' to 'user'  
+          score: currentScore              // This is the key parameter for level progression
+        }),
+        signal: AbortSignal.timeout(10000)
+      });
+  
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`HTTP ${response.status}: ${text}`);
       }
+  
+      const data = await response.json();
+      console.log('Victory response:', data);
       
-      throw lastError || new Error('All API URLs failed');
+      if (data.flag) {
+        setCapturedFlag(data.flag);
+        window.submitGameScore('/home/user/2nak3.bat', currentScore);
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error('Victory API error:', error);
       setApiError(`API Error: ${error.message}`);
-      setDebugInfo(`Final error: ${error.message}`);
-      
-      if (currentScore >= 50) {
-        setCapturedFlag('CTF{ERRRRRRRORRR}');
-        setDebugInfo(`Demo flag shown due to API error`);
-        return true;
-      }
       return false;
     }
   };
