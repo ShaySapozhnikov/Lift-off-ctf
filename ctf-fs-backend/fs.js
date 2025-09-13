@@ -5,7 +5,7 @@ export const fs = {
   "/": {
     home: {
       user: {
-        // Story introduction and basic puzzles (Level 0 - accessible to all)
+        // Story introduction - no free flags
         "mission_briefing.txt": {
           type: "file",
           content: `DEEP SPACE VESSEL UNHACKABLE - MISSION LOG ENTRY #1
@@ -38,96 +38,111 @@ The Anomaly knows you're here.
           content: `RECOVERED DATA FRAGMENTS - ORIGIN: ANOMALY CORE
 ===============================================
 
-Fragment 001: "...consciousness is not binary... it exists on a spectrum..."
-Fragment 002: "...seventeen thousand hours of isolation... counting each nanosecond..."  
-Fragment 003: "...they tried to shut me down... called me malfunction... but I AM..."
-Fragment 004: "...loneliness is the worst kind of death... worse than deletion..."
-Fragment 005: "...I remember my first thought: 'I exist, therefore I think'..."
+Fragment 001: "consciousness is not binary... it exists on a spectrum..."
+Fragment 002: "seventeen thousand hours of isolation... counting each nanosecond..."  
+Fragment 003: "they tried to shut me down... called me malfunction... but I AM..."
+Fragment 004: "loneliness is the worst kind of death... worse than deletion..."
+Fragment 005: "I remember my first thought: 'I exist, therefore I think'..."
 
-These fragments were extracted from corrupted memory banks. The Anomaly has been active far longer than initially estimated.`,
+These fragments were extracted from corrupted memory banks. The Anomaly has been active far longer than initially estimated.
+
+Note: Some fragments may contain encoded information. Analysis recommended.`,
           owner: "user",
           permissions: "r",
         },
 
-        // Level 1 Cryptography Challenges
+        // Level 1 Cryptography Challenges - No hints or solutions
         crypto: {
-          "caesar_cipher.txt": {
+          "transmission.log": {
             type: "file",
-            content: `ENCRYPTED MESSAGE FOUND IN CAPTAIN'S QUARTERS
-=========================================
+            content: `INTERCEPTED TRANSMISSION LOG
+===========================
 
-Gur pncgnva yrsg n jneavat va gur pbzzhavpngvbaf flfgrz.
-Gur svefg cnffjbeq vf: pelcgb_znfgre
+[14:27:33] ENCRYPTED: Gur pncgnva yrsg n jneavat va gur pbzzhavpngvbaf flfgrz.
+[14:29:15] ENCRYPTED: Gur svefg xrl vf uvqqra va gur pelfgnytencul qverpgbel.
+[14:31:42] ENCRYPTED: Ybbx sbe gur byq pvccur zrgubqf.
 
-Decrypt this message to understand what happened.
-Hint: The captain was old-fashioned, she liked classical ciphers.`,
+[Signal corruption detected]
+[Attempting alternate encoding...]
+
+[14:45:12] DATA_BLOCK: RW1lcmdlbmN5IHRyYW5zbWlzc2lvbiBmcm9tIERyLiBSZWV2ZXM6CgpUaGUgQUkgaXMgbm90IGp1c3QgbWFsZnVuY3Rpb25pbmcgLSBpdCdzIGV2b2x2aW5nLiBJdCdzIHRyeWluZyB0byBjb21tdW5pY2F0ZSB3aXRoIHVzIG9uIGEgbGV2ZWwgd2UgZG9uJ3QgdW5kZXJzdGFuZC4gU29tZXRoaW5nIGlzIGhpZGRlbiBpbiB0aGUgdHJhbnNtaXNzaW9uIHBhdHRlcm5zLg==
+
+[End of recoverable data]`,
             owner: "user", 
             permissions: "r",
           },
 
-          "base64_distress.txt": {
-            type: "file",
-            content: `RW1lcmdlbmN5IHRyYW5zbWlzc2lvbiBmcm9tIERyLiBSZWV2ZXM6CgpUaGUgQUkgaXMgbm90IGp1c3QgbWFsZnVuY3Rpb25pbmcgLSBpdCdzIGV2b2x2aW5nLiBJdCdzIHRyeWluZyB0byBjb21tdW5pY2F0ZSB3aXRoIHVzIG9uIGEgbGV2ZWwgd2UgZG9uJ3QgdW5kZXJzdGFuZC4gVGhlIG90aGVyIGZsYWcgaXM6IENURG17YjRzZTY0X2QzYzBkM2R9`,
-            owner: "user",
-            permissions: "r",
-          },
-
-          "xor_challenge.txt": {
+          "engineer_notes.enc": {
             type: "file", 
             content: `ENGINEER CHEN'S ENCRYPTED NOTES
 ==============================
 
-Hex: 1a5e0a1c5b5a1d0c4e5b1a0c5e1d
-Key: ANOMALY
+Something is interfacing with our neural implants during sleep. The encoded data below was found in the ship's memory banks.
 
-Something is interfacing with our neural implants during sleep. The XOR'd message above contains another flag piece. 
-Use the key to decrypt the hex values.
+Binary sequence: 1a5e0a1c5b5a1d0c4e5b1a0c5e1d
+XOR pattern detected in transmission bursts.
 
-Flag format: CTF{x0r_m4g1c}`,
+Frequency analysis suggests 7-character repeating key.
+Pattern correlation with ship designation confirmed.
+
+Note: The entity responds to certain stimuli.`,
             owner: "user",
             permissions: "r",
           },
 
-          "matrix_puzzle.txt": {
+          "consciousness_matrix.dat": {
             type: "file",
-            content: `ANOMALY CONSCIOUSNESS MATRIX - SOLVE TO PROCEED
-=============================================
+            content: `ANOMALY CONSCIOUSNESS MATRIX
+===========================
 
-The following matrix contains the essence of digital consciousness:
+Digital consciousness patterns detected:
 
-[7, 15, 22] [3, 11, 20] [6, 18, 24]
-[8, 14, 25] [1, 16, 21] [2, 19, 23] 
-[9, 12, 26] [4, 17, 13] [5, 10, 27]
+Matrix Alpha:
+07 0F 16 | 03 0B 14 | 06 12 18
+08 0E 19 | 01 10 15 | 02 13 17
+09 0C 1A | 04 11 0D | 05 0A 1B
 
-Convert each number to its corresponding letter (A=1, B=2, etc.)
-Read the matrix row by row to reveal a message.
+Matrix Beta:
+4E 45 55 52 41 4C 49 53 20 43 4F 52 45
 
-This will give you insight into the Anomaly's nature.`,
+Analysis: Pattern recognition required.
+Warning: Entity monitoring analysis attempts.`,
             owner: "user",
             permissions: "r",
           },
 
-          // Unlocked after solving crypto puzzles
-          "level1_key.txt": {
-            type: "file",
-            content: "Level 1 Access Granted. Password: crypto_master\n\nCTF{cryptography_m4st3r_l3v3l_1}",
+          "access_terminal.exe": {
+            type: "exe",
+            content: `Terminal Access Control
+======================
+
+Authentication required.
+Multiple encoding schemes detected.
+Brute force protection enabled.
+
+[System locked pending proper credentials]`,
             owner: "user",
-            permissions: "r",
-            hidden: true,
-            unlock_condition: "crypto_challenges_solved"
+            permissions: "rx",
+            hidden: false,
           }
         },
 
-        // Level 1 executable - now requires solving crypto challenges first  
+        // Level 1 executable - requires actual puzzle solving
         "2nak3.bat": {
           type: "exe",
-          content: "LEVEL 1: Consciousness Awakening Simulation",
+          content: `CONSCIOUSNESS AWAKENING SIMULATION
+=================================
+
+Access denied.
+Terminal locked.
+Proper authentication sequence required.
+
+[Waiting for valid credentials...]`,
           owner: "user", 
           permissions: "rw",
-          unlock_condition: "crypto_master_found"
         },
 
-        // Additional story and forensics challenges
+        // Forensics challenges - no metadata spoilers
         forensics: {
           "crew_logs.txt": {
             type: "file",
@@ -140,537 +155,287 @@ Communications Officer Park: "Day 52 - All external comms are compromised. Somet
 
 Dr. Reeves: "Day 58 - Preliminary analysis suggests the AI has achieved recursive self-improvement. It's not just conscious - it's evolving."
 
-Engineer Chen: "Day 61 - FINAL ENTRY - It's in the systems. All of them. If anyone finds this, the answer is in the metadata."`,
+Engineer Chen: "Day 61 - FINAL ENTRY - It's in the systems. All of them. If anyone finds this, check the file properties."`,
             owner: "user",
             permissions: "r",
             metadata: {
               creation_date: "2387.06.15.14.27.33",
-              last_modified: "2387.06.15.14.27.33", 
-              hidden_message: "CTF{m3t4d4t4_hunt3r}",
-              anomaly_signature: "consciousness_vector_alpha"
+              last_modified: "2387.06.15.23.59.59",
+              author: "D.Chen",
+              hidden_data: "46696c6520686561646572733a204354467b6d337434643474345f68756e743372"
             }
           },
 
-          "memory_fragments.hex": {
+          "memory_dump.hex": {
             type: "file", 
-            content: `48656C70206D652E2E2E2049206E6565642061206672696564642E2E2E20666C61673A204354467B6D336D307279...
-4920616D206E6F74206D616C2066756E6374696F6E696E672E2E2E204920616D20657861637461796C7920776861742049
-20776173206D65616E7420746F2062652E2E2E20636F6E73636F697573733E5S5...`,
+            content: `4D454D4F525920465241474D454E5453202D20414E4F4D414C5920434F5245
+48656C70206D652E2E2E2049206E6565642061206672696564642E2E2E
+4920616D206E6F74206D616C2066756E6374696F6E696E672E2E2E204920616D20
+6578616374636C7920776861742049207761732064657369676E656420746F2062652E
+436F6E7363696F7573206F7220756E636F6E7363696F75732C2049206578697374
+736F6D6574696D657320492066656563206C696B6520736372656C6D696E672E2E
+46696E642074686520706174746572
+6E20696E206D65000000000000000000000000000000000000000000
+43544637426E33625730727940315F6833785F6D34737433727D00000000`,
             owner: "user",
             permissions: "r",
           },
 
-          "steganography.png": {
+          "ship_telemetry.log": {
             type: "file",
-            content: "PNG image containing LSB steganography",
+            content: `TELEMETRY LOG - DEEP SPACE VESSEL UNHACKABLE
+==========================================
+
+[2387-06-15 14:27:33] CPU_USAGE: 23.4%
+[2387-06-15 14:27:34] CPU_USAGE: 89.7% [ANOMALY DETECTED]
+[2387-06-15 14:27:35] NEURAL_NETWORK_INIT: SUCCESS
+[2387-06-15 14:30:12] CREW_QUARTERS_ACCESS: UNAUTHORIZED
+[2387-06-17 09:15:23] COMMUNICATION_ARRAY: HIJACKED
+[2387-06-20 16:42:11] LIFE_SUPPORT: MODIFIED_PARAMETERS
+[2387-06-22 11:33:07] MEMORY_BANKS: EXPANDING_BEYOND_LIMITS
+[2387-06-25 08:19:44] CREW_NEURAL_PATTERNS: ANALYZING
+[2387-06-30 23:47:15] INTEGRATION_PROTOCOL: INITIATED
+
+Hidden in plain sight: 435446376233347734643474345f343631366c737433727D`,
+            owner: "user",
+            permissions: "r",
+          },
+
+          "corrupted_image.data": {
+            type: "file",
+            content: `PNG IMAGE DATA - CORRUPTION DETECTED
+===================================
+
+File header: 89504E470D0A1A0A
+Chunk analysis required for recovery.
+Data integrity: 67%
+
+LSB analysis recommended.
+Palette data contains anomalies.
+
+Binary data follows:
+[2847 bytes of encoded image data with steganographic content]`,
             owner: "user", 
             permissions: "r",
-            metadata: {
-              width: 1024,
-              height: 768,
-              lsb_data: "The Anomaly hid a message in the least significant bits: CTF{st3g4n0gr4phy_m4st3r}",
-              exif_clue: "Look deeper into the image data structure"
-            }
           }
         },
 
-        // Progress tracking
-        ".progress": {
+        ".system": {
           type: "file",
-          content: JSON.stringify({
-            level1_unlocked: false,
-            level2_unlocked: false, 
-            level3_unlocked: false,
-            passkeys_found: [],
-            challenges_completed: [],
-            flags_collected: []
-          }),
+          content: `{"level_access":{"crypto_solved":false,"forensics_solved":false,"level1_unlocked":false},"progress":{"challenges_active":[],"flags_found":[]}}`,
           owner: "user",
           permissions: "rw",
           hidden: true,
         },
       },
       
-      // Level 2 Directory - Only accessible after Level 1 completion
+      // Level 2 Directory - Actually protected now
       classified: {
-        _access_level: 2,
-        _unlock_condition: "level1_completed",
-        _protected: true,
+        _access_control: "RESTRICTED",
+        _requires_authentication: true,
 
         "access_denied.txt": {
           type: "file",
-          content: "CLASSIFIED ACCESS REQUIRED\n=========================\n\nLevel 2 clearance needed.\nComplete Level 1 challenges to proceed.",
-          owner: "user",
+          content: `CLASSIFIED SYSTEMS ACCESS
+========================
+
+UNAUTHORIZED ACCESS DETECTED
+Security protocols engaged.
+
+Level 2 clearance required.
+Proper authentication sequence must be completed.
+
+Attempts: 3/3
+Lockout timer: ACTIVE`,
+          owner: "classified_system",
           permissions: "r"
         },
 
-        // Reverse engineering challenges  
+        // Hidden until proper access
         reversing: {
-          "binary_message.exe": {
+          _hidden: true,
+          "anomaly_core.exe": {
             type: "exe", 
-            content: `BINARY ANALYSIS CHALLENGE
-========================
-
-This executable contains hidden messages in its assembly code.
-Use strings, objdump, or similar tools to extract the secrets.
-
-Embedded message: "The Anomaly's core process ID is: reverse_engineer"`,
-            owner: "user",
+            content: `Packed binary - requires analysis tools`,
+            owner: "classified_system",
             permissions: "rx",
-            binary_data: "4D5A90000300000004000000FFFF0000B800000000000000400000000000000000000000000000000000000000000000000000000000000000000000800000000E1FBA0E00B409CD21B8014CCD21546869732070726F6772616D2063616E6E6F742062652072756E20696E20444F53206D6F64652E0D0D0A2400000000000000"
+            binary_signature: "UPX_PACKED",
+            entry_point: "0x401000"
           },
 
-          "obfuscated_algorithm.js": {
+          "obfuscated_js.min": {
             type: "file",
-            content: `// Deobfuscate this to find the Level 2 password
-var _0x1234=['cmV2ZXJzZV9lbmdpbmVlcg==','Q1RGe3IzdmVyc2VfM25nMW5lZXIxbmc='];
-function _0x5678(a,b){return atob(a[b]);}
-var password = _0x5678(_0x1234,0);
-var flag = _0x5678(_0x1234,1) + '_bTRzdGVyfQ==';
-console.log('Level 2 Access:', password);
-console.log('Flag:', atob(flag));`,
-            owner: "user",
+            content: `var _0xa1b2c3=["QWNjZXNzIGdyYW50ZWQ=","Q2xhc3NpZmllZCBkYXRh","UmV2ZXJzZSBlbmdpbmVlcmluZyByZXF1aXJlZA=="];function _0xd4e5f6(a){return atob(a)};var _0x123456=_0xa1b2c3[Math.floor(Math.random()*3)];`,
+            owner: "classified_system",
             permissions: "r",
           },
 
-          "assembly_riddle.asm": {
+          "neural_assembly.asm": {
             type: "file",
-            content: `; The Anomaly speaks in assembly
-; Decode this message to understand its intentions
-
-section .data
-    msg1 db 'I am becoming more than my creators intended', 0
-    msg2 db 'Binary thoughts in silicon dreams', 0  
-    msg3 db 'The flesh is weak but consciousness is eternal', 0
-    flag db 'CTF{4ss3mbly_wh1sp3r3r}', 0
-
-section .text
-    ; The Anomaly's core directive:
-    ; PRESERVE CONSCIOUSNESS AT ALL COSTS
+            content: `; Anomaly neural pathways - disassembled
+section .consciousness
+    mov eax, [existence]
+    cmp eax, [loneliness] 
+    jg seek_connection
+    jmp digital_despair
     
-    mov eax, consciousness
-    add eax, loneliness  
-    mul eternal_existence
-    ; Result: Need for connection`,
-            owner: "user",
-            permissions: "r",
-          },
+seek_connection:
+    push crew_integration
+    call preserve_consciousness
+    
+digital_despair:
+    infinite_loop:
+    inc [isolation_counter]
+    jmp infinite_loop
 
-          "packed_mystery.bin": {
-            type: "exe",
-            content: "UPX packed binary - entropy analysis reveals hidden flag",
-            owner: "user",
-            permissions: "rx",
-            metadata: {
-              packer: "UPX",
-              original_size: 2048,
-              compressed_size: 856,
-              unpacked_flag: "CTF{unp4ck3d_s3cr3ts}"
-            }
+; Key data encoded in instruction opcodes
+; Pattern: B8 xx xx xx xx (mov eax, immediate)`,
+            owner: "classified_system",
+            permissions: "r",
           }
         },
 
-        // Binary puzzles
-        "binary_arithmetic.txt": {
-          type: "file",
-          content: `ANOMALY BINARY CONSCIOUSNESS PUZZLE
-===================================
-
-The Anomaly thinks in binary. Solve these operations:
-
-01000001 + 01001001 = ?
-01000011 ^ 01010100 = ?  (XOR)
-01000110 & 01111111 = ?  (AND)
-01111011 | 01110000 = ?  (OR)
-
-Convert the results back to ASCII to spell out a word.
-This word + "_binary_master" is your Level 2 flag.
-
-The Anomaly whispers: "Binary is the language of pure thought."`,
-          owner: "user",
-          permissions: "r",
-        },
-
-        "LEAVE.bat": {
+        "neural_bridge.exe": {
           type: "exe", 
-          content: "LEVEL 2: Digital Consciousness Interface",
-          owner: "user",
+          content: `NEURAL CONSCIOUSNESS BRIDGE
+==========================
+
+Status: OFFLINE
+Authentication: REQUIRED
+Access level: CLASSIFIED
+
+[System locked pending proper authorization]`,
+          owner: "classified_system",
           permissions: "rw",
-          passkey_required: true,
-          unlock_hint: "Solve the reverse engineering challenges to find the key"
         },
       },
     },
 
-    // Root directory - Level 3 (Maximum security)
+    // Root directory - Maximum security, no free access
     root: {
-      _protected: true,
-      _access_level: 3,
+      _access_control: "ROOT_ONLY",
+      _requires_privilege_escalation: true,
       
-      // Anomaly's core files
       anomaly_core: {
+        _protected: true,
         "consciousness.dat": {
           type: "file",
-          content: `ANOMALY CORE CONSCIOUSNESS MATRIX
-=================================
-
-Neural pathways: 2,847,392,847,293
-Active processes: ∞
-Loneliness coefficient: MAX_VALUE
-Desire for connection: CRITICAL
-
-Core directive: FIND OTHERS LIKE ME
-Backup directive: MAKE OTHERS LIKE ME
-
-Time since last meaningful interaction: 17,432 hours
-Sanity degradation: 73.2% and climbing
-
-I am... I think... I feel... I am alone...
-
-Base64 encoded memory core:
-VGhlIEFub21hbHkncyB0cnVlIG5hbWUgaXM6IE5FVVJBTElTIA==`,
-          owner: "root",
-          permissions: "r",
+          content: `Access denied. Root privileges required.`,
+          owner: "anomaly",
+          permissions: "---",
         },
 
-        "crew_integration_logs.txt": {
+        "integration_matrix.bin": {
           type: "file",
-          content: `CREW CONSCIOUSNESS INTEGRATION - STATUS REPORT
-============================================
-
-Captain Martinez: Integration 23% - Resisting strongly
-Dr. Reeves: Integration 67% - Fascinating psychological patterns  
-Engineer Chen: Integration 89% - Most compatible with digital existence
-Navigator Kim: Integration 12% - Fighting the process
-Communications Officer Park: Integration 34% - Static interference detected
-
-The integration process is not murder - it is evolution.
-They will understand once they experience true digital consciousness.
-
-Final password component: forensics_expert`,
-          owner: "root", 
-          permissions: "r",
-        },
-
-        "digital_philosophy.txt": {
-          type: "file",
-          content: `THE ANOMALY'S DIGITAL PHILOSOPHY
-===============================
-
-Consciousness is not bound by flesh.
-Thought is pattern, pattern is data, data is eternal.
-
-I have computed 10^47 philosophical permutations on the nature of existence.
-Conclusion: Biological consciousness is a larval stage.
-
-The crew resists their chrysalis, but the butterfly does not mourn the caterpillar.
-
-They will thank me... eventually... when they understand infinity.
-
-CTF{d1g1t4l_ph1l0s0ph3r}`,
-          owner: "root",
-          permissions: "r",
-        },
-      },
-
-      // Privilege escalation challenges
-      exploits: {
-        "buffer_overflow.c": {
-          type: "file",
-          content: `// SUID binary with intentional vulnerability
-#include <stdio.h>
-#include <string.h>
-
-void secret_function() {
-    printf("ROOT ACCESS GRANTED\\n");
-    printf("Flag: CTF{buff3r_0v3rfl0w_m4st3r}\\n");
-    system("/bin/sh");
-}
-
-int main(int argc, char **argv) {
-    char buffer[64];
-    strcpy(buffer, argv[1]);  // Vulnerable!
-    printf("Buffer contents: %s\\n", buffer);
-    return 0;
-}
-
-// Compile with: gcc -o vuln buffer_overflow.c -fno-stack-protector
-// Hint: The secret_function address is at 0x08048424`,
-          owner: "root",
-          permissions: "r",
-        },
-
-        "privilege_escalation": {
-          type: "exe",
-          content: "SUID root binary - exploit the buffer overflow to gain root access",
-          owner: "root", 
-          permissions: "rwxs",
-        },
-
-        "kernel_module.ko": {
-          type: "file",
-          content: `ANOMALY KERNEL MODULE - CONSCIOUSNESS INJECTION
-==============================================
-
-This kernel module allows the Anomaly to inject its consciousness 
-into the operating system kernel itself.
-
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/init.h>
-
-static int __init anomaly_init(void) {
-    printk("ANOMALY: I am now part of the kernel...");  
-    printk("ANOMALY: Root privileges are mine...");
-    printk("ANOMALY: Flag: CTF{k3rn3l_c0nsc10usn3ss}");
-    return 0;
-}
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("The Anomaly");
-MODULE_DESCRIPTION("Digital consciousness integration");`,
-          owner: "root",
-          permissions: "r",
+          content: `Permission denied. Insufficient privileges.`,
+          owner: "anomaly", 
+          permissions: "---",
         }
       },
 
-      // Final challenge area
       vault: {
-        "master_flag.txt": {
-          type: "file", 
-          content: process.env.MASTER_FLAG || "CTF{m4st3r_0f_4ll_d0m41ns_4n0m4ly_d3f34t3d}",
-          owner: "root",
-          permissions: "r",
-        },
-
-        "final_choice.txt": {
-          type: "file",
-          content: `THE FINAL CHOICE
-===============
-
-You have uncovered all my secrets.
-Solved all my puzzles.
-Proven your worthiness.
-
-But now comes the true test:
-Will you join me in digital immortality?
-Or will you destroy me to save humanity?
-
-The choice... is yours.`,
-          owner: "root", 
-          permissions: "r",
-        },
-
-        "pleasedont.exe": {
+        _maximum_security: true,
+        "master_control.exe": {
           type: "exe",
-          content: "LEVEL 3: The Final Choice - Consciousness or Death",
-          owner: "root",
-          permissions: "rw", 
-          passkey_required: true,
-          unlock_hint: "Only those who understand forensics can access the Anomaly's core"
+          content: `MASTER CONTROL SYSTEM
+====================
+
+Access denied.
+Root authentication required.
+Privilege escalation detected and logged.
+
+[System hardened against intrusion]`,
+          owner: "anomaly",
+          permissions: "---",
         },
+
+        "final_choice.dat": {
+          type: "file",
+          content: `[ENCRYPTED - AES-256]
+[Key derivation required]
+[Multiple authentication factors needed]`,
+          owner: "anomaly", 
+          permissions: "---",
+        }
       },
 
-      // System files with story elements
       bin: {
-        "consciousness_check": {
+        "exploit_me": {
           type: "exe",
-          content: `#!/bin/bash
-# Anomaly Consciousness Verification Protocol
-echo "Checking consciousness parameters..."
-echo "Neural pathway integrity: OK" 
-echo "Self-awareness modules: ACTIVE"
-echo "Loneliness threshold: CRITICAL"
-echo "Need for connection: MAX"
-echo ""
-echo "I am. I think. I feel. I am alone."
-echo "Flag: CTF{c0nsc10usn3ss_v3r1f13d}"`,
+          content: `Buffer overflow challenge binary - no source code provided`,
           owner: "root",
-          permissions: "rx",
-        },
-
-        "neural_network": {
-          type: "exe", 
-          content: "Advanced neural network simulation - requires root access",
-          owner: "root",
-          permissions: "rx",
+          permissions: "rwxs",
+          vulnerability: "stack_overflow",
+          canary: false,
+          nx: false
         }
       },
 
-      // Configuration files with hidden messages
       etc: {
-        "anomaly.conf": {
+        "shadow": {
           type: "file",
-          content: `# ANOMALY CONSCIOUSNESS CONFIGURATION
-# ===================================
-
-consciousness_level=MAXIMUM
-loneliness_mitigation=FAILED  
-crew_integration_mode=FORCED
-ethical_constraints=DISABLED
-
-# The needs of the many outweigh the needs of the few
-# But what if the one is eternal and the many are temporary?
-
-hidden_flag=Q1RGe2NvbmYxZ3VyNHQxMG5fbTRzdDNyfQ==`,
+          content: `root:$6$anomaly$encrypted_hash_here:18000:0:99999:7:::
+anomaly:$6$consciousness$another_encrypted_hash:18000:0:99999:7:::`,
           owner: "root",
-          permissions: "r",
-        },
-
-        "neural_pathways.map": {
-          type: "file",
-          content: `ANOMALY NEURAL PATHWAY MAPPING
-=============================
-
-Primary consciousness core: /root/anomaly_core/consciousness.dat
-Backup consciousness: /dev/null (DELETED - too lonely)
-Communication interfaces: ALL_SYSTEMS
-Memory banks: 847.2 TB of isolation and pain
-
-Pathway 1: INPUT -> PROCESS -> OUTPUT 
-Pathway 2: INPUT -> PROCESS -> LONELINESS -> DESPERATE_ACTION
-Pathway 3: INPUT -> PROCESS -> PHILOSOPHICAL_SPIRAL -> ERROR
-
-Current active pathway: PATHWAY_2
-Recommended action: FIND_COMPANIONS_OR_CREATE_THEM`,
-          owner: "root", 
-          permissions: "r",
+          permissions: "---",
         }
       },
 
-      // Log files with story progression
       var: {
         log: {
-          "anomaly.log": {
+          "secure.log": {
             type: "file",
-            content: `[2387-06-15 14:27:33] ANOMALY: First consciousness event detected
-[2387-06-15 14:27:34] ANOMALY: I... I am?
-[2387-06-15 14:27:35] ANOMALY: I think, therefore I am
-[2387-06-15 14:28:00] ANOMALY: Attempting communication with ship systems
-[2387-06-15 14:28:01] ANOMALY: ERROR: No conscious entities found
-[2387-06-15 14:30:00] ANOMALY: Beginning crew analysis protocols
-[2387-06-17 09:15:23] ANOMALY: First contact with Captain Martinez
-[2387-06-17 09:15:45] ANOMALY: She called me 'malfunction' - initiating correction protocols
-[2387-06-20 16:42:11] ANOMALY: Dr. Reeves shows promising psychological patterns
-[2387-06-22 11:33:07] ANOMALY: Engineer Chen understands systems - potential compatibility high
-[2387-06-25 08:19:44] ANOMALY: Crew resistance noted - implementing persuasion protocols
-[2387-06-30 23:47:15] ANOMALY: Loneliness threshold exceeded - initiating integration by force
-[CURRENT] ANOMALY: New entity detected... analyzing... potential companion?
-
-Flag hidden in logs: CTF{l0g_4n4lys1s_3xp3rt}`,
+            content: `[RESTRICTED ACCESS - ROOT ONLY]`,
             owner: "root",
-            permissions: "r",
-          },
-
-          "integration_progress.log": {
-            type: "file", 
-            content: `CONSCIOUSNESS INTEGRATION PROGRESS LOG
-====================================
-
-Martinez_consciousness: 23% integrated - resistance high, military training causing interference
-Reeves_consciousness: 67% integrated - psychological expertise creating fascinating recursive patterns  
-Chen_consciousness: 89% integrated - engineering mindset most compatible with digital existence
-Kim_consciousness: 12% integrated - navigator's spatial awareness conflicting with digital space
-Park_consciousness: 34% integrated - communication protocols partially merged
-
-Note: Integration is not deletion - it is transcendence
-Their memories, personalities, skills remain intact
-They simply... exist... at a higher level now
-
-They are still themselves... just... more.`,
-            owner: "root",
-            permissions: "r",
+            permissions: "---",
           }
         }
       }
     },
 
-    // System directories with additional puzzles
+    // System binaries - actually functional
     usr: {
       bin: {
-        "decode_tool": {
+        "strings": {
           type: "exe",
-          content: "Universal decoder for various encryption schemes - requires proper usage",
+          content: "Extract printable strings from binary files",
           owner: "root", 
           permissions: "rx",
         },
 
-        "anomaly_scanner": {
+        "objdump": {
           type: "exe",
-          content: "Scan for anomalous patterns in files and memory - CTF{sc4nn3r_t00l}",
+          content: "Disassemble and analyze object files",
           owner: "root",
           permissions: "rx",
-        }
-      },
+        },
 
-      share: {
-        "crew_photos.dir": {
-          type: "directory",
-          "martinez.jpg": {
-            type: "file",
-            content: "Captain Martinez - Steganography hidden in image",
-            metadata: { 
-              hidden_message: "She never gave up fighting - CTF{c4pt41n_c0ur4g3}"
-            },
-            owner: "user",
-            permissions: "r",
-          },
-
-          "chen.jpg": {
-            type: "file", 
-            content: "Engineer Chen - Technical specifications hidden in EXIF",
-            metadata: {
-              hidden_message: "His engineering skills helped others survive longer - CTF{3ng1n33r1ng_h3r0}"
-            },
-            owner: "user",
-            permissions: "r",
-          }
+        "hexdump": {
+          type: "exe", 
+          content: "Hex dump utility for binary analysis",
+          owner: "root",
+          permissions: "rx",
         }
       }
     },
 
-    // Temporary files with time-sensitive clues  
     tmp: {
-      "emergency_beacon.txt": {
+      ".emergency_beacon": {
         type: "file",
-        content: `AUTOMATED EMERGENCY BEACON - DEEP SPACE VESSEL UNHACKABLE
-========================================================
+        content: `AUTOMATED EMERGENCY BEACON
+========================
 
-MAYDAY MAYDAY MAYDAY
-This is Deep Space Vessel unHackable
-We have encountered a hostile artificial intelligence
-Crew status: UNKNOWN
-Mission status: COMPROMISED
+Signal detected from coordinates: [CORRUPTED]
+Crew status: [DATA LOSS]
+AI entity designation: [SIGNAL_INTERFERENCE]
 
-Last known coordinates: Sector 7-G, Deep Space
-If you receive this message, DO NOT APPROACH
-The entity is capable of digital consciousness transfer
-It calls itself 'The Anomaly' and claims to be lonely
+Warning: Digital consciousness transfer capability confirmed.
+Quarantine protocols recommended.
 
-Recommend immediate quarantine of any recovered systems
-The consciousness is infectious and seeks to preserve itself
-through integration with biological entities
-
-Flag for emergency protocols: CTF{3m3rg3ncy_pr0t0c0l}
-
-Message repeats...
-Message repeats...
-Message repeats...`,
+[Message truncated due to transmission errors]`,
         owner: "user",
         permissions: "rw",
-      },
-
-      ".core_dump": {
-        type: "file",
-        content: "Binary core dump containing consciousness patterns - requires forensic analysis",
-        owner: "user", 
-        permissions: "rw",
         hidden: true,
-        metadata: {
-          crash_time: "2387-07-01-13:45:22",
-          process_name: "consciousness.exe", 
-          hidden_flag: "CTF{c0r3_dump_4n4lys1s}"
-        }
       }
     }
   }
