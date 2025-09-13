@@ -328,16 +328,15 @@ export default function EndingScreen({ ending, onRestart, audioContext, audioEna
 
       const requestBody = {
         path: '/root/vault/pleasedont.exe',
-        user: 'player',
+        user: 'player1',
         passkey: 'forensics_expert',
-        score: score || 0,
-        aiChoice: finalAiChoice
+        aiChoice: finalAiChoice   // or 'join' for the bad ending
       };
-
+      
       const response = await fetch("https://lift-off-ctf.onrender.com/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
