@@ -328,7 +328,7 @@ export default function EndingScreen({ ending, onRestart, audioContext, audioEna
 
       const requestBody = {
         path: '/root/vault/pleasedont.exe',
-        user: 'player1',
+        user: 'root',
         passkey: 'forensics_expert',
         aiChoice: finalAiChoice   // or 'join' for the bad ending
       };
