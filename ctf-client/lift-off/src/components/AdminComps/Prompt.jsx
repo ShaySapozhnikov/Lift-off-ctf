@@ -10,11 +10,49 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
   const [cursor, setCursor] = useState(0);
   const [cwd, setCwd] = useState(["/"]);
   const [currentUser, setCurrentUser] = useState("user");
-  const inputRef = useRef(null);
+  const [userProgress, setUserProgress] = useState({
+    current_access_level: 1,
+    flags_collected: [],
+    challenges_solved: [],
+    level1_unlocked: false,
+    level2_unlocked: false,
+    level3_unlocked: false
+  });
 
   useEffect(() => inputRef.current?.focus(), []);
   useEffect(() => inputRef.current?.focus(), [history]);
   useEffect(() => setCursor(commands.length), [commands]);
+
+  // Load user progress on startup
+  useEffect(() => {
+    loadUserProgress();
+  }, []);
+
+  const loadUserProgress = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/progress`);
+      if (res.ok) {
+        const progress = await res.json();
+        setUserProgress(progress);
+        
+        // Show welcome message with progress
+        const welcomeMessages = [
+          "=== DEEP SPACE VESSEL UNHACKABLE - TERMINAL ACCESS ===",
+          "",
+          `Access Level: ${progress.current_access_level}/3`,
+          `Flags Collected: ${progress.total_flags || 0}`,
+          `Challenges Solved: ${progress.total_challenges || 0}`,
+          "",
+          "Type 'help' for available commands.",
+          "Begin your investigation with 'cat mission_briefing.txt'",
+          ""
+        ];
+        setHistory(welcomeMessages);
+      }
+    } catch (e) {
+      console.error("Failed to load progress:", e);
+    }
+  };
 
   // --- Helper: resolve relative paths ---
   const resolvePath = (cwd, input) => {
@@ -30,24 +68,50 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
   };
 
   // --- API Calls ---
-  const lsDir = async (path) => {
+  const lsDir = async (path, showHidden = false) => {
     try {
       const res = await fetch(
-        `${BACKEND_URL}/ls?path=${encodeURIComponent(path)}&user=${currentUser}`
+        `${BACKEND_URL}/ls?path=${encodeURIComponent(path)}&user=${currentUser}&showHidden=${showHidden}`
       );
-      if (!res.ok) return [`Error: ${await res.text()}`];
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        return [`Error: ${errorText}`];
+      }
+      
       const data = await res.json();
       
-      // ✅ CLEAN: Just show filenames like a real terminal
-      if (Array.isArray(data.files) && data.files.length > 0 && typeof data.files[0] === 'object') {
-        // New format: array of file objects - just show names
-        return data.files.map(file => {
-          const lockIndicator = file.passkey_required ? ' [LOCKED]' : '';
-          return `${file.name}${lockIndicator}`;
+      // Update progress if returned
+      if (data.current_access_level) {
+        setUserProgress(prev => ({
+          ...prev,
+          current_access_level: data.current_access_level,
+          total_flags: data.flags_collected || prev.total_flags
+        }));
+      }
+      
+      if (Array.isArray(data.files) && data.files.length > 0) {
+        const output = [];
+        
+        // Add access level info for directories with restrictions
+        if (data.current_access_level) {
+          output.push(`Access Level: ${data.current_access_level}/3`);
+          output.push("");
+        }
+        
+        data.files.forEach(file => {
+          let indicator = "";
+          if (file.type === "directory") indicator = "/";
+          if (file.passkey_required) indicator += " [LOCKED]";
+          if (file.locked) indicator += " [REQUIRES UNLOCK]";
+          if (file.access_level > data.current_access_level) indicator += " [ACCESS DENIED]";
+          
+          output.push(`${file.name}${indicator}`);
         });
+        
+        return output.length ? output : ["Directory is empty"];
       } else {
-        // Old format: array of strings (fallback)
-        return data.files || ['No files found'];
+        return ["Directory is empty"];
       }
     } catch (e) {
       return [`Network error: ${e.message}`];
@@ -59,60 +123,144 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       const res = await fetch(
         `${BACKEND_URL}/file?path=${encodeURIComponent(path)}&user=${currentUser}`
       );
-      if (!res.ok) return [`Error: ${await res.text()}`];
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        return [`Error: ${errorText}`];
+      }
+      
       const data = await res.json();
       
-      // Show hint if available
       const output = [data.content];
-      if (data.hint) {
-        output.push(`💡 Hint: ${data.hint}`);
+      
+      // Show metadata if available
+      if (data.metadata) {
+        output.push("", "=== METADATA ===");
+        Object.entries(data.metadata).forEach(([key, value]) => {
+          output.push(`${key}: ${value}`);
+        });
       }
+      
+      // Show hint if available
+      if (data.hint) {
+        output.push("", `💡 Hint: ${data.hint}`);
+      }
+      
+      // Show available flags
+      if (data.flags_available && data.flags_available.length > 0) {
+        output.push("", "🏁 Flags available in this file:");
+        data.flags_available.forEach(flag => output.push(`   ${flag}`));
+      }
+      
       return output;
     } catch (e) {
       return [`Network error: ${e.message}`];
     }
   };
 
-  // ✅ FIXED: Added passkey parameter
-  const runFileAPI = async (path, score = undefined, passkey = undefined) => {
+  const runFileAPI = async (path, score = undefined, passkey = undefined, aiChoice = undefined) => {
     try {
       const requestBody = { path, user: currentUser };
-      if (score !== undefined) {
-        requestBody.score = score;
-      }
-      // ✅ FIXED: Include passkey in request body
-      if (passkey !== undefined) {
-        requestBody.passkey = passkey;
-      }
+      
+      if (score !== undefined) requestBody.score = score;
+      if (passkey !== undefined) requestBody.passkey = passkey;
+      if (aiChoice !== undefined) requestBody.aiChoice = aiChoice;
 
       const res = await fetch(`${BACKEND_URL}/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
-      if (!res.ok) return [`Error: ${await res.text()}`];
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        return [`Error: ${errorText}`];
+      }
+      
       const data = await res.json();
 
-      // ✅ Notify parent about any event (like "snakeGame", "SimonGame", or "anomalyEncounter")
+      // Handle events
       if (data.event && typeof onEvent === "function") {
         console.log("Backend returned event:", data.event);
         onEvent(data.event);
       }
 
-      if (data.output === "exploit") setCurrentUser("root");
-
-      // Handle flags from completed games
-      if (data.flag) {
-        return [data.output, `🏁 FLAG: ${data.flag}`];
+      // Handle privilege escalation
+      if (data.output === "exploit" || data.output?.includes("ROOT ACCESS GRANTED")) {
+        setCurrentUser("root");
       }
 
-      return [data.output];
+      const output = [data.output];
+      
+      // Handle flags
+      if (data.flag) {
+        output.push(`🏁 FLAG CAPTURED: ${data.flag}`);
+      }
+      
+      if (data.master_flag) {
+        output.push(`👑 MASTER FLAG: ${data.master_flag}`);
+      }
+      
+      // Handle story progression
+      if (data.story_progression) {
+        output.push("", `📖 Story: ${data.story_progression}`);
+      }
+      
+      if (data.story_conclusion) {
+        output.push("", `🎬 ${data.story_conclusion}`);
+      }
+      
+      // Handle progress updates
+      if (data.current_progress) {
+        output.push("", `Progress: Level ${data.current_progress.level} | Flags: ${data.current_progress.flags} | Challenges: ${data.current_progress.challenges}`);
+      }
+
+      // Reload progress after successful execution
+      await loadUserProgress();
+
+      return output;
     } catch (e) {
       return [`Network error: ${e.message}`];
     }
   };
 
-  // Expose function for games to submit scores
+  const solveChallengeAPI = async (challenge, solution) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/solve-challenge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge, solution, user: currentUser }),
+      });
+      
+      const data = await res.json();
+      
+      const output = [data.message];
+      
+      if (data.success && data.flag) {
+        output.push(`🏁 FLAG CAPTURED: ${data.flag}`);
+        
+        if (data.next_level_unlocked && data.next_level_unlocked.length > 0) {
+          output.push("", "🔓 NEW LEVEL UNLOCKED!");
+          data.next_level_unlocked.forEach(level => {
+            output.push(`   ${level} access granted!`);
+          });
+        }
+        
+        // Reload progress
+        await loadUserProgress();
+      }
+      
+      if (data.hint) {
+        output.push("", `💡 Hint: ${data.hint}`);
+      }
+      
+      return output;
+    } catch (e) {
+      return [`Network error: ${e.message}`];
+    }
+  };
+
+  // Expose functions for games to submit scores
   window.submitGameScore = async (gamePath, score) => {
     const result = await runFileAPI(gamePath, score);
     if (result && result.length) {
@@ -123,38 +271,81 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
   // --- Commands ---
   const commandsMap = {
     help: async () => [
-      "AVAILABLE COMMANDS:",
-      "  help       - Show this help message",
-      "  ls         - List directory contents", 
-      "  cd <dir>   - Change directory",
-      "  cat <file> - Display file contents",
-      "  run <file> - Execute a file",
-      "  clear      - Clear screen",
-      "  pwd        - Show current directory",
-      "  whoami     - Show current user",
+      "=== UNHACKABLE VESSEL TERMINAL COMMANDS ===",
       "",
-      "SPECIAL FILES:",
-      "  2nak3.bat       - Level 1 challenge",
-      "  LEAVE.bat       - Level 2 challenge", 
-      "  pleasedont.exe  - Level 3 challenge"
+      "NAVIGATION:",
+      "  help            - Show this help message",
+      "  ls [-a]         - List directory contents (-a shows hidden)",
+      "  cd <dir>        - Change directory",
+      "  pwd             - Show current directory",
+      "  find <query>    - Search for files containing text",
+      "",
+      "FILE OPERATIONS:", 
+      "  cat <file>      - Display file contents",
+      "  run <file>      - Execute a file",
+      "  strings <file>  - Extract strings from binary files",
+      "  hexdump <file>  - Show hex dump of file",
+      "",
+      "CHALLENGE SOLVING:",
+      "  solve <challenge> <solution> - Submit solution to challenge",
+      "  decode <type> <data>         - Decode various formats",
+      "  progress                     - Show your current progress",
+      "",
+      "SYSTEM:",
+      "  clear      - Clear screen",
+      "  whoami     - Show current user", 
+      "  su <user>  - Switch user (if you have credentials)",
+      "",
+      "CHALLENGE FILES:",
+      "  2nak3.bat       - Level 1: Consciousness Simulation",
+      "  LEAVE.bat       - Level 2: Digital Interface", 
+      "  pleasedont.exe  - Level 3: Final Confrontation",
+      "",
+      "🎯 START HERE: cat mission_briefing.txt",
     ],
     clear: async ({ clear }) => {
       clear();
       return [];
     },
     pwd: async ({ cwd }) => [cwd.join("/")],
-    whoami: async () => [currentUser],
-    ls: async ({ cwd }) => {
-      const result = await lsDir(cwd.join("/"));
-      // Add some spacing for better readability
+    whoami: async () => [`Current user: ${currentUser}`, `Access level: ${userProgress.current_access_level}/3`],
+    progress: async () => {
+      const output = [
+        "=== MISSION PROGRESS ===",
+        "",
+        `Current User: ${currentUser}`,
+        `Access Level: ${userProgress.current_access_level}/3`,
+        `Flags Collected: ${userProgress.total_flags || 0}`,
+        `Challenges Solved: ${userProgress.total_challenges || 0}`,
+        "",
+        "LEVEL STATUS:"
+      ];
+      
+      output.push(`  Level 1 (Crypto): ${userProgress.level1_unlocked ? '✅ UNLOCKED' : '🔒 LOCKED'}`);
+      output.push(`  Level 2 (Reverse): ${userProgress.level2_unlocked ? '✅ UNLOCKED' : '🔒 LOCKED'}`);
+      output.push(`  Level 3 (Forensics): ${userProgress.level3_unlocked ? '✅ UNLOCKED' : '🔒 LOCKED'}`);
+      
+      if (userProgress.flags_collected && userProgress.flags_collected.length > 0) {
+        output.push("", "FLAGS COLLECTED:");
+        userProgress.flags_collected.forEach(flag => {
+          output.push(`  🏁 ${flag}`);
+        });
+      }
+      
+      return output;
+    },
+    ls: async ({ cwd, args }) => {
+      const showHidden = args.includes("-a") || args.includes("--all");
+      const result = await lsDir(cwd.join("/"), showHidden);
       return ["", ...result, ""];
     },
     cd: async ({ cwd, args, setCwd }) => {
       if (!args[0]) return [];
       const newPath = resolvePath(cwd, args[0]);
       const dirCheck = await lsDir(newPath.join("/"));
-      if (dirCheck[0]?.startsWith("Error"))
-        return [`cd: cannot access '${args[0]}': Permission denied`];
+      if (dirCheck[0]?.startsWith("Error")) {
+        return [`cd: cannot access '${args[0]}': ${dirCheck[0].replace("Error: ", "")}`];
+      }
       setCwd(newPath);
       return [`Changed directory to: ${newPath.join("/")}`];
     },
@@ -166,65 +357,180 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     run: async ({ cwd, args }) => {
       if (!args[0]) return ["run: missing filename"];
       const path = resolvePath(cwd, args[0]).join("/");
-      
-      // Check if this is a locked file that needs a passkey
       const filename = args[0];
+      
+      // Handle locked executables
       if (filename === "2nak3.bat" || filename === "LEAVE.bat" || filename === "pleasedont.exe") {
-        const passkey = args[1]; // Second argument should be the passkey
+        const passkey = args[1];
         if (!passkey) {
           return [
-            `Error: ${filename} requires a passkey`,
+            `⚠️  ${filename} requires a passkey to execute`,
             `Usage: run ${filename} <passkey>`,
-            `Example: run 2nak3.bat crypto_master`,
             "",
-            "Find passkeys by exploring the CTF challenges in:",
-            "  crypto/     - cryptography challenges", 
-            "  reversing/  - reverse engineering",
-            "  forensics/  - digital forensics",
-            "  web/        - web exploitation"
+            "Find passkeys by solving challenges in:",
+            "  • /home/user/crypto/ - cryptography puzzles",
+            "  • /home/classified/reversing/ - reverse engineering", 
+            "  • /root/anomaly_core/ - forensics challenges",
+            "",
+            "💡 Hint: Passkeys are earned by mastering each skill domain"
           ];
         }
-        // ✅ FIXED: Now properly passing passkey as third parameter
         return await runFileAPI(path, undefined, passkey);
       }
       
       return await runFileAPI(path);
     },
-    // Multiple ways to trigger the anomaly encounter
-    "pleasedont.exe": async () => {
-      console.log("pleasedont.exe command triggered!");
-      // Trigger the anomaly encounter directly
-      if (typeof onEvent === "function") {
-        console.log("Calling onEvent with anomalyEncounter");
-        onEvent("anomalyEncounter");
+    solve: async ({ args }) => {
+      if (args.length < 2) {
+        return [
+          "solve: Usage: solve <challenge> <solution>",
+          "",
+          "Available challenges:",
+          "  caesar_cipher    - ROT13 encrypted message",
+          "  base64_distress  - Base64 encoded transmission", 
+          "  xor_challenge    - XOR encrypted data",
+          "  matrix_puzzle    - Number to letter conversion",
+          "  binary_arithmetic - Binary operations",
+          "  assembly_riddle  - Assembly code analysis",
+          "  obfuscated_js    - JavaScript deobfuscation"
+        ];
       }
-      return ["⚠️  WARNING: Executing forbidden file...", "🤖 Initializing anomaly encounter..."];
+      
+      const [challenge, ...solutionParts] = args;
+      const solution = solutionParts.join(" ");
+      
+      return await solveChallengeAPI(challenge, solution);
     },
-    pleasedont: async () => {
-      // Alternative without .exe extension
-      console.log("pleasedont command triggered!");
-      if (typeof onEvent === "function") {
-        console.log("Calling onEvent with anomalyEncounter");
-        onEvent("anomalyEncounter");
+    decode: async ({ args }) => {
+      if (args.length < 2) {
+        return [
+          "decode: Usage: decode <type> <data>",
+          "",
+          "Supported types:",
+          "  base64   - Base64 decode",
+          "  rot13    - ROT13 cipher", 
+          "  hex      - Hex to ASCII",
+          "  binary   - Binary to ASCII"
+        ];
       }
-      return ["⚠️  WARNING: Executing forbidden file...", "🤖 Initializing anomaly encounter..."];
+      
+      const [type, data] = args;
+      
+      try {
+        let result;
+        switch(type.toLowerCase()) {
+          case "base64":
+            result = atob(data);
+            break;
+          case "rot13":
+            result = data.replace(/[A-Za-z]/g, char => 
+              String.fromCharCode(char.charCodeAt(0) + (char.toLowerCase() < 'n' ? 13 : -13))
+            );
+            break;
+          case "hex":
+            result = data.replace(/([0-9A-F]{2})/gi, (match, hex) => 
+              String.fromCharCode(parseInt(hex, 16))
+            );
+            break;
+          case "binary":
+            result = data.split(' ').map(bin => 
+              String.fromCharCode(parseInt(bin, 2))
+            ).join('');
+            break;
+          default:
+            return [`decode: unsupported type '${type}'`];
+        }
+        return [`Decoded result: ${result}`];
+      } catch (e) {
+        return [`decode: error - ${e.message}`];
+      }
+    },
+    find: async ({ args }) => {
+      if (!args[0]) return ["find: missing search query"];
+      
+      try {
+        const res = await fetch(
+          `${BACKEND_URL}/search?query=${encodeURIComponent(args[0])}&user=${currentUser}`
+        );
+        
+        if (!res.ok) return [`Error: ${await res.text()}`];
+        
+        const data = await res.json();
+        
+        if (!data.results || data.results.length === 0) {
+          return [`No files found containing: ${args[0]}`];
+        }
+        
+        const output = [`Found ${data.results.length} results for '${args[0]}':`, ""];
+        data.results.forEach(result => {
+          output.push(`📁 ${result.path} (${result.type})`);
+          if (result.content) {
+            const snippet = result.content.substring(0, 100);
+            output.push(`   ${snippet}${result.content.length > 100 ? '...' : ''}`);
+          }
+        });
+        
+        return output;
+      } catch (e) {
+        return [`Network error: ${e.message}`];
+      }
+    },
+    su: async ({ args }) => {
+      if (!args[0]) return ["su: missing username"];
+      
+      if (args[0] === "root") {
+        return [
+          "su: root access requires privilege escalation",
+          "💡 Hint: Look for SUID binaries or exploitable services",
+          "Try: find / -perm -4000 2>/dev/null"
+        ];
+      }
+      
+      return [`su: user '${args[0]}' not found`];
+    },
+    strings: async ({ cwd, args }) => {
+      if (!args[0]) return ["strings: missing filename"];
+      const path = resolvePath(cwd, args[0]).join("/");
+      
+      // This is a simplified version - in reality would extract strings from binary
+      return [
+        `Extracting strings from: ${path}`,
+        "ASCII strings found:",
+        "  'consciousness_check'",
+        "  'digital_anomaly'", 
+        "  'CTF{str1ngs_4n4lys1s}'",
+        "  'The Anomaly lives in binary'",
+        "Use 'cat' for text files or 'run' for executables"
+      ];
+    },
+    hexdump: async ({ cwd, args }) => {
+      if (!args[0]) return ["hexdump: missing filename"];
+      const path = resolvePath(cwd, args[0]).join("/");
+      
+      // Simplified hex dump simulation
+      return [
+        `Hex dump of: ${path}`,
+        "00000000: 43544620 7b683378 5f64756d 705f6d34  CTF{h3x_dump_m4",  
+        "00000010: 73743372 7d0a0000 00000000 00000000  st3r}...........",
+        "00000020: 416e6f6d 616c7920 636f6e73 63696f75  Anomaly consciou",
+        "00000030: 736e6573 73206461 74610000 00000000  sness data......",
+        "",
+        "💡 Look for ASCII patterns and hidden flags in hex data"
+      ];
     }
   };
 
   const onSubmit = async (value) => {
     const v = value.trim();
     if (!v) return;
+    
     setHistory((h) => [...h, `${cwd.join("/")}> ${v}`]);
     setCommands((c) => [...c, v]);
 
     const [cmd, ...args] = v.split(/\s+/);
     
-    console.log("Command entered:", cmd, "Args:", args);
-    
-    // Check for exact command match first
     const handler = commandsMap[cmd];
     if (handler) {
-      console.log("Found handler for command:", cmd);
       const out = await handler({
         args,
         cwd,
@@ -239,16 +545,14 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       });
       if (out && out.length) setHistory((h) => [...h, ...out]);
     } else {
-      // Check if it's a file execution attempt
+      // Check for direct file execution
       if (cmd === "pleasedont.exe" || cmd === "./pleasedont.exe") {
-        console.log("Detected pleasedont.exe execution attempt");
         if (typeof onEvent === "function") {
-          console.log("Calling onEvent with anomalyEncounter");
-          onEvent("anomalyEncounter");
+          onEvent("aiConversation");
         }
-        setHistory((h) => [...h, "⚠️  WARNING: Executing forbidden file...", "🤖 Initializing anomaly encounter..."]);
+        setHistory((h) => [...h, "⚠️  Executing forbidden file...", "🤖 Establishing neural link with the Anomaly..."]);
       } else {
-        setHistory((h) => [...h, `command not found: ${cmd}`]);
+        setHistory((h) => [...h, `command not found: ${cmd}`, "💡 Type 'help' for available commands"]);
       }
     }
 
@@ -304,7 +608,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       {/* history */}
       <div className="space-y-0.5">
         {history.map((h, i) => (
-          <div key={i} className="text-white/80 font-mono">
+          <div key={i} className="text-white/80 font-mono whitespace-pre-wrap">
             {h}
           </div>
         ))}
@@ -312,7 +616,9 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
 
       {/* prompt row */}
       <div className="flex items-center gap-2 pt-2 pb-2">
-        <span className="text-amber-100/70 font-mono">{cwd.join("/")}&gt;</span>
+        <span className="text-amber-100/70 font-mono">
+          {currentUser === "root" ? "[ROOT]" : "[USER]"} {currentUser}@unhackable:{cwd.join("/")}&gt;
+        </span>
         <input
           ref={inputRef}
           value={buf}
@@ -327,8 +633,10 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         <TerminalInput value={buf} />
       </div>
 
-      <div className="mt-1 text-white/50 font-mono">
-        Current User: <span className="text-amber-100">{currentUser}</span>
+      <div className="mt-1 text-white/50 font-mono text-sm">
+        Access Level: <span className="text-amber-100">{userProgress.current_access_level}/3</span> | 
+        Flags: <span className="text-green-400">{userProgress.total_flags || 0}</span> | 
+        User: <span className="text-blue-400">{currentUser}</span>
       </div>
     </div>
   );
