@@ -120,6 +120,7 @@ The Anomaly has been learning our behaviors...`,
           owner: "user",
           permissions: "r",
         },
+      },
       
       // LEVEL 2: BINARY OPERATIONS & BIT MANIPULATION
       // ==============================================
