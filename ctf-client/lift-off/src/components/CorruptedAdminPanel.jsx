@@ -23,15 +23,11 @@ export default function CorruptedAdminPanel() {
   const [currentCharIndex, setCurrentCharIndex] = useState(0);
   const [bootComplete, setBootComplete] = useState(false);
   const [anomalyEvent, setAnomalyEvent] = useState(null);
-  
-  // Simplified scroll states
-  const [isUserScrolling, setIsUserScrolling] = useState(false);
 
   const typedRef = useRef(null);
   const audioContextRef = useRef(null);
   const typewriterIntervalRef = useRef(null);
-  const scrollTimeoutRef = useRef(null);
-  const autoScrollTimeoutRef = useRef(null);
+  const promptRef = useRef(null); // 👈 ref to scroll to Prompt
 
   const bootScript = [
     "BOOT> INIT SYSTEM",
@@ -53,7 +49,6 @@ export default function CorruptedAdminPanel() {
 
   const initializeAudio = async () => {
     if (audioEnabled || audioContextRef.current) return;
-    
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (!AudioContext) {
@@ -61,12 +56,8 @@ export default function CorruptedAdminPanel() {
         setShowAudioPrompt(false);
         return;
       }
-      
       audioContextRef.current = new AudioContext();
-      if (audioContextRef.current.state === 'suspended') {
-        await audioContextRef.current.resume();
-      }
-      
+      if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
       const testOsc = audioContextRef.current.createOscillator();
       const testGain = audioContextRef.current.createGain();
       testOsc.frequency.setValueAtTime(200, audioContextRef.current.currentTime);
@@ -76,7 +67,6 @@ export default function CorruptedAdminPanel() {
       testGain.connect(audioContextRef.current.destination);
       testOsc.start();
       testOsc.stop(audioContextRef.current.currentTime + 0.1);
-      
       setAudioEnabled(true);
       setShowAudioPrompt(false);
     } catch (error) {
@@ -89,24 +79,17 @@ export default function CorruptedAdminPanel() {
     if (skippedRef.current) return;
     if (!audioEnabled || !audioContextRef.current) return;
     if (charIndex % 4 !== 0) return;
-
     try {
       const audioCtx = audioContextRef.current;
       if (audioCtx.state === 'suspended') audioCtx.resume();
-
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
-
       oscillator.type = "square";
-      const frequency = charIndex % 5 === 0 ? 200 : 250;
-      oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-
+      oscillator.frequency.setValueAtTime(charIndex % 5 === 0 ? 200 : 250, audioCtx.currentTime);
       gainNode.gain.setValueAtTime(0.06, audioCtx.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-
       oscillator.connect(gainNode);
       gainNode.connect(audioCtx.destination);
-
       oscillator.start(audioCtx.currentTime);
       oscillator.stop(audioCtx.currentTime + 0.05);
     } catch (error) {
@@ -119,8 +102,9 @@ export default function CorruptedAdminPanel() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Typewriter effect
   useEffect(() => {
-    if (typewriterIntervalRef.current) clearInterval(typewriterIntervalRef.current);
+    if (typewriterIntervalRef.current) clearTimeout(typewriterIntervalRef.current);
 
     const handleBootSkip = (e) => {
       if (e.code === 'Space' && !bootComplete) {
@@ -164,67 +148,12 @@ export default function CorruptedAdminPanel() {
     };
   }, [currentBootIndex, currentCharIndex, audioEnabled, bootComplete]);
 
-  // Improved auto-scroll effect with better conflict resolution
+  // Auto-scroll to Prompt
   useEffect(() => {
-    const el = typedRef.current;
-    if (!el || isUserScrolling) return;
-
-    // Clear any existing auto-scroll timeout
-    if (autoScrollTimeoutRef.current) {
-      clearTimeout(autoScrollTimeoutRef.current);
+    if (promptRef.current) {
+      promptRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
     }
-
-    // Delay auto-scroll to avoid conflicts
-    autoScrollTimeoutRef.current = setTimeout(() => {
-      if (el && !isUserScrolling) {
-        el.scrollTop = el.scrollHeight;
-      }
-    }, 100);
-
-    return () => {
-      if (autoScrollTimeoutRef.current) {
-        clearTimeout(autoScrollTimeoutRef.current);
-      }
-    };
-  }, [bootLines, currentBootLine, snakeEvent, isUserScrolling]);
-
-  // Improved scroll detection
-  useEffect(() => {
-    const el = typedRef.current;
-    if (!el) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = el;
-      const isAtBottom = scrollHeight - scrollTop <= clientHeight + 15; // Increased tolerance
-
-      // Clear existing timeout
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-
-      // If not at bottom, user is scrolling
-      if (!isAtBottom) {
-        setIsUserScrolling(true);
-        
-        // Reset after longer delay to prevent conflicts
-        scrollTimeoutRef.current = setTimeout(() => {
-          setIsUserScrolling(false);
-        }, 5000);
-      } else if (isAtBottom && isUserScrolling) {
-        // If at bottom, immediately disable user scrolling
-        setIsUserScrolling(false);
-      }
-    };
-
-    el.addEventListener('scroll', handleScroll, { passive: true });
-    
-    return () => {
-      el.removeEventListener('scroll', handleScroll);
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-    };
-  }, [isUserScrolling]);
+  }, [bootComplete]);
 
   const handleEvent = (event) => {
     if (event === "SimonGame") {
@@ -248,17 +177,6 @@ export default function CorruptedAdminPanel() {
 
   const handleContainerClick = () => {
     if (!audioEnabled && showAudioPrompt) initializeAudio();
-  };
-
-  const scrollToBottom = () => {
-    const el = typedRef.current;
-    if (el) {
-      el.scrollTo({
-        top: el.scrollHeight,
-        behavior: 'smooth'
-      });
-      setIsUserScrolling(false);
-    }
   };
 
   return (
@@ -322,7 +240,7 @@ export default function CorruptedAdminPanel() {
                 ref={typedRef}
                 className="terminal-scroll flex-1 overflow-y-auto"
               >
-                <div className="min-h-full flex flex-col justify-end">
+                <div className="min-h-full flex flex-col justify-end pb-8">
                   {bootLines.map((line, idx) => (
                     <div key={`boot-line-${idx}`} className="text-amber-100">{line}</div>
                   ))}
@@ -339,14 +257,20 @@ export default function CorruptedAdminPanel() {
 
                   {bootComplete && (
                     <>
-                      <Prompt onEvent={handleEvent} audioContext={audioContextRef.current} playTypingSound={playTypingSound} audioEnabled={audioEnabled} onAudioInit={initializeAudio}/>
+                      <div ref={promptRef}>
+                        <Prompt
+                          onEvent={handleEvent}
+                          audioContext={audioContextRef.current}
+                          playTypingSound={playTypingSound}
+                          audioEnabled={audioEnabled}
+                          onAudioInit={initializeAudio}
+                        />
+                      </div>
                       <HelpBlock />
                     </>
                   )}
                 </div>
               </div>
-
-
 
               {snakeEvent === "snakeGame" && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
@@ -374,7 +298,6 @@ export default function CorruptedAdminPanel() {
         .terminal-flicker {
           animation: randomFlicker 3.7s ease-in-out infinite;
         }
-
         @keyframes randomFlicker {
           0% { filter: blur(0.4px); opacity: 0.94; }
           2% { filter: blur(0.6px); opacity: 0.92; }
@@ -392,46 +315,29 @@ export default function CorruptedAdminPanel() {
           94% { filter: blur(0.6px); opacity: 0.92; }
           100% { filter: blur(0.4px); opacity: 0.94; }
         }
-
-        /* Pure CSS scrollbar styling for all browsers */
         .terminal-scroll {
-          /* Firefox */
           scrollbar-width: thin;
           scrollbar-color: rgba(245, 158, 11, 0.3) rgba(39, 39, 42, 0.1);
+          scroll-behavior: smooth;
+          contain: layout style paint;
         }
-
-        /* Chrome, Safari, Edge Webkit */
         .terminal-scroll::-webkit-scrollbar {
           width: 8px;
         }
-
         .terminal-scroll::-webkit-scrollbar-track {
           background: rgba(39, 39, 42, 0.1);
           border-radius: 4px;
         }
-
         .terminal-scroll::-webkit-scrollbar-thumb {
           background: rgba(245, 158, 11, 0.3);
           border-radius: 4px;
           border: 1px solid rgba(39, 39, 42, 0.2);
         }
-
         .terminal-scroll::-webkit-scrollbar-thumb:hover {
           background: rgba(245, 158, 11, 0.5);
         }
-
         .terminal-scroll::-webkit-scrollbar-thumb:active {
           background: rgba(245, 158, 11, 0.7);
-        }
-
-        /* Ensure smooth scrolling */
-        .terminal-scroll {
-          scroll-behavior: smooth;
-        }
-
-        /* Fix for Chrome overflow issues */
-        .terminal-scroll {
-          contain: layout style paint;
         }
       `}</style>
     </div>
