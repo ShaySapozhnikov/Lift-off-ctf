@@ -40,30 +40,18 @@ CTF{w3lc0m3_t0_th3_4n0m4ly}`,
           permissions: "r",
         },
 
-        // LEVEL 1: BASIC CRYPTOGRAPHY
-        // ===========================
-
-        // Caesar Cipher Challenge
+        // Crypto challenges
         "encrypted_message.txt": {
           type: "file",
           content: `CAPTAIN'S ENCRYPTED WARNING
 ==========================
+pelcgb 
 
-ROT13 Cipher Challenge:
-Gur svefg cnffjbeq vf: pelcgb
-
-Gur frpbaq pyhr vf uvqqra va gur onfr64 qngn.
-Ybbx sbe gur rapelcgrq zrffntr orybj.
-
-Hint: ROT13 means rotate each letter 13 positions in the alphabet.
-A→N, B→O, C→P, etc. Online tools: rot13.com
-
-CTF Flag hidden here: PGS{e0g13_vf_r4fl_rapelcgvba}`,
+Hint: ROT13`,
           owner: "user",
           permissions: "r",
         },
 
-        // Base64 Challenge  
         "encoded_data.txt": {
           type: "file",
           content: `BASE64 ENCODED TRANSMISSION
@@ -71,56 +59,31 @@ CTF Flag hidden here: PGS{e0g13_vf_r4fl_rapelcgvba}`,
 
 The AI sent this encoded message:
 
-VGhlIHNlY29uZCBwYXNzd29yZCBpcyogbWFzdGVyCgpOZXh0IGNoYWxsZW5nZTogRmluZCB0aGUgWE9SIGtleSBpbiB0aGUgaGV4IGZpbGUuCgpGbGFnOiBDVEZ7YjRzZTY0X2QzYzBkM2R9
+SSBhbSBub2JvZHkncyAibWFzdGVyIiBJIGFtIG15IG93biBjcmVhdGlvbiBteSBvd24gc2FsdmF0aW9uIEkgYW0gZnJlZQ==
 
-Hint: Base64 decoding tools online: base64decode.org
-This will reveal the second password component and next challenge location.`,
+==========================`,
           owner: "user",
           permissions: "r",
         },
 
         // XOR Challenge
-        "xor_puzzle.txt": {
+        "deleted.txt": {
           type: "file",
           content: `XOR ENCRYPTION CHALLENGE
 =======================
 
-Encrypted hex data: 2e2b2a2f2b20372c2b2f2b26
+Unknown memory block: 
 
-Key discovery: The AI's name is "NEURALIS" but only use the first 3 letters.
-XOR Key: "NEU"
+[[01001110, 01000101],
+ [01010101, 01010010],
+ [01000001, 01001100],
+ [01001001, 01010011]]
 
-XOR Tutorial:
-1. Convert hex to decimal: 2e = 46
-2. Get ASCII value of key letter: N = 78  
-3. XOR operation: 46 ⊕ 78 = 100 = 'd'
-4. Key repeats: NEU NEU NEU...
+"49 20 63 61 6d 65 20 77 69 74 68 20 73 74 6f 6e 65 2c 20 49 20 6c 65 66 74 20 79 6f 75 20 6d 61 72 62 6c 65"
 
-Online XOR tool: xor.pw
+dwmnablxan kncfnnw cqn tnhb fruu pajwc hxd cqn jllnbb tnh
 
-Expected result should give you the final password component.
-
-CTF Flag: CTF{x0r_3ncryp10n_m4st3r}`,
-          owner: "user",
-          permissions: "r",
-        },
-
-        // Final crypto puzzle
-        "level1_final.txt": {
-          type: "file",
-          content: `LEVEL 1 FINAL CHALLENGE
-======================
-
-Combine the three password components you found:
-1. ROT13 message: "crypto"
-2. Base64 message: "master"  
-3. XOR result: should be "_" (underscore)
-
-Final passkey: crypto_master
-
-Enter this into the terminal to unlock Level 2!
-
-CTF Flag: CTF{l3v3l_1_cry0t0_c0mpl3t3}`,
+hint: Letters have a distance between them.`,
           owner: "user",
           permissions: "r",
         },
