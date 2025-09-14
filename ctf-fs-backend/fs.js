@@ -187,7 +187,7 @@ DUMP:
           permissions: "r",
         },
 
-        "binary_math.txt": {
+        "binary.txt": {
           type: "file",
           content: `BINARY ARITHMETIC CHALLENGE
 ===========================
@@ -259,8 +259,6 @@ Processor bit patterns detected:
 01110000 01110010 00110000 01100011
 00110011 01110011 01110011 00110000
 01110010 01111101
-
-Decode this binary sequence for another flag!
 
 System Status: All binary operations functioning normally.
 The Anomaly's computational power is... concerning.`,

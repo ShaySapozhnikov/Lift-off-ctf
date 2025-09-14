@@ -24,6 +24,10 @@ export default function CorruptedAdminPanel() {
   const [bootComplete, setBootComplete] = useState(false);
   const [anomalyEvent, setAnomalyEvent] = useState(null);
   
+  // New scroll control states
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const [scrollTimeout, setScrollTimeout] = useState(null);
+  
   const typedRef = useRef(null);
   const audioContextRef = useRef(null);
   const typewriterIntervalRef = useRef(null);
@@ -191,12 +195,60 @@ export default function CorruptedAdminPanel() {
     };
   }, [currentBootIndex, currentCharIndex, audioEnabled, bootComplete]);
 
-  // Auto-scroll
+  // Enhanced auto-scroll with user scroll detection
   useEffect(() => {
     const el = typedRef.current;
     if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [bootLines, currentBootLine, snakeEvent]);
+    
+    // Only auto-scroll if user isn't manually scrolling
+    if (!isUserScrolling) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [bootLines, currentBootLine, snakeEvent, isUserScrolling]);
+
+  // Add scroll event handler to detect user scrolling
+  useEffect(() => {
+    const el = typedRef.current;
+    if (!el) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = el;
+      const isAtBottom = scrollHeight - scrollTop <= clientHeight + 5; // 5px tolerance
+      
+      // If user scrolls up from bottom, enable manual scroll mode
+      if (!isAtBottom && !isUserScrolling) {
+        setIsUserScrolling(true);
+      }
+      
+      // If user scrolls back to bottom, re-enable auto-scroll
+      if (isAtBottom && isUserScrolling) {
+        setIsUserScrolling(false);
+      }
+      
+      // Clear existing timeout
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+      
+      // Set timeout to re-enable auto-scroll after 3 seconds of no scrolling
+      const timeout = setTimeout(() => {
+        if (isUserScrolling) {
+          setIsUserScrolling(false);
+        }
+      }, 3000);
+      
+      setScrollTimeout(timeout);
+    };
+
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+    };
+  }, [isUserScrolling, scrollTimeout]);
 
   // Debug logs
   useEffect(() => {
@@ -336,7 +388,11 @@ export default function CorruptedAdminPanel() {
 
               <div
                 ref={typedRef}
-                className="flex-1 flex flex-col justify-end overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-amber-100/20 scrollbar-track-zinc-900/20"
+                className="flex-1 flex flex-col justify-end overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-amber-100/20 scrollbar-track-zinc-900/20 hover:scrollbar-thumb-amber-100/40"
+                style={{
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: 'rgba(245, 158, 11, 0.2) rgba(39, 39, 42, 0.2)'
+                }}
               >
                 {/* Boot sequence lines */}
                 {bootLines.map((line, idx) => (
@@ -374,6 +430,8 @@ export default function CorruptedAdminPanel() {
                   </>
                 )}
               </div>
+
+              
 
               {/* Snake game overlay */}
               {snakeEvent === "snakeGame" && (
