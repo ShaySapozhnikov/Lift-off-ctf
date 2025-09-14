@@ -120,15 +120,6 @@ The Anomaly has been learning our behaviors...`,
           owner: "user",
           permissions: "r",
         },
-
-        ".hidden_flag": {
-          type: "file",
-          content: "CTF{h1dd3n_f1l3_d1sc0v3ry}",
-          owner: "user",
-          permissions: "r",
-          hidden: true,
-        },
-      },
       
       // LEVEL 2: BINARY OPERATIONS & BIT MANIPULATION
       // ==============================================
