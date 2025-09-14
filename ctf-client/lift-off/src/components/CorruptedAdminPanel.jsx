@@ -9,8 +9,8 @@ import SimonSaysGame from "./AdminComps/SimonSaysGame";
 import FinalAnomalyEncounter from "./AdminComps/FinalAnomalyEncounter";
 
 export default function CorruptedAdminPanel() {
-  const skippedRef = useRef(false);      // true once user skips boot
-  const timeoutsRef = useRef([]);        // track scheduled timeouts
+  const skippedRef = useRef(false);     
+  const timeoutsRef = useRef([]);        
 
   const [bootLines, setBootLines] = useState([]);
   const [snakeEvent, setSnakeEvent] = useState(null);
@@ -24,15 +24,15 @@ export default function CorruptedAdminPanel() {
   const [bootComplete, setBootComplete] = useState(false);
   const [anomalyEvent, setAnomalyEvent] = useState(null);
   
-  // New scroll control states
+  // Simplified scroll states
   const [isUserScrolling, setIsUserScrolling] = useState(false);
-  const [scrollTimeout, setScrollTimeout] = useState(null);
-  
+
   const typedRef = useRef(null);
   const audioContextRef = useRef(null);
   const typewriterIntervalRef = useRef(null);
+  const scrollTimeoutRef = useRef(null);
+  const autoScrollTimeoutRef = useRef(null);
 
-  // Boot script - moved outside useEffect to prevent recreating
   const bootScript = [
     "BOOT> INIT SYSTEM",
     "CHECK> MEMORY . . . unknown",
@@ -51,7 +51,6 @@ export default function CorruptedAdminPanel() {
     timeoutsRef.current = [];
   };
 
-  // Initialize audio context after user interaction
   const initializeAudio = async () => {
     if (audioEnabled || audioContextRef.current) return;
     
@@ -64,13 +63,10 @@ export default function CorruptedAdminPanel() {
       }
       
       audioContextRef.current = new AudioContext();
-      
-      // Resume context if suspended
       if (audioContextRef.current.state === 'suspended') {
         await audioContextRef.current.resume();
       }
       
-      // Play a test sound to verify audio is working
       const testOsc = audioContextRef.current.createOscillator();
       const testGain = audioContextRef.current.createGain();
       testOsc.frequency.setValueAtTime(200, audioContextRef.current.currentTime);
@@ -83,42 +79,34 @@ export default function CorruptedAdminPanel() {
       
       setAudioEnabled(true);
       setShowAudioPrompt(false);
-      console.log("Audio initialized successfully");
     } catch (error) {
       console.error("Audio initialization failed:", error);
       setShowAudioPrompt(false);
     }
   };
 
-  // Terminal typing sound effect
   const playTypingSound = (charIndex = 0) => {
     if (skippedRef.current) return;
     if (!audioEnabled || !audioContextRef.current) return;
-    
-    // Only play sound for every 4th character to reduce frequency
     if (charIndex % 4 !== 0) return;
-    
+
     try {
       const audioCtx = audioContextRef.current;
-      // Resume context if suspended (common on mobile)
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-      
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
-      
+
       oscillator.type = "square";
-      // Only 2 pitches - alternate between high and low
       const frequency = charIndex % 5 === 0 ? 200 : 250;
       oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-      
+
       gainNode.gain.setValueAtTime(0.06, audioCtx.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-      
+
       oscillator.connect(gainNode);
       gainNode.connect(audioCtx.destination);
-      
+
       oscillator.start(audioCtx.currentTime);
       oscillator.stop(audioCtx.currentTime + 0.05);
     } catch (error) {
@@ -126,208 +114,175 @@ export default function CorruptedAdminPanel() {
     }
   };
 
-  // Fade in effect on mount
   useEffect(() => {
     const timer = setTimeout(() => setFadeIn(true), 100);
     return () => clearTimeout(timer);
   }, []);
 
-  // Boot sequence with typewriter effect, sound, and skip functionality
   useEffect(() => {
-    // Clear any existing interval
-    if (typewriterIntervalRef.current) {
-      clearInterval(typewriterIntervalRef.current);
-    }
+    if (typewriterIntervalRef.current) clearInterval(typewriterIntervalRef.current);
 
-    // Skip handler - NEW
     const handleBootSkip = (e) => {
       if (e.code === 'Space' && !bootComplete) {
         e.preventDefault();
-        // Skip to end of boot sequence
         setBootLines(bootScript);
         setCurrentBootLine("");
         setCurrentBootIndex(bootScript.length);
         setCurrentCharIndex(0);
         setBootComplete(true);
-        
-        // Clear any ongoing typewriter interval
-        if (typewriterIntervalRef.current) {
-          clearTimeout(typewriterIntervalRef.current);
-        }
+        if (typewriterIntervalRef.current) clearTimeout(typewriterIntervalRef.current);
       }
     };
 
-    // Add event listener for spacebar during boot - NEW
-    if (!bootComplete) {
-      document.addEventListener('keydown', handleBootSkip);
-    }
+    if (!bootComplete) document.addEventListener('keydown', handleBootSkip);
 
     if (currentBootIndex >= bootScript.length) {
       setBootComplete(true);
-      return () => {
-        document.removeEventListener('keydown', handleBootSkip);
-      };
+      return () => document.removeEventListener('keydown', handleBootSkip);
     }
 
     const currentLine = bootScript[currentBootIndex];
-    
+
     if (currentCharIndex < currentLine.length) {
       typewriterIntervalRef.current = setTimeout(() => {
         setCurrentBootLine(currentLine.substring(0, currentCharIndex + 1));
         playTypingSound(currentCharIndex);
         setCurrentCharIndex(prev => prev + 1);
-      }, Math.random() * 40 + 30); // Random typing speed
+      }, Math.random() * 40 + 30);
     } else {
-      // Line complete, move to next line
       typewriterIntervalRef.current = setTimeout(() => {
         setBootLines(prev => [...prev, currentLine]);
         setCurrentBootLine("");
         setCurrentBootIndex(prev => prev + 1);
         setCurrentCharIndex(0);
-      }, 200); // Small delay before next line
+      }, 200);
     }
 
     return () => {
-      if (typewriterIntervalRef.current) {
-        clearTimeout(typewriterIntervalRef.current);
-      }
-      document.removeEventListener('keydown', handleBootSkip); // NEW
+      if (typewriterIntervalRef.current) clearTimeout(typewriterIntervalRef.current);
+      document.removeEventListener('keydown', handleBootSkip);
     };
   }, [currentBootIndex, currentCharIndex, audioEnabled, bootComplete]);
 
-  // Enhanced auto-scroll with user scroll detection
+  // Improved auto-scroll effect with better conflict resolution
   useEffect(() => {
     const el = typedRef.current;
-    if (!el) return;
-    
-    // Only auto-scroll if user isn't manually scrolling
-    if (!isUserScrolling) {
-      el.scrollTop = el.scrollHeight;
+    if (!el || isUserScrolling) return;
+
+    // Clear any existing auto-scroll timeout
+    if (autoScrollTimeoutRef.current) {
+      clearTimeout(autoScrollTimeoutRef.current);
     }
+
+    // Delay auto-scroll to avoid conflicts
+    autoScrollTimeoutRef.current = setTimeout(() => {
+      if (el && !isUserScrolling) {
+        el.scrollTop = el.scrollHeight;
+      }
+    }, 100);
+
+    return () => {
+      if (autoScrollTimeoutRef.current) {
+        clearTimeout(autoScrollTimeoutRef.current);
+      }
+    };
   }, [bootLines, currentBootLine, snakeEvent, isUserScrolling]);
 
-  // Add scroll event handler to detect user scrolling
+  // Improved scroll detection
   useEffect(() => {
     const el = typedRef.current;
     if (!el) return;
 
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = el;
-      const isAtBottom = scrollHeight - scrollTop <= clientHeight + 5; // 5px tolerance
-      
-      // If user scrolls up from bottom, enable manual scroll mode
-      if (!isAtBottom && !isUserScrolling) {
-        setIsUserScrolling(true);
+      const isAtBottom = scrollHeight - scrollTop <= clientHeight + 15; // Increased tolerance
+
+      // Clear existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
       }
-      
-      // If user scrolls back to bottom, re-enable auto-scroll
-      if (isAtBottom && isUserScrolling) {
+
+      // If not at bottom, user is scrolling
+      if (!isAtBottom) {
+        setIsUserScrolling(true);
+        
+        // Reset after longer delay to prevent conflicts
+        scrollTimeoutRef.current = setTimeout(() => {
+          setIsUserScrolling(false);
+        }, 5000);
+      } else if (isAtBottom && isUserScrolling) {
+        // If at bottom, immediately disable user scrolling
         setIsUserScrolling(false);
       }
-      
-      // Clear existing timeout
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
-      }
-      
-      // Set timeout to re-enable auto-scroll after 3 seconds of no scrolling
-      const timeout = setTimeout(() => {
-        if (isUserScrolling) {
-          setIsUserScrolling(false);
-        }
-      }, 3000);
-      
-      setScrollTimeout(timeout);
     };
 
     el.addEventListener('scroll', handleScroll, { passive: true });
     
     return () => {
       el.removeEventListener('scroll', handleScroll);
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [isUserScrolling, scrollTimeout]);
+  }, [isUserScrolling]);
 
-  // Debug logs
-  useEffect(() => {
-    console.log("Current snakeEvent state:", snakeEvent);
-  }, [snakeEvent]);
-
-  useEffect(() => {
-    console.log("SimonEvent state changed:", SimonEvent);
-  }, [SimonEvent]);
-
-  // Handler for Prompt events
   const handleEvent = (event) => {
-    console.log("Prompt triggered event:", event);
     if (event === "SimonGame") {
       setSimonEvent(event);
       setSnakeEvent(null);
-      setAnomalyEvent(null); // Clear anomaly event
+      setAnomalyEvent(null);
     } else if (event === "aiConversation") {
       setAnomalyEvent(event);
-      setSnakeEvent(null); // Clear other events
+      setSnakeEvent(null);
       setSimonEvent(null);
     } else {
       setSnakeEvent(event);
       setSimonEvent(null);
-      setAnomalyEvent(null); // Clear anomaly event
+      setAnomalyEvent(null);
     }
   };
-  
-  const handleSnakeExit = () => {
-    console.log("Snake game exiting");
-    setSnakeEvent(null);
-  };
 
-  const handleSimonExit = () => {
-    console.log("Simon game exiting");
-    setSimonEvent(null);
-  };
-
-  const handleAnomalyExit = () => {
-    console.log("Anomaly encounter exiting");
-    setAnomalyEvent(null);
-  };
+  const handleSnakeExit = () => setSnakeEvent(null);
+  const handleSimonExit = () => setSimonEvent(null);
+  const handleAnomalyExit = () => setAnomalyEvent(null);
 
   const handleContainerClick = () => {
-    if (!audioEnabled && showAudioPrompt) {
-      initializeAudio();
+    if (!audioEnabled && showAudioPrompt) initializeAudio();
+  };
+
+  const scrollToBottom = () => {
+    const el = typedRef.current;
+    if (el) {
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior: 'smooth'
+      });
+      setIsUserScrolling(false);
     }
   };
 
   return (
-    <div 
+    <div
       className={`min-h-screen w-full bg-zinc-900 text-white flex items-center justify-center p-4 select-text transition-opacity duration-1000 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}
       onClick={handleContainerClick}
     >
-      {/* Audio Enable Overlay */}
+      {/* Audio prompt overlay */}
       {showAudioPrompt && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-zinc-800 border border-white/20 rounded-lg p-6 text-center max-w-sm">
-            <div className="text-amber-100 text-sm font-mono mb-4">
-              🔊 ENABLE AUDIO
-            </div>
-            <div className="text-white/80 text-xs mb-4">
-              Click to enable terminal sound effects
-            </div>
+            <div className="text-amber-100 text-sm font-mono mb-4">🔊 ENABLE AUDIO</div>
+            <div className="text-white/80 text-xs mb-4">Click to enable terminal sound effects</div>
             <button
               onClick={initializeAudio}
               className="bg-amber-100 text-black px-4 py-2 rounded font-mono text-sm hover:bg-amber-200 transition-colors"
             >
               ENABLE SOUND
             </button>
-            <div className="text-white/40 text-xs mt-2">
-              (You can continue without sound)
-            </div>
-            
+            <div className="text-white/40 text-xs mt-2">(You can continue without sound)</div>
             <button
               onClick={() => {
                 setShowAudioPrompt(false);
                 setAudioEnabled(false);
-                // Clean up audio context if it exists
                 if (audioContextRef.current) {
                   audioContextRef.current.close();
                   audioContextRef.current = null;
@@ -353,125 +308,61 @@ export default function CorruptedAdminPanel() {
         {/* Screen cavity */}
         <div className="absolute inset-3 rounded-[1.5rem] overflow-hidden">
           <div className="absolute inset-0 bg-zinc-900">
-            {/* Curvature & vignette */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background:
-                  "radial-gradient(120% 100% at 50% 40%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 35%, rgba(255,255,255,0) 60%)",
-                mixBlendMode: "screen",
-              }}
-            />
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                boxShadow:
-                  "inset 0 0 80px rgba(255,255,255,0.08), inset 0 0 300px rgba(68, 64, 60, 0.9)",
-              }}
-            />
-
-            {/* Background ASCII Logo */}
+            <div className="absolute inset-0 pointer-events-none" style={{background:"radial-gradient(120% 100% at 50% 40%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 35%, rgba(255,255,255,0) 60%)", mixBlendMode:"screen"}}/>
+            <div className="absolute inset-0 pointer-events-none" style={{boxShadow:"inset 0 0 80px rgba(255,255,255,0.08), inset 0 0 300px rgba(68, 64, 60, 0.9)"}}/>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <ShipIcon className="!animate-none text-white/30 text-[8px] mr-10" />
+              <ShipIcon className="!animate-none text-white/30 text-[8px] mr-10"/>
             </div>
 
             {/* Terminal content */}
-            <div
-              className="absolute inset-0 p-6 md:p-10 font-mono text-sm md:text-base leading-relaxed flex flex-col"
-              style={{
-                animation: "randomFlicker 3.7s ease-in-out infinite"
-              }}
-            >
-              <div className="flex-shrink-0">
-                <HeaderBar />
-              </div>
+            <div className="absolute inset-0 p-6 md:p-10 font-mono text-sm md:text-base leading-relaxed flex flex-col terminal-flicker">
+              <div className="flex-shrink-0"><HeaderBar /></div>
 
               <div
                 ref={typedRef}
-                className="flex-1 flex flex-col justify-end overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-amber-100/20 scrollbar-track-zinc-900/20 hover:scrollbar-thumb-amber-100/40"
-                style={{
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: 'rgba(245, 158, 11, 0.2) rgba(39, 39, 42, 0.2)'
-                }}
+                className="terminal-scroll flex-1 overflow-y-auto"
               >
-                {/* Boot sequence lines */}
-                {bootLines.map((line, idx) => (
-                  <div key={`boot-line-${idx}`} className="text-amber-100">
-                    {line}
-                  </div>
-                ))}
+                <div className="min-h-full flex flex-col justify-end">
+                  {bootLines.map((line, idx) => (
+                    <div key={`boot-line-${idx}`} className="text-amber-100">{line}</div>
+                  ))}
 
-                {/* Current typing line during boot */}
-                {currentBootLine && !bootComplete && (
-                  <div className="text-amber-100">
-                    {currentBootLine}
-                    <span className="animate-pulse">|</span>
-                  </div>
-                )}
+                  {currentBootLine && !bootComplete && (
+                    <div className="text-amber-100">{currentBootLine}<span className="animate-pulse">|</span></div>
+                  )}
 
-                {/* Boot skip indicator - NEW */}
-                {!bootComplete && (
-                  <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-amber-100/60 text-xs font-mono animate-pulse">
-                    Press SPACE to skip boot
-                  </div>
-                )}
+                  {!bootComplete && (
+                    <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-amber-100/60 text-xs font-mono animate-pulse">
+                      Press SPACE to skip boot
+                    </div>
+                  )}
 
-                {/* Only show Prompt and HelpBlock after boot is complete */}
-                {bootComplete && (
-                  <>
-                    <Prompt 
-                      onEvent={handleEvent} 
-                      audioContext={audioContextRef.current} 
-                      playTypingSound={playTypingSound}
-                      audioEnabled={audioEnabled}
-                      onAudioInit={initializeAudio}
-                    />
-                    <HelpBlock />
-                  </>
-                )}
+                  {bootComplete && (
+                    <>
+                      <Prompt onEvent={handleEvent} audioContext={audioContextRef.current} playTypingSound={playTypingSound} audioEnabled={audioEnabled} onAudioInit={initializeAudio}/>
+                      <HelpBlock />
+                    </>
+                  )}
+                </div>
               </div>
 
-              
 
-              {/* Snake game overlay */}
+
               {snakeEvent === "snakeGame" && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
-                  <div className="w-full h-full relative">
-                    <SnakeAdmin
-                      onExit={handleSnakeExit}
-                      audioContext={audioContextRef.current}
-                      audioEnabled={audioEnabled}
-                      onAudioInit={initializeAudio}
-                    />
-                  </div>
+                  <SnakeAdmin onExit={handleSnakeExit} audioContext={audioContextRef.current} audioEnabled={audioEnabled} onAudioInit={initializeAudio}/>
                 </div>
               )}
 
-              {/* Simon Says Game overlay */}
               {SimonEvent === "SimonGame" && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
-                  <div className="w-full h-full relative">
-                    <SimonSaysGame
-                      onExit={handleSimonExit}
-                      audioContext={audioContextRef.current}
-                      audioEnabled={audioEnabled}
-                      onAudioInit={initializeAudio}
-                    />
-                  </div>
+                  <SimonSaysGame onExit={handleSimonExit} audioContext={audioContextRef.current} audioEnabled={audioEnabled} onAudioInit={initializeAudio}/>
                 </div>
               )}
 
-              {/* Final Anomaly Encounter overlay */}
               {anomalyEvent === "aiConversation" && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
-                  <div className="w-full h-full relative">
-                    <FinalAnomalyEncounter
-                      onExit={handleAnomalyExit}
-                      audioContext={audioContextRef.current}
-                      audioEnabled={audioEnabled}
-                      onAudioInit={initializeAudio}
-                    />
-                  </div>
+                  <FinalAnomalyEncounter onExit={handleAnomalyExit} audioContext={audioContextRef.current} audioEnabled={audioEnabled} onAudioInit={initializeAudio}/>
                 </div>
               )}
             </div>
@@ -480,67 +371,67 @@ export default function CorruptedAdminPanel() {
       </div>
 
       <style jsx>{`
+        .terminal-flicker {
+          animation: randomFlicker 3.7s ease-in-out infinite;
+        }
+
         @keyframes randomFlicker {
-          0% { 
-            filter: blur(0.4px); 
-            opacity: 0.94; 
-          }
-          2% { 
-            filter: blur(0.6px); 
-            opacity: 0.92; 
-          }
-          4% { 
-            filter: blur(0.3px); 
-            opacity: 0.96; 
-          }
-          6% { 
-            filter: blur(0.5px); 
-            opacity: 0.93; 
-          }
-          8% { 
-            filter: blur(0.2px); 
-            opacity: 0.97; 
-          }
-          15% { 
-            filter: blur(0.7px); 
-            opacity: 0.91; 
-          }
-          23% { 
-            filter: blur(0.3px); 
-            opacity: 0.95; 
-          }
-          31% { 
-            filter: blur(0.4px); 
-            opacity: 0.94; 
-          }
-          47% { 
-            filter: blur(0.2px); 
-            opacity: 0.97; 
-          }
-          52% { 
-            filter: blur(0.8px); 
-            opacity: 0.90; 
-          }
-          58% { 
-            filter: blur(0.1px); 
-            opacity: 0.98; 
-          }
-          73% { 
-            filter: blur(0.5px); 
-            opacity: 0.93; 
-          }
-          89% { 
-            filter: blur(0.3px); 
-            opacity: 0.96; 
-          }
-          94% { 
-            filter: blur(0.6px); 
-            opacity: 0.92; 
-          }
-          100% { 
-            filter: blur(0.4px); 
-            opacity: 0.94; 
-          }
+          0% { filter: blur(0.4px); opacity: 0.94; }
+          2% { filter: blur(0.6px); opacity: 0.92; }
+          4% { filter: blur(0.3px); opacity: 0.96; }
+          6% { filter: blur(0.5px); opacity: 0.93; }
+          8% { filter: blur(0.2px); opacity: 0.97; }
+          15% { filter: blur(0.7px); opacity: 0.91; }
+          23% { filter: blur(0.3px); opacity: 0.95; }
+          31% { filter: blur(0.4px); opacity: 0.94; }
+          47% { filter: blur(0.2px); opacity: 0.97; }
+          52% { filter: blur(0.8px); opacity: 0.90; }
+          58% { filter: blur(0.1px); opacity: 0.98; }
+          73% { filter: blur(0.5px); opacity: 0.93; }
+          89% { filter: blur(0.3px); opacity: 0.96; }
+          94% { filter: blur(0.6px); opacity: 0.92; }
+          100% { filter: blur(0.4px); opacity: 0.94; }
+        }
+
+        /* Pure CSS scrollbar styling for all browsers */
+        .terminal-scroll {
+          /* Firefox */
+          scrollbar-width: thin;
+          scrollbar-color: rgba(245, 158, 11, 0.3) rgba(39, 39, 42, 0.1);
+        }
+
+        /* Chrome, Safari, Edge Webkit */
+        .terminal-scroll::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .terminal-scroll::-webkit-scrollbar-track {
+          background: rgba(39, 39, 42, 0.1);
+          border-radius: 4px;
+        }
+
+        .terminal-scroll::-webkit-scrollbar-thumb {
+          background: rgba(245, 158, 11, 0.3);
+          border-radius: 4px;
+          border: 1px solid rgba(39, 39, 42, 0.2);
+        }
+
+        .terminal-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(245, 158, 11, 0.5);
+        }
+
+        .terminal-scroll::-webkit-scrollbar-thumb:active {
+          background: rgba(245, 158, 11, 0.7);
+        }
+
+        /* Ensure smooth scrolling */
+        .terminal-scroll {
+          scroll-behavior: smooth;
+        }
+
+        /* Fix for Chrome overflow issues */
+        .terminal-scroll {
+          contain: layout style paint;
         }
       `}</style>
     </div>
