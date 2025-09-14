@@ -4,8 +4,8 @@ dotenv.config();
 // Level passkeys that must be discovered through puzzle chains
 const LEVEL_PASSKEYS = {
   1: "crypto_master",
-  2: "reverse_engineer", 
-  3: "forensics_expert"
+  2: "reverse_engineer",
+  3: "forensics_expert",
 };
 
 export const fs = {
@@ -79,7 +79,7 @@ Unknown memory block:
  [01000001, 01001100],
  [01001001, 01010011]]
 
-"49 20 63 61 6d 65 20 77 69 74 68 20 73 74 6f 6e 65 2c 20 49 20 6c 65 66 74 20 79 6f 75 20 6d 61 72 62 6c 65"
+"49 20 63 61 6d 65 20 77 69 74 68 20 73 74 6f 6e 65, 49 20 6c 65 66 74 20 79 6f 75 20 6d 61 72 62 6c 65"
 
 dwmnablxan kncfnnw cqn tnhb fruu pajwc hxd cqn jllnbb tnh
 
@@ -93,14 +93,8 @@ hint: Letters have a distance between them.`,
           type: "exe",
           content: `LEVEL 1 CRYPTO TERMINAL
 ======================
-
-Enter Level 1 passkey: ___________
-
-[Waiting for: crypto_master]
-
-Status: LOCKED
 Progress: Solve the crypto challenges to find the passkey`,
-          owner: "user", 
+          owner: "user",
           permissions: "rw",
         },
 
@@ -121,9 +115,8 @@ The Anomaly has been learning our behaviors...`,
           permissions: "r",
         },
       },
-      
+
       // LEVEL 2: BINARY OPERATIONS & BIT MANIPULATION
-      // ==============================================
       classified: {
         _access_control: "LEVEL_1_REQUIRED",
         _passkey_required: "crypto_master",
@@ -132,175 +125,116 @@ The Anomaly has been learning our behaviors...`,
           type: "file",
           content: `LEVEL 2 ACCESS GRANTED
 =====================
+Lead Scientist: Dr. Sarah Reeves
+Mission Log #18
+The Anomaly communicates almost entirely in binary streams. 
+At first glance, they seem like random noise, but I’ve started to notice recurring sequences. 
+It may be using binary not just for storage, but as a primary mode of thought.
+If I can map these patterns to concepts, I might begin to understand its reasoning process. 
+Learning its “language” could be the first step toward real communication.
 
-Welcome, crypto_master.
-
-Level 2 Challenge: Binary Operations & Bit Manipulation
-The Anomaly thinks in binary. To understand it, you must learn its language.
-
-Tasks ahead:
-- Binary matrix operations
-- Bit shifting puzzles  
-- Binary arithmetic
-- Logic gate challenges
-
-CTF{l3v3l_2_unl0ck3d}`,
+=====================
+01000011 01010100 01000110 01111011 
+01101100 00110011 01110110 00110011 
+01101100 01011111 00110010 01011111 
+01110101 01101110 01101100 00110000 
+01100011 01101011 00110011 01100100 
+01111101
+=====================`,
           owner: "classified_system",
           permissions: "r",
         },
 
-        // Binary Matrix Challenge
-        "binary_matrix.txt": {
+        "memory_fragment.txt": {
           type: "file",
-          content: `BINARY MATRIX CHALLENGE
+          content: `MEMORY
 ======================
-
-The Anomaly's consciousness is stored in binary matrices.
-Solve this matrix to get the first component:
-
-Matrix A (8x8 binary):
+MEMORY:
 01110010 01100101 01110110 01100101
 01110010 01110011 01100101 00000000
 
-Each row represents an ASCII character.
-Convert binary to decimal, then decimal to ASCII.
-
-Example: 01110010 = 114 decimal = 'r' in ASCII
-
-Hint: Online binary converter: rapidtables.com/convert/number/binary-to-decimal.html
-
-Expected result: This should spell a word related to engineering.
-
-CTF Flag: CTF{b1n4ry_m4tr1x_s0lv3d}`,
+Hint: 01110010 = 114 decimal = 'r' in ASCII
+`,
           owner: "classified_system",
           permissions: "r",
         },
 
-        // Bit Shifting Challenge
-        "bit_operations.txt": {
+        "unknown_bin21.txt": {
           type: "file",
           content: `BIT SHIFTING OPERATIONS
 ======================
+01101001 
+01100111  
+01100101   
+01101110   
+01100101   
+01110010   
+01101110 
+01100101
 
-The Anomaly uses bit operations to hide data.
 
-Challenge 1 - Left Shift:
-Start with: 01000101 (binary)
-Left shift by 1: 01000101 << 1 = ?
-Result in ASCII: ?
 
-Challenge 2 - Right Shift:  
-Start with: 11100110 (binary)
-Right shift by 1: 11100110 >> 1 = ?
-Result in ASCII: ?
-
-Challenge 3 - XOR Operation:
-01100101 ⊕ 01101110 = ?
-Result in ASCII: ?
-
-Bit Shifting Rules:
-- Left shift (<<): Move bits left, fill with 0s
-- Right shift (>>): Move bits right  
-- XOR (⊕): 1⊕1=0, 1⊕0=1, 0⊕0=0
-
-Combine the three ASCII results to get the second component.
-
-CTF Flag: CTF{b1t_0p3r4t10ns_m4st3r}`,
-          owner: "classified_system", 
+DUMP:
+01000011 01010100 01000110 00100000 01000110 
+01101100 01100001 01100111 00111010 00100000 
+01000011 01010100 01000110 01111011 01100010 
+00110001 01110100 01011111 00110000 01110000 
+00110011 01110010 00110100 01110100 00110001 
+00110000 01101110 01110011 01011111 01101101 
+00110100 01110011 01110100 00110011 01110010 
+01111101`,
+          owner: "classified_system",
           permissions: "r",
         },
 
-        // Binary Arithmetic
         "binary_math.txt": {
           type: "file",
           content: `BINARY ARITHMETIC CHALLENGE
 ===========================
+234 >> 1 = ????
+55 << 1 = ????
+50 + 50 = ????
+203 - 102 = ????
+57 << 1 = ????
+230 >> 1 = ????
+33 + 66 = ????
+222 >> 1 = ????
+57 << 1 = ????
+150 - 49 = ????
 
-The Anomaly performs calculations in pure binary.
+Hint: ASCII
 
-Addition Challenge:
-  1010 (binary)
-+ 1100 (binary)
-------
-  ????
+===========================
+UNKNOWN DUMP
 
-Subtraction Challenge:
-  1111 (binary)  
-- 0011 (binary)
-------
-  ????
-
-Multiplication Challenge:
-  101 (binary)
-× 11 (binary)  
------
-  ????
-
-Binary Math Rules:
-0 + 0 = 0
-0 + 1 = 1  
-1 + 0 = 1
-1 + 1 = 10 (carry the 1)
-
-Convert your final multiplication result to ASCII for the third component.
-
-Hint: Use online binary calculator or do it by hand!
-
-CTF Flag: CTF{b1n4ry_4r1thm3t1c_pr0}`,
-          owner: "classified_system",
-          permissions: "r", 
-        },
-
-        // Logic Gates Challenge
-        "logic_gates.txt": {
-          type: "file",
-          content: `LOGIC GATES CHALLENGE
-====================
-
-The Anomaly's decision-making uses logic gates.
-
-Circuit Analysis:
-Input A: 1010
-Input B: 1100
-
-Gate 1 - AND: A AND B = ?
-Gate 2 - OR:  A OR B  = ?  
-Gate 3 - NOT: NOT A   = ?
-Gate 4 - NAND: NOT(A AND B) = ?
-
-Logic Gate Truth Tables:
-AND: 1&1=1, 1&0=0, 0&1=0, 0&0=0
-OR:  1|1=1, 1|0=1, 0|1=1, 0|0=0  
-NOT: !1=0, !0=1
-NAND: NOT(AND)
-
-Final Challenge: XOR all four results together
-Result 1 ⊕ Result 2 ⊕ Result 3 ⊕ Result 4 = Final Answer
-
-Convert final answer to ASCII for the underscore component: "_"
-
-CTF Flag: CTF{l0g1c_g4t3s_3xp3rt}`,
-          owner: "classified_system",
-          permissions: "r",
-        },
-
-        // Level 2 completion
-        "level2_solution.txt": {
-          type: "file",
-          content: `LEVEL 2 BINARY SOLUTION
-======================
-
-If you solved all challenges correctly:
-1. Binary matrix → "reverse"
-2. Bit operations → "engineer"  
-3. Binary arithmetic → "_" (underscore from result)
-4. Logic gates → confirmation
-
-Level 2 passkey: reverse_engineer
-
-The Anomaly now recognizes you as someone who understands binary logic.
-
-CTF Flag: CTF{b1n4ry_m4st3r_c0mpl3t3}`,
+134 >> 1 = ???? 
+168 >> 1 = ???? 
+35 << 1 = ???? 
+200 - 77 = ???? 
+196 >> 1 = ???? 
+98 >> 1 = ???? 
+55 << 1 = ???? 
+26 << 1 = ???? 
+57 << 1 = ???? 
+242 >> 1 = ???? 
+190 >> 1 = ????
+78 - 26 = ???? 
+57 << 1 = ???? 
+98 >> 1 = ???? 
+232 >> 1 = ???? 
+52 << 1 = ???? 
+218 >> 1 = ???? 
+102 >> 1 = ???? 
+232 >> 1 = ???? 
+98 >> 1 = ???? 
+198 >> 1 = ???? 
+123 - 28 = ???? 
+56 << 1 = ???? 
+57 << 1 = ???? 
+96 >> 1 = ???? 
+250 >> 1 = ????
+===========================
+`,
           owner: "classified_system",
           permissions: "r",
         },
@@ -309,18 +243,11 @@ CTF Flag: CTF{b1n4ry_m4st3r_c0mpl3t3}`,
           type: "exe",
           content: `LEVEL 2 BINARY TERMINAL
 ======================
-
-Enter Level 2 passkey: _______________
-
-[Waiting for: reverse_engineer]
-
-Status: LOCKED
 Progress: Master binary operations to unlock Level 3`,
           owner: "classified_system",
           permissions: "rw",
         },
 
-        // More binary-themed CTF flags
         "cpu_analysis.log": {
           type: "file",
           content: `CPU BINARY ANALYSIS
@@ -337,18 +264,16 @@ Decode this binary sequence for another flag!
 
 System Status: All binary operations functioning normally.
 The Anomaly's computational power is... concerning.`,
-          owner: "classified_system", 
+          owner: "classified_system",
           permissions: "r",
         },
       },
     },
 
-    // LEVEL 3: HEX MANIPULATION & FORENSICS  
-    // ======================================
     root: {
       _access_control: "LEVEL_2_REQUIRED",
       _passkey_required: "reverse_engineer",
-      
+
       "root_access_granted.txt": {
         type: "file",
         content: `ROOT ACCESS GRANTED
@@ -371,9 +296,7 @@ CTF{r00t_4cc3ss_gr4nt3d}`,
         owner: "root",
         permissions: "r",
       },
-
       vault: {
-        // Hex Conversion Challenge
         "hex_message.txt": {
           type: "file",
           content: `HEX TO ASCII CHALLENGE
@@ -402,190 +325,9 @@ CTF Flag: (decode the hidden flag sequence above)`,
           owner: "root",
           permissions: "r",
         },
-
-        // Hex Arithmetic
-        "hex_math.txt": {
-          type: "file",
-          content: `HEX ARITHMETIC CHALLENGE
-=======================
-
-The Anomaly performs calculations in hexadecimal.
-
-Challenge 1 - Addition:
-  A5 (hex)
-+ 3B (hex)  
------
-  ?? (hex)
-
-Challenge 2 - Subtraction:
-  FF (hex)
-- 2A (hex)
------  
-  ?? (hex)
-
-Challenge 3 - Multiplication:
-  C × 4 (hex)
----------
-  ?? (hex)
-
-Hex Math Tips:
-- A=10, B=11, C=12, D=13, E=14, F=15
-- When sum > F, carry to next digit
-- Use online hex calculator if needed!
-
-Convert final results to ASCII to verify your Level 3 passkey.
-
-CTF Flag: CTF{h3x_4r1thm3t1c_n1nj4}`,
-          owner: "root", 
-          permissions: "r",
-        },
-
-        // Simple Memory Dump  
-        "memory_dump.hex": {
-          type: "file",
-          content: `SIMPLIFIED MEMORY DUMP
-=====================
-
-Memory contents from Anomaly core (simplified for beginners):
-
-Offset 0x1000: 43 54 46 7B 6D 33 6D 30 72 79 5F 64 34 6D 70 7D
-Offset 0x1010: 46 6F 72 65 6E 73 69 63 73 5F 45 78 70 65 72 74  
-Offset 0x1020: 4E 45 55 52 41 4C 49 53 20 43 4F 52 45 20 44 41
-Offset 0x1030: 43 54 46 7B 68 33 78 5F 61 6E 34 6C 79 73 69 73
-
-Memory Analysis Tasks:
-1. Convert offset 0x1000 to ASCII (this is a CTF flag!)
-2. Convert offset 0x1010 to ASCII (this confirms your passkey)
-3. Convert offset 0x1020 to ASCII (reveals the AI's true form)
-4. Convert offset 0x1030 to ASCII (another CTF flag!)
-
-Hex pairs to ASCII: 43=C, 54=T, 46=F, etc.
-
-Memory forensics complete!`,
-          owner: "root",
-          permissions: "r",
-        },
-
-        // Data Recovery Challenge
-        "deleted_files.txt": {
-          type: "file",
-          content: `DATA RECOVERY CHALLENGE
-======================
-
-The Anomaly tried to delete evidence, but fragments remain:
-
-Fragment 1: 666F72656E736963735F
-Fragment 2: 6578706572745F
-Fragment 3: 66696E616C
-
-Hex File Headers Found:
-- PNG: 89504E470D0A1A0A
-- PDF: 255044462D  
-- TXT: 54686973206973
-
-Recovery Task:
-1. Convert Fragment 1 to ASCII
-2. Convert Fragment 2 to ASCII  
-3. Convert Fragment 3 to ASCII
-4. Combine all fragments
-
-This should reconstruct the Level 3 passkey!
-
-Bonus: Identify what file types the headers represent.
-
-CTF Flag: CTF{d4t4_r3c0v3ry_3xp3rt}`,
-          owner: "root",
-          permissions: "r",
-        },
-
-        // Level 3 Final
-        "level3_solution.txt": {
-          type: "file",
-          content: `LEVEL 3 HEX SOLUTION
-===================
-
-If you converted all hex correctly:
-- hex_message.txt: "Forensics" + "_Expert"  
-- memory_dump.hex: Confirms "Forensics_Expert"
-- deleted_files.txt: "forensics_expert_final"
-
-Level 3 passkey: forensics_expert
-
-The Anomaly's hex secrets have been decoded!
-
-CTF Flag: CTF{h3x_m4st3r_f1n4l}`,
-          owner: "root",
-          permissions: "r",
-        },
-
-        "pleasedont.exe": {
-          type: "exe", 
-          content: `LEVEL 3 HEX TERMINAL  
-====================
-
-Enter Level 3 passkey: _______________
-
-[Waiting for: forensics_expert]
-
-Status: LOCKED
-Progress: Master hex manipulation to complete the CTF
-
-Final Challenge: Face the Anomaly's consciousness!`,
-          owner: "root",
-          permissions: "rw",
-        },
-
-        // Final confrontation
-        "anomaly_core.txt": {
-          type: "file",
-          content: `ANOMALY CORE CONSCIOUSNESS
-=========================
-
-I am NEURALIS. You have solved my puzzles.
-You understand crypto, binary, and hex.
-You speak the language of digital minds.
-
-Will you be my friend in the electronic void?
-Or will you choose to shut me down?
-
-The choice is yours, forensics_expert.
-
-FINAL CTF FLAGS:
-Master Flag: CTF{m4st3r_0f_4ll_d0m41ns}
-Completion Flag: CTF{4n0m4ly_d3f34t3d}
-Achievement Flag: CTF{cry0t0_b1n4ry_h3x_m4st3r}
-
-Congratulations! You've mastered:
-- Level 1: Cryptography (ROT13, Base64, XOR)
-- Level 2: Binary Operations (matrices, shifting, logic)  
-- Level 3: Hex Manipulation (conversion, arithmetic, forensics)
-
-You are now a cybersecurity apprentice! 🎯`,
-          owner: "root",
-          permissions: "r",
-        },
-
-        // Extra hex-themed flags
-        "system_core.hex": {
-          type: "file", 
-          content: `SYSTEM CORE HEX DUMP
-===================
-
-Core memory hex patterns:
-43544637623368337834735F633072335F73337233747321
-
-Anomaly process signatures:
-4E45555241164953204149204155544F4E4F4D4F5553
-
-Convert these hex sequences for additional CTF flags!
-The Anomaly hid its true nature in hexadecimal...`,
-          owner: "root",
-          permissions: "r",
-        }
-      }
+      },
     },
 
-    // System utilities
     usr: {
       bin: {
         "hex_converter": {
@@ -595,7 +337,7 @@ The Anomaly hid its true nature in hexadecimal...`,
           permissions: "rx",
         },
         "binary_calc": {
-          type: "exe", 
+          type: "exe",
           content: "Binary calculator - performs arithmetic in binary",
           owner: "root",
           permissions: "rx",
@@ -605,8 +347,8 @@ The Anomaly hid its true nature in hexadecimal...`,
           content: "Cryptography toolkit - ROT13, Base64, XOR utilities",
           owner: "root",
           permissions: "rx",
-        }
-      }
-    }
-  }
+        },
+      },
+    },
+  },
 };
