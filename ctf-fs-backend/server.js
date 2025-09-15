@@ -291,7 +291,8 @@ app.post("/run", (req, res) => {
       return res.json({
         output: "Snake Victory Achieved! The Anomaly whispers: 'Impressive reflexes... you might survive what's coming.'",
         flag: FLAGS.SNAKE_VICTORY,
-        story_progression: "Level 1 completed. Anomaly is taking notice of your skills."
+        story_progression: "Level 1 completed. Anomaly is taking notice of your skills.",
+        new_access_level: newAccessLevel,
       });
     }
     return res.json({ 
@@ -307,7 +308,8 @@ app.post("/run", (req, res) => {
       return res.json({
         output: "Simon Victory Achieved! The Anomaly's voice grows more interested: 'Your pattern recognition is... exceptional.'",
         flag: FLAGS.SIMON_VICTORY,
-        story_progression: "Level 2 completed. The Anomaly sees you as a worthy opponent."
+        story_progression: "Level 2 completed. The Anomaly sees you as a worthy opponent.",
+        new_access_level: newAccessLevel,
       });
     }
     return res.json({
