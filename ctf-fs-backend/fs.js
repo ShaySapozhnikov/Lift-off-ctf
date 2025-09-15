@@ -118,7 +118,7 @@ The Anomaly has been learning our behaviors...`,
 
       // LEVEL 2: BINARY OPERATIONS & BIT MANIPULATION
       classified: {
-        _access_control: "LEVEL_1_REQUIRED",
+        _access_control: "LEVEL_2_REQUIRED",
         _passkey_required: "crypto_master",
 
         "access_granted.txt": {

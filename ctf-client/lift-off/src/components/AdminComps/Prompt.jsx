@@ -3,7 +3,12 @@ import { useEffect, useRef, useState } from "react";
 // Replace localhost with your Render-hosted backend
 const BACKEND_URL = "https://lift-off-ctf.onrender.com";
 
-// Cookie-based progress management functions
+// Generate unique session ID for each user
+const generateSessionId = () => {
+  return 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now().toString(36);
+};
+
+// Enhanced cookie-based progress management functions
 const loadProgressFromCookie = () => {
   try {
     const cookieData = document.cookie
@@ -11,13 +16,29 @@ const loadProgressFromCookie = () => {
       .find(row => row.startsWith('ctf_progress='));
     
     if (cookieData) {
-      return JSON.parse(decodeURIComponent(cookieData.split('=')[1]));
+      const progress = JSON.parse(decodeURIComponent(cookieData.split('=')[1]));
+      
+      // Ensure all required fields exist with proper defaults
+      return {
+        session_id: progress.session_id || generateSessionId(),
+        current_access_level: progress.current_access_level || 1,
+        flags_collected: Array.isArray(progress.flags_collected) ? progress.flags_collected : [],
+        challenges_solved: Array.isArray(progress.challenges_solved) ? progress.challenges_solved : [],
+        level1_unlocked: progress.level1_unlocked !== false,
+        level2_unlocked: progress.level2_unlocked || false,
+        level3_unlocked: progress.level3_unlocked || false,
+        total_flags: progress.total_flags || 0,
+        total_challenges: progress.total_challenges || 0,
+        last_updated: progress.last_updated || Date.now()
+      };
     }
   } catch (e) {
     console.error("Failed to load progress from cookie:", e);
   }
   
+  // Default progress for new users
   return {
+    session_id: generateSessionId(),
     current_access_level: 1,
     flags_collected: [],
     challenges_solved: [],
@@ -25,22 +46,45 @@ const loadProgressFromCookie = () => {
     level2_unlocked: false,
     level3_unlocked: false,
     total_flags: 0,
-    total_challenges: 0
+    total_challenges: 0,
+    last_updated: Date.now()
   };
 };
 
 const saveProgressToCookie = (progress) => {
   try {
-    const cookieValue = encodeURIComponent(JSON.stringify(progress));
-    document.cookie = `ctf_progress=${cookieValue}; path=/; max-age=${30*24*60*60}`; // 30 days
+    const progressWithTimestamp = {
+      ...progress,
+      last_updated: Date.now()
+    };
+    
+    const cookieValue = encodeURIComponent(JSON.stringify(progressWithTimestamp));
+    // Set cookie for 7 days with proper path and security
+    document.cookie = `ctf_progress=${cookieValue}; path=/; max-age=${7*24*60*60}; SameSite=Lax`;
   } catch (e) {
     console.error("Failed to save progress to cookie:", e);
   }
 };
 
-// Let the backend calculate access level based on flags
-const calculateAccessLevel = (progress) => {
-  return progress.current_access_level || 1;
+// Calculate access level based on flags (matching backend logic)
+const calculateAccessLevel = (flagsCollected) => {
+  if (!Array.isArray(flagsCollected)) return 1;
+  
+  let accessLevel = 1;
+  
+  // Level 2: Need crypto mastery or snake game victory
+  if (flagsCollected.includes("CTF{cryptography_m4st3r_l3v3l_1}") || 
+      flagsCollected.includes("CTF{snake_victory_flag}")) {
+    accessLevel = 2;
+  }
+  
+  // Level 3: Need reverse engineering mastery or simon victory
+  if (flagsCollected.includes("CTF{r3v3rs3_3ng1n33r1ng_m4st3r}") || 
+      flagsCollected.includes("CTF{simon_says_flag}")) {
+    accessLevel = 3;
+  }
+  
+  return accessLevel;
 };
 
 export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudioInit }) {
@@ -51,6 +95,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
   const [cwd, setCwd] = useState(["/"]);
   const [currentUser, setCurrentUser] = useState("user");
   const [userProgress, setUserProgress] = useState(loadProgressFromCookie());
+  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => inputRef.current?.focus(), []);
@@ -65,6 +110,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     // Show welcome message with actual progress
     const welcomeMessages = [
       "=== DEEP SPACE VESSEL UNHACKABLE - TERMINAL ACCESS ===",
+      `Session ID: ${progress.session_id}`,
       "",
       `Access Level: ${progress.current_access_level}/3`,
       `Flags Collected: ${progress.total_flags || 0}`,
@@ -76,6 +122,13 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     ];
     setHistory(welcomeMessages);
   }, []);
+
+  // Sync progress changes to cookies
+  useEffect(() => {
+    if (userProgress.session_id) {
+      saveProgressToCookie(userProgress);
+    }
+  }, [userProgress]);
 
   // --- Helper: resolve relative paths ---
   const resolvePath = (cwd, input) => {
@@ -126,8 +179,30 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     return 1;
   };
 
+  // Build proper query parameters for backend requests
+  const buildQueryParams = (additionalParams = {}) => {
+    const params = new URLSearchParams({
+      user: currentUser,
+      flags: JSON.stringify(userProgress.flags_collected || []),
+      challenges: JSON.stringify(userProgress.challenges_solved || []),
+      session_id: userProgress.session_id,
+      ...additionalParams
+    });
+    return params;
+  };
+
+  // Build proper request body for POST requests
+  const buildRequestBody = (additionalData = {}) => {
+    return {
+      user: currentUser,
+      flags: JSON.stringify(userProgress.flags_collected || []),
+      challenges: JSON.stringify(userProgress.challenges_solved || []),
+      session_id: userProgress.session_id,
+      ...additionalData
+    };
+  };
+
   // --- API Calls ---
-  // FIXED: lsDir function - properly encode user progress
   const lsDir = async (path, showHidden = false) => {
     // Check access before making API call
     if (!canAccessPath(path)) {
@@ -135,13 +210,10 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     }
 
     try {
-      // FIXED: Properly send user progress to backend
-      const params = new URLSearchParams({
+      setIsLoading(true);
+      const params = buildQueryParams({
         path,
-        user: currentUser,
-        showHidden: showHidden.toString(),
-        flags: JSON.stringify(userProgress.flags_collected || []),
-        challenges: JSON.stringify(userProgress.challenges_solved || [])
+        showHidden: showHidden.toString()
       });
 
       const res = await fetch(`${BACKEND_URL}/ls?${params}`);
@@ -179,11 +251,13 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         return ["Directory is empty"];
       }
     } catch (e) {
+      console.error("Network error in lsDir:", e);
       return [`Network error: ${e.message}`];
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // FIXED: catFile function - properly encode user progress
   const catFile = async (path) => {
     // Check access before making API call
     if (!canAccessPath(path)) {
@@ -191,13 +265,8 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     }
 
     try {
-      // FIXED: Properly send user progress to backend
-      const params = new URLSearchParams({
-        path,
-        user: currentUser,
-        flags: JSON.stringify(userProgress.flags_collected || []),
-        challenges: JSON.stringify(userProgress.challenges_solved || [])
-      });
+      setIsLoading(true);
+      const params = buildQueryParams({ path });
 
       const res = await fetch(`${BACKEND_URL}/file?${params}`);
       
@@ -231,11 +300,13 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       
       return output;
     } catch (e) {
+      console.error("Network error in catFile:", e);
       return [`Network error: ${e.message}`];
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // FIXED: runFileAPI function - properly send user progress in request body
   const runFileAPI = async (path, score = undefined, passkey = undefined, aiChoice = undefined) => {
     // Check access before making API call
     if (!canAccessPath(path)) {
@@ -243,13 +314,8 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     }
 
     try {
-      // FIXED: Include user progress in request body
-      const requestBody = { 
-        path, 
-        user: currentUser,
-        flags: JSON.stringify(userProgress.flags_collected || []),
-        challenges: JSON.stringify(userProgress.challenges_solved || [])
-      };
+      setIsLoading(true);
+      const requestBody = buildRequestBody({ path });
       
       if (score !== undefined) requestBody.score = score;
       if (passkey !== undefined) requestBody.passkey = passkey;
@@ -281,7 +347,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
 
       const output = [data.output];
       
-      // Handle flags and update cookie-based progress
+      // Handle flags and update progress
       if (data.flag) {
         const updatedProgress = {
           ...userProgress,
@@ -295,16 +361,18 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
           updatedProgress.level1_unlocked = data.new_access_level >= 1;
           updatedProgress.level2_unlocked = data.new_access_level >= 2;
           updatedProgress.level3_unlocked = data.new_access_level >= 3;
+        } else {
+          // Recalculate access level based on flags
+          updatedProgress.current_access_level = calculateAccessLevel(updatedProgress.flags_collected);
         }
         
         setUserProgress(updatedProgress);
-        saveProgressToCookie(updatedProgress);
         
         output.push(`FLAG CAPTURED: ${data.flag}`);
         
-        if (data.new_access_level > userProgress.current_access_level) {
+        if (updatedProgress.current_access_level > userProgress.current_access_level) {
           output.push("", "NEW LEVEL UNLOCKED!");
-          output.push(`   Level ${data.new_access_level} access granted!`);
+          output.push(`   Level ${updatedProgress.current_access_level} access granted!`);
         }
       }
       
@@ -315,7 +383,6 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
           total_flags: (userProgress.total_flags || 0) + 1
         };
         setUserProgress(updatedProgress);
-        saveProgressToCookie(updatedProgress);
         output.push(`MASTER FLAG: ${data.master_flag}`);
       }
       
@@ -330,22 +397,25 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
 
       return output;
     } catch (e) {
+      console.error("Network error in runFileAPI:", e);
       return [`Network error: ${e.message}`];
+    } finally {
+      setIsLoading(false);
     }
   };
   
   const solveChallengeAPI = async (challenge, solution) => {
     try {
+      setIsLoading(true);
+      const requestBody = buildRequestBody({ 
+        challenge, 
+        solution
+      });
+
       const res = await fetch(`${BACKEND_URL}/solve-challenge`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          challenge, 
-          solution, 
-          user: currentUser,
-          flags: JSON.stringify(userProgress.flags_collected || []),
-          challenges: JSON.stringify(userProgress.challenges_solved || [])
-        }),
+        body: JSON.stringify(requestBody),
       });
       
       const data = await res.json();
@@ -362,22 +432,23 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
           total_challenges: (userProgress.total_challenges || 0) + 1
         };
         
-        // Let backend determine access level changes
+        // Let backend determine access level changes or calculate locally
         if (data.new_access_level) {
           updatedProgress.current_access_level = data.new_access_level;
           updatedProgress.level1_unlocked = data.new_access_level >= 1;
           updatedProgress.level2_unlocked = data.new_access_level >= 2;
           updatedProgress.level3_unlocked = data.new_access_level >= 3;
+        } else {
+          updatedProgress.current_access_level = calculateAccessLevel(updatedProgress.flags_collected);
         }
         
         setUserProgress(updatedProgress);
-        saveProgressToCookie(updatedProgress);
         
         output.push(`FLAG CAPTURED: ${data.flag}`);
         
-        if (data.new_access_level > userProgress.current_access_level) {
+        if (updatedProgress.current_access_level > userProgress.current_access_level) {
           output.push("", "NEW LEVEL UNLOCKED!");
-          output.push(`   Level ${data.new_access_level} access granted!`);
+          output.push(`   Level ${updatedProgress.current_access_level} access granted!`);
         }
       }
       
@@ -387,7 +458,10 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       
       return output;
     } catch (e) {
+      console.error("Network error in solveChallengeAPI:", e);
       return [`Network error: ${e.message}`];
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -426,6 +500,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       "  clear      - Clear screen",
       "  whoami     - Show current user", 
       "  su <user>  - Switch user (if you have credentials)",
+      "  session    - Show session information",
       "",
       "CHALLENGE FILES:",
       "  2nak3.bat       - Level 1: Consciousness Simulation",
@@ -440,10 +515,17 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     },
     pwd: async ({ cwd }) => [cwd.join("/")],
     whoami: async () => [`Current user: ${currentUser}`, `Access level: ${userProgress.current_access_level}/3`],
+    session: async () => [
+      `Session ID: ${userProgress.session_id}`,
+      `Started: ${new Date(userProgress.last_updated).toLocaleString()}`,
+      `Current user: ${currentUser}`,
+      `Access level: ${userProgress.current_access_level}/3`
+    ],
     progress: async () => {
       const output = [
         "=== MISSION PROGRESS ===",
         "",
+        `Session ID: ${userProgress.session_id}`,
         `Current User: ${currentUser}`,
         `Access Level: ${userProgress.current_access_level}/3`,
         `Flags Collected: ${userProgress.total_flags || 0}`,
@@ -616,9 +698,10 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       if (!args[0]) return ["find: missing search query"];
       
       try {
-        const res = await fetch(
-          `${BACKEND_URL}/search?query=${encodeURIComponent(args[0])}&user=${currentUser}`
-        );
+        setIsLoading(true);
+        const params = buildQueryParams({ query: args[0] });
+        
+        const res = await fetch(`${BACKEND_URL}/search?${params}`);
         
         if (!res.ok) return [`Error: ${await res.text()}`];
         
@@ -642,7 +725,10 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         
         return output;
       } catch (e) {
+        console.error("Network error in find:", e);
         return [`Network error: ${e.message}`];
+      } finally {
+        setIsLoading(false);
       }
     },
     su: async ({ args }) => {
@@ -791,6 +877,13 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
 
   return (
     <div className="w-full" onClick={() => inputRef.current?.focus()}>
+      {/* Loading indicator */}
+      {isLoading && (
+        <div className="text-yellow-400 font-mono text-sm mb-2">
+          Processing request...
+        </div>
+      )}
+
       {/* history */}
       <div className="space-y-0.5">
         {history.map((h, i) => (
@@ -815,6 +908,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck="false"
+          disabled={isLoading}
         />
         <TerminalInput value={buf} />
       </div>
@@ -822,7 +916,8 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       <div className="mt-1 text-white/50 font-mono text-sm">
         Access Level: <span className="text-amber-100">{userProgress.current_access_level}/3</span> | 
         Flags: <span className="text-green-400">{userProgress.total_flags || 0}</span> | 
-        User: <span className="text-blue-400">{currentUser}</span>
+        User: <span className="text-blue-400">{currentUser}</span> |
+        Session: <span className="text-purple-400">{userProgress.session_id?.substring(0, 8)}...</span>
       </div>
     </div>
   );
