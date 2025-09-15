@@ -329,27 +329,12 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       "  ls              - List directory contents", 
       "  cd <dir>        - Change directory",
       "  cat <file>      - Display file contents",
-      "  run <file> [passkey] - Execute a file (with optional passkey)",
+      "  run <file> [passkey] - Execute a file",
       "  level           - Check your current access level",
       "  passkey <key>   - Add a passkey to unlock new levels",
       "  flags           - Show collected CTF flags",
       "  clear           - Clear the terminal screen",
       "",
-      "Level System:",
-      "  Level 1: Cryptography Basics (home/user)",
-      "  Level 2: Binary Operations (home/classified) - Need 'crypto_master'",
-      "  Level 3: Digital Forensics (root) - Need 'reverse_engineer'",
-      "",
-      "Examples:",
-      "  ls",
-      "  cd home/user", 
-      "  cat mission_briefing.txt",
-      "  run 2nak3.bat",
-      "  passkey crypto_master",
-      "  level",
-      "  clear",
-      "",
-      "START HERE: cat mission_briefing.txt",
     ],
     ls: async ({ cwd }) => {
       const result = await lsDir(cwd.join("/"));
@@ -386,15 +371,8 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       
       const output = [
         `Current Level: ${levelData.level}`,
-        `Passkeys: [${userPasskeys.join(', ') || 'none'}]`,
-        `Flags Collected: ${userFlags.length}`,
-        "",
-        "Available Levels:"
+        
       ];
-      
-      Object.entries(levelData.available_levels).forEach(([level, desc]) => {
-        output.push(`  Level ${level}: ${desc}`);
-      });
       
       return output;
     },
