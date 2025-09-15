@@ -38,17 +38,9 @@ const saveProgressToCookie = (progress) => {
   }
 };
 
+// Let the backend calculate access level based on flags
 const calculateAccessLevel = (progress) => {
-  if (!progress.flags_collected) return 1;
-  
-  let accessLevel = 1;
-  if (progress.flags_collected.includes("CTF{snake_victory_flag}")) {
-    accessLevel = 2;
-  }
-  if (progress.flags_collected.includes("CTF{simon_says_flag}")) {
-    accessLevel = 3;
-  }
-  return accessLevel;
+  return progress.current_access_level || 1;
 };
 
 export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudioInit }) {
@@ -103,7 +95,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     const pathStr = Array.isArray(path) ? path.join("/") : path;
     
     // Level 1 areas (always accessible)
-    if (pathStr.startsWith("/home/user") && !pathStr.includes("/crypto/level1_key.txt")) {
+    if (pathStr.startsWith("/home/user")) {
       return true;
     }
     
@@ -135,6 +127,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
   };
 
   // --- API Calls ---
+  // FIXED: lsDir function - properly encode user progress
   const lsDir = async (path, showHidden = false) => {
     // Check access before making API call
     if (!canAccessPath(path)) {
@@ -142,13 +135,20 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     }
 
     try {
-      const res = await fetch(
-        `${BACKEND_URL}/ls?path=${encodeURIComponent(path)}&user=${currentUser}&showHidden=${showHidden}`
-      );
+      // FIXED: Properly send user progress to backend
+      const params = new URLSearchParams({
+        path,
+        user: currentUser,
+        showHidden: showHidden.toString(),
+        flags: JSON.stringify(userProgress.flags_collected || []),
+        challenges: JSON.stringify(userProgress.challenges_solved || [])
+      });
+
+      const res = await fetch(`${BACKEND_URL}/ls?${params}`);
       
       if (!res.ok) {
-        const errorText = await res.text();
-        return [`Error: ${errorText}`];
+        const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
+        return [`Error: ${errorData.error || "Access denied"}`];
       }
       
       const data = await res.json();
@@ -157,19 +157,16 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         const output = [];
         
         // Add access level info
-        output.push(`Access Level: ${userProgress.current_access_level}/3`);
+        output.push(`Access Level: ${data.user_access_level || userProgress.current_access_level}/3`);
         output.push("");
         
         data.files.forEach(file => {
           let indicator = "";
           if (file.type === "directory") indicator = "/";
           
-          // Check access restrictions
-          const filePath = `${path}/${file.name}`.replace("//", "/");
-          const requiredLevel = getRequiredLevel(filePath);
-          
-          if (requiredLevel > userProgress.current_access_level) {
-            indicator += " [ACCESS DENIED - LEVEL " + requiredLevel + " REQUIRED]";
+          // Show lock status for inaccessible files
+          if (file.locked) {
+            indicator += " [ACCESS DENIED - " + (file.required_access || "HIGHER LEVEL") + " REQUIRED]";
           } else if (file.passkey_required) {
             indicator += " [PASSKEY REQUIRED]";
           }
@@ -177,7 +174,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
           output.push(`${file.name}${indicator}`);
         });
         
-        return output.length ? output : ["Directory is empty"];
+        return output.length > 2 ? output : ["Directory is empty"];
       } else {
         return ["Directory is empty"];
       }
@@ -186,6 +183,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     }
   };
 
+  // FIXED: catFile function - properly encode user progress
   const catFile = async (path) => {
     // Check access before making API call
     if (!canAccessPath(path)) {
@@ -193,13 +191,19 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     }
 
     try {
-      const res = await fetch(
-        `${BACKEND_URL}/file?path=${encodeURIComponent(path)}&user=${currentUser}`
-      );
+      // FIXED: Properly send user progress to backend
+      const params = new URLSearchParams({
+        path,
+        user: currentUser,
+        flags: JSON.stringify(userProgress.flags_collected || []),
+        challenges: JSON.stringify(userProgress.challenges_solved || [])
+      });
+
+      const res = await fetch(`${BACKEND_URL}/file?${params}`);
       
       if (!res.ok) {
-        const errorText = await res.text();
-        return [`Error: ${errorText}`];
+        const errorData = await res.json().catch(() => ({ error: "Access denied" }));
+        return [`Error: ${errorData.error || "Access denied"}`];
       }
       
       const data = await res.json();
@@ -231,6 +235,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     }
   };
 
+  // FIXED: runFileAPI function - properly send user progress in request body
   const runFileAPI = async (path, score = undefined, passkey = undefined, aiChoice = undefined) => {
     // Check access before making API call
     if (!canAccessPath(path)) {
@@ -238,7 +243,13 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     }
 
     try {
-      const requestBody = { path, user: currentUser };
+      // FIXED: Include user progress in request body
+      const requestBody = { 
+        path, 
+        user: currentUser,
+        flags: JSON.stringify(userProgress.flags_collected || []),
+        challenges: JSON.stringify(userProgress.challenges_solved || [])
+      };
       
       if (score !== undefined) requestBody.score = score;
       if (passkey !== undefined) requestBody.passkey = passkey;
@@ -251,8 +262,8 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       });
       
       if (!res.ok) {
-        const errorText = await res.text();
-        return [`Error: ${errorText}`];
+        const errorData = await res.json().catch(() => ({ error: "Access denied" }));
+        return [`Error: ${errorData.error || "Access denied"}`];
       }
       
       const data = await res.json();
@@ -278,21 +289,22 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
           total_flags: (userProgress.total_flags || 0) + 1
         };
         
-        // Recalculate access level
-        const accessLevel = calculateAccessLevel(updatedProgress);
-        updatedProgress.current_access_level = accessLevel;
-        updatedProgress.level1_unlocked = accessLevel >= 1;
-        updatedProgress.level2_unlocked = accessLevel >= 2;
-        updatedProgress.level3_unlocked = accessLevel >= 3;
+        // Let backend determine access level changes
+        if (data.new_access_level) {
+          updatedProgress.current_access_level = data.new_access_level;
+          updatedProgress.level1_unlocked = data.new_access_level >= 1;
+          updatedProgress.level2_unlocked = data.new_access_level >= 2;
+          updatedProgress.level3_unlocked = data.new_access_level >= 3;
+        }
         
         setUserProgress(updatedProgress);
         saveProgressToCookie(updatedProgress);
         
         output.push(`FLAG CAPTURED: ${data.flag}`);
         
-        if (accessLevel > userProgress.current_access_level) {
+        if (data.new_access_level > userProgress.current_access_level) {
           output.push("", "NEW LEVEL UNLOCKED!");
-          output.push(`   Level ${accessLevel} access granted!`);
+          output.push(`   Level ${data.new_access_level} access granted!`);
         }
       }
       
@@ -321,13 +333,19 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       return [`Network error: ${e.message}`];
     }
   };
-
+  
   const solveChallengeAPI = async (challenge, solution) => {
     try {
       const res = await fetch(`${BACKEND_URL}/solve-challenge`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ challenge, solution, user: currentUser }),
+        body: JSON.stringify({ 
+          challenge, 
+          solution, 
+          user: currentUser,
+          flags: JSON.stringify(userProgress.flags_collected || []),
+          challenges: JSON.stringify(userProgress.challenges_solved || [])
+        }),
       });
       
       const data = await res.json();
@@ -344,21 +362,22 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
           total_challenges: (userProgress.total_challenges || 0) + 1
         };
         
-        // Recalculate access level
-        const accessLevel = calculateAccessLevel(updatedProgress);
-        updatedProgress.current_access_level = accessLevel;
-        updatedProgress.level1_unlocked = accessLevel >= 1;
-        updatedProgress.level2_unlocked = accessLevel >= 2;
-        updatedProgress.level3_unlocked = accessLevel >= 3;
+        // Let backend determine access level changes
+        if (data.new_access_level) {
+          updatedProgress.current_access_level = data.new_access_level;
+          updatedProgress.level1_unlocked = data.new_access_level >= 1;
+          updatedProgress.level2_unlocked = data.new_access_level >= 2;
+          updatedProgress.level3_unlocked = data.new_access_level >= 3;
+        }
         
         setUserProgress(updatedProgress);
         saveProgressToCookie(updatedProgress);
         
         output.push(`FLAG CAPTURED: ${data.flag}`);
         
-        if (accessLevel > userProgress.current_access_level) {
+        if (data.new_access_level > userProgress.current_access_level) {
           output.push("", "NEW LEVEL UNLOCKED!");
-          output.push(`   Level ${accessLevel} access granted!`);
+          output.push(`   Level ${data.new_access_level} access granted!`);
         }
       }
       
@@ -658,7 +677,6 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         "ASCII strings found:",
         "  'consciousness_check'",
         "  'digital_anomaly'", 
-        "  'CTF{str1ngs_4n4lys1s}'",
         "  'The Anomaly lives in binary'",
         "Use 'cat' for text files or 'run' for executables"
       ];

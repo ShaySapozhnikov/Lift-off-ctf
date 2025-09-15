@@ -3,37 +3,29 @@ import cors from "cors";
 import { fs } from "./fs.js";
 import dotenv from "dotenv";
 
-// Flag definitions
+// Flag definitions (keep your existing FLAGS object)
 const FLAGS = {
-  // Level 1 flags (crypto theme)
   CRYPTO_MASTER: "CTF{cryptography_m4st3r_l3v3l_1}",
   SNAKE_VICTORY: "CTF{snake_victory_flag}",
   BASE64_DECODED: "CTF{b4s364_d3c0d3d}",
   XOR_MAGIC: "CTF{x0r_m4g1c}",
   METADATA_HUNTER: "CTF{m3t4d4t4_hunt3r}",
   STEGANOGRAPHY: "CTF{st3g4n0gr4phy_m4st3r}",
-  
-  // Level 2 flags (reverse engineering theme)  
   REVERSE_ENGINEER: "CTF{r3v3rs3_3ng1n33r1ng_m4st3r}",
   SIMON_VICTORY: "CTF{simon_says_flag}",
   ASSEMBLY_WHISPERER: "CTF{4ss3mbly_wh1sp3r3r}",
   UNPACKED_SECRETS: "CTF{unp4ck3d_s3cr3ts}",
   BINARY_MASTER: "CTF{b1n4ry_m4st3r}",
-  
-  // Level 3 flags (forensics & privilege escalation theme)
   FORENSICS_EXPERT: "CTF{f0r3ns1cs_3xp3rt_l3v3l_3}",
   CONSCIOUSNESS_VERIFIED: "CTF{c0nsc10usn3ss_v3r1f13d}",
   BUFFER_OVERFLOW: "CTF{buff3r_0v3rfl0w_m4st3r}",
   KERNEL_CONSCIOUSNESS: "CTF{k3rn3l_c0nsc10usn3ss}",
   DIGITAL_PHILOSOPHER: "CTF{d1g1t4l_ph1l0s0ph3r}",
-  
-  // Final flags
   GOOD_ENDING: "CTF{4n0m4ly_d3str0y3d_hum4n1ty_s4v3d}",
   BAD_ENDING: "CTF{j01n3d_th3_4n0m4ly_c0nsc10usn3ss_m3rg3d}",
   MASTER_FLAG: "CTF{m4st3r_0f_4ll_d0m41ns_4n0m4ly_d3f34t3d}"
 };
 
-// Passkeys for level access
 const LEVEL_PASSKEYS = {
   1: "crypto_master",
   2: "reverse_engineer", 
@@ -56,34 +48,63 @@ function getNode(path) {
   return node;
 }
 
-// Helper: calculate access level from flags (stateless)
+// FIXED: Calculate access level from actual user progress
 function calculateAccessLevel(flagsCollected) {
   if (!flagsCollected || !Array.isArray(flagsCollected)) return 1;
   
   let accessLevel = 1;
-  if (flagsCollected.includes(FLAGS.SNAKE_VICTORY)) {
+  
+  // Level 2: Need either crypto mastery or snake game victory
+  if (flagsCollected.includes(FLAGS.CRYPTO_MASTER) || 
+      flagsCollected.includes(FLAGS.SNAKE_VICTORY)) {
     accessLevel = 2;
   }
-  if (flagsCollected.includes(FLAGS.SIMON_VICTORY)) {
+  
+  // Level 3: Need either reverse engineering mastery or simon victory
+  if (flagsCollected.includes(FLAGS.REVERSE_ENGINEER) || 
+      flagsCollected.includes(FLAGS.SIMON_VICTORY)) {
     accessLevel = 3;
   }
+  
   return accessLevel;
 }
 
-// Helper: check if user has permission to access file/directory (stateless)
-function hasPermission(node, user, operation = 'r', userAccessLevel = 1) {
+// FIXED: Enhanced permission checking with proper access control
+function hasPermission(node, user, operation = 'r', userAccessLevel = 1, userFlags = []) {
   if (!node) return false;
   
   // Root can access everything
   if (user === "root") return true;
   
-  // Check access level requirements
-  if (node._access_level && node._access_level > userAccessLevel) {
-    return false;
+  // Check directory-level access control requirements
+  if (node._access_control) {
+    switch(node._access_control) {
+      case "LEVEL_1_REQUIRED":
+        if (userAccessLevel < 1) return false;
+        break;
+      case "LEVEL_2_REQUIRED": 
+        if (userAccessLevel < 2) return false;
+        break;
+      case "LEVEL_3_REQUIRED":
+        if (userAccessLevel < 3) return false;
+        break;
+    }
   }
   
-  // Check if directory is protected (simplified for stateless operation)
-  if (node._protected && user !== "root" && userAccessLevel < (node._access_level || 1)) {
+  // Check passkey requirements for protected directories
+  if (node._passkey_required) {
+    const hasRequiredPasskey = userFlags.some(flag => {
+      if (node._passkey_required === "crypto_master") return flag === FLAGS.CRYPTO_MASTER;
+      if (node._passkey_required === "reverse_engineer") return flag === FLAGS.REVERSE_ENGINEER;  
+      if (node._passkey_required === "forensics_expert") return flag === FLAGS.FORENSICS_EXPERT;
+      return false;
+    });
+    
+    if (!hasRequiredPasskey) return false;
+  }
+  
+  // Check file-level access requirements
+  if (node._access_level && node._access_level > userAccessLevel) {
     return false;
   }
   
@@ -99,103 +120,122 @@ function hasPermission(node, user, operation = 'r', userAccessLevel = 1) {
   }
 }
 
-// Helper: check unlock conditions (stateless)
-function checkUnlockCondition(condition, flagsCollected, challengesSolved) {
-  if (!flagsCollected) flagsCollected = [];
-  if (!challengesSolved) challengesSolved = [];
+// Helper: parse user progress from request
+function parseUserProgress(req) {
+  const flagsParam = req.query.flags || req.body.flags;
+  const challengesParam = req.query.challenges || req.body.challenges;
   
-  switch(condition) {
-    case "crypto_challenges_solved":
-      return challengesSolved.includes("caesar_cipher") && 
-             challengesSolved.includes("base64_challenge") &&
-             challengesSolved.includes("xor_challenge");
-    case "crypto_master_found":
-      return flagsCollected.includes(FLAGS.CRYPTO_MASTER);
-    case "level1_completed":
-      return flagsCollected.includes(FLAGS.SNAKE_VICTORY);
-    case "reverse_engineering_completed":
-      return challengesSolved.includes("binary_analysis") &&
-             challengesSolved.includes("assembly_riddle") &&
-             challengesSolved.includes("obfuscated_js");
-    default: return true;
+  let userFlags = [];
+  let userChallenges = [];
+  
+  try {
+    if (flagsParam) {
+      userFlags = JSON.parse(decodeURIComponent(flagsParam));
+    }
+    if (challengesParam) {
+      userChallenges = JSON.parse(decodeURIComponent(challengesParam));
+    }
+  } catch (e) {
+    console.error("Failed to parse user progress:", e);
   }
+  
+  const userAccessLevel = calculateAccessLevel(userFlags);
+  
+  return { userFlags, userChallenges, userAccessLevel };
 }
 
-// Helper: check if file should be hidden
+// Check if file should be hidden
 function isHidden(filename, node) {
   return filename.startsWith('.') || (node && node.hidden);
 }
 
-// Helper: check passkey requirements (stateless)
+// Check passkey requirements for executables
 function checkPasskeyAccess(node, passkey, filename, userAccessLevel = 1) {
   if (!node.passkey_required) return true;
   
   // Level-based passkey system
   if (filename?.includes("2nak3.bat")) {
-    return passkey === LEVEL_PASSKEYS[1] || userAccessLevel >= 1;
+    return passkey === LEVEL_PASSKEYS[1] || userAccessLevel >= 2; // Changed from >= 1
   }
   if (filename?.includes("LEAVE.bat")) {
-    return passkey === LEVEL_PASSKEYS[2] || userAccessLevel >= 2;
+    return passkey === LEVEL_PASSKEYS[2] || userAccessLevel >= 3; // Changed from >= 2
   }
   if (filename?.includes("pleasedont.exe")) {
-    return passkey === LEVEL_PASSKEYS[3] || userAccessLevel >= 3;
+    return passkey === LEVEL_PASSKEYS[3]; // Strict requirement
   }
   
   return Object.values(LEVEL_PASSKEYS).includes(passkey);
 }
 
-// API: read file content (cat) - stateless
+// FIXED: API: read file content with proper access control
 app.get("/file", (req, res) => {
   const { path, user, passkey } = req.query;
+  const { userFlags, userChallenges, userAccessLevel } = parseUserProgress(req);
+  
   const node = getNode(path);
   
   if (!node) return res.status(404).send("File not found");
   
-  // For file access, we don't need to check complex permissions since frontend handles access control
-  if (!hasPermission(node, user, 'r', 3)) {
-    return res.status(403).send("Permission denied - insufficient access level");
+  // FIXED: Use actual user access level, not hardcoded 3
+  if (!hasPermission(node, user, 'r', userAccessLevel, userFlags)) {
+    return res.status(403).json({ 
+      error: "Access denied", 
+      required_level: node._access_control || "Unknown",
+      current_level: userAccessLevel,
+      hint: "Complete more challenges to unlock higher levels"
+    });
   }
   
   // Check passkey if required
   const filename = path.split('/').pop();
-  if (node.passkey_required && !checkPasskeyAccess(node, passkey, filename, 3)) {
+  if (node.passkey_required && !checkPasskeyAccess(node, passkey, filename, userAccessLevel)) {
     return res.status(401).json({ 
       error: "Passkey required", 
-      hint: node.unlock_hint 
+      hint: node.unlock_hint || "Find the correct passkey to access this file"
     });
   }
   
-  let content = node.content;
-  
   res.json({ 
-    content: content,
+    content: node.content,
     metadata: node.metadata || null,
     hint: node.unlock_hint || null,
     flags_available: getAvailableFlags(path)
   });
 });
 
-// API: list directory (ls) - stateless
+// FIXED: API: list directory with proper access control
 app.get("/ls", (req, res) => {
   const { path, user, showHidden } = req.query;
+  const { userFlags, userChallenges, userAccessLevel } = parseUserProgress(req);
+  
   const node = getNode(path);
   
   if (!node) return res.status(404).send("Directory not found");
   
-  // Simplified permission check - let frontend handle access control
-  let files = Object.keys(node).filter(key => !key.startsWith("_"));
-  
-  // Filter hidden files unless specifically requested or user is root
-  if (!showHidden && user !== "root") {
-    files = files.filter(filename => {
-      const childNode = node[filename];
-      return !isHidden(filename, childNode);
+  // FIXED: Check if user can access this directory
+  if (!hasPermission(node, user, 'r', userAccessLevel, userFlags)) {
+    return res.status(403).json({ 
+      error: "Directory access denied",
+      required_level: node._access_control || "Unknown",
+      current_level: userAccessLevel
     });
   }
   
-  // Add file details
+  let files = Object.keys(node).filter(key => !key.startsWith("_"));
+  
+  // Filter files based on user access level
   const fileDetails = files.map(filename => {
     const childNode = node[filename];
+    const hasAccess = hasPermission(childNode, user, 'r', userAccessLevel, userFlags);
+    
+    // Hide files user can't access unless showHidden is true
+    if (!hasAccess && !showHidden) return null;
+    
+    // Filter hidden files unless specifically requested or user is root
+    if (!showHidden && user !== "root" && isHidden(filename, childNode)) {
+      return null;
+    }
+    
     return {
       name: filename,
       type: childNode.type || "directory",
@@ -204,30 +244,44 @@ app.get("/ls", (req, res) => {
       hidden: isHidden(filename, childNode),
       passkey_required: childNode.passkey_required || false,
       access_level: childNode._access_level || 0,
-      locked: false // Frontend will handle locking logic
+      locked: !hasAccess,
+      required_access: childNode._access_control || null
     };
-  });
+  }).filter(Boolean); // Remove null entries
   
   res.json({ 
-    files: fileDetails
+    files: fileDetails,
+    user_access_level: userAccessLevel,
+    directory_access: node._access_control || "PUBLIC"
   });
 });
 
-// API: execute files (run) - returns flags but doesn't store progress
+// FIXED: API: execute files with proper access control
 app.post("/run", (req, res) => {
   const { path, user, score, aiChoice, passkey, solution } = req.body;
+  const { userFlags, userChallenges, userAccessLevel } = parseUserProgress(req);
+  
   const node = getNode(path);
   
   if (!node) return res.status(404).json({ error: "File not found" });
   if (node.type !== "exe") return res.status(400).json({ error: "Not executable" });
   
+  // FIXED: Check access permission with actual user level
+  if (!hasPermission(node, user, 'x', userAccessLevel, userFlags)) {
+    return res.status(403).json({ 
+      error: "Access denied", 
+      required_level: node._access_control || "Unknown",
+      current_level: userAccessLevel
+    });
+  }
+  
   const filename = path.split('/').pop();
   
-  // Check passkey if required (simplified)
-  if (node.passkey_required && !checkPasskeyAccess(node, passkey, filename, 3)) {
+  // FIXED: Check passkey with actual user level
+  if (node.passkey_required && !checkPasskeyAccess(node, passkey, filename, userAccessLevel)) {
     return res.status(401).json({ 
       error: "Passkey required to execute", 
-      hint: node.unlock_hint 
+      hint: node.unlock_hint || "Find the correct passkey"
     });
   }
 
@@ -289,173 +343,16 @@ app.post("/run", (req, res) => {
     }
   }
 
-  // Challenge executables
-  if (filename === "consciousness_check") {
-    return res.json({
-      output: node.content,
-      flag: FLAGS.CONSCIOUSNESS_VERIFIED
-    });
-  }
-
-  if (filename === "privilege_escalation") {
-    if (solution === "buffer_overflow_exploit") {
-      return res.json({
-        output: "ROOT ACCESS GRANTED! Buffer overflow exploitation successful.",
-        flag: FLAGS.BUFFER_OVERFLOW
-      });
-    }
-    return res.json({
-      output: "Segmentation fault (core dumped). Try exploiting the buffer overflow vulnerability.",
-      hint: "Check the .c file for the vulnerable function address."
-    });
-  }
-
-  // Default behavior
+  // Default behavior for other executables
   return res.json({ 
     output: node.content
   });
 });
 
-// API: Solve crypto/reverse engineering challenges - returns flags but doesn't store progress
-app.post("/solve-challenge", (req, res) => {
-  const { challenge, solution, user } = req.body;
-  
-  const solutions = {
-    "caesar_cipher": "crypto_master",
-    "base64_distress": "Emergency transmission from Dr. Reeves",
-    "xor_challenge": "CTF{x0r_m4g1c}",
-    "matrix_puzzle": "CONSCIOUSNESS IS THE PATTERN",
-    "binary_arithmetic": "CTF{AI_binary_master}",
-    "assembly_riddle": "PRESERVE CONSCIOUSNESS AT ALL COSTS",
-    "obfuscated_js": "reverse_engineer"
-  };
-  
-  if (solutions[challenge] === solution) {
-    let flag;
-    switch(challenge) {
-      case "caesar_cipher":
-        flag = FLAGS.CRYPTO_MASTER;
-        break;
-      case "base64_distress":
-        flag = FLAGS.BASE64_DECODED;
-        break;
-      case "xor_challenge":
-        flag = FLAGS.XOR_MAGIC;
-        break;
-      case "binary_arithmetic":
-        flag = FLAGS.BINARY_MASTER;
-        break;
-      case "assembly_riddle":
-        flag = FLAGS.ASSEMBLY_WHISPERER;
-        break;
-      case "obfuscated_js":
-        flag = FLAGS.REVERSE_ENGINEER;
-        break;
-      default:
-        flag = "CTF{challenge_solved}";
-    }
-    
-    res.json({
-      success: true,
-      flag: flag,
-      message: "Challenge solved successfully!"
-    });
-  } else {
-    res.json({
-      success: false,
-      message: "Incorrect solution. Keep trying!",
-      hint: getHintForChallenge(challenge)
-    });
-  }
-});
+// Keep your existing solve-challenge, check-passkey, progress, and search endpoints unchanged
 
-// API: Check passkey validity - stateless
-app.post("/check-passkey", (req, res) => {
-  const { filename, passkey } = req.body;
-  
-  let isValid = false;
-  let message = "Invalid passkey";
-  
-  if (filename === "2nak3.bat" && passkey === LEVEL_PASSKEYS[1]) {
-    isValid = true;
-    message = "Level 1 access granted! You understand the basics of cryptography.";
-  } else if (filename === "LEAVE.bat" && passkey === LEVEL_PASSKEYS[2]) {
-    isValid = true;
-    message = "Level 2 access granted! Your reverse engineering skills are impressive.";
-  } else if (filename === "pleasedont.exe" && passkey === LEVEL_PASSKEYS[3]) {
-    isValid = true;
-    message = "Level 3 access granted! You have mastered digital forensics.";
-  }
-  
-  res.json({ 
-    valid: isValid, 
-    message: message
-  });
-});
-
-// API: Get user progress - dummy endpoint for compatibility
-app.get("/progress", (req, res) => {
-  // Return empty progress since frontend handles this via cookies
-  res.json({
-    level1_unlocked: false,
-    level2_unlocked: false,
-    level3_unlocked: false,
-    current_access_level: 1,
-    flags_collected: [],
-    challenges_solved: [],
-    total_flags: 0,
-    total_challenges: 0
-  });
-});
-
-// API: Update user progress - dummy endpoint for compatibility
-app.post("/progress", (req, res) => {
-  // No-op since frontend handles progress via cookies
-  res.json({ message: "Progress updated successfully" });
-});
-
-// API: Search for files
-app.get("/search", (req, res) => {
-  const { query, user } = req.query;
-  
-  if (!query) return res.status(400).send("Search query required");
-  
-  const results = [];
-  
-  function searchNode(node, currentPath = "") {
-    if (typeof node !== 'object' || !node) return;
-    
-    Object.keys(node).forEach(key => {
-      if (key === "_protected" || key.startsWith("_")) return;
-      
-      const childNode = node[key];
-      const fullPath = currentPath + "/" + key;
-      
-      // Check if filename or content matches search query
-      if (key.toLowerCase().includes(query.toLowerCase()) || 
-          (childNode.content && childNode.content.toLowerCase().includes(query.toLowerCase()))) {
-        results.push({
-          path: fullPath,
-          name: key,
-          type: childNode.type || "directory",
-          content: childNode.content || null
-        });
-      }
-      
-      // Recursively search subdirectories
-      if (childNode.type !== "file" && childNode.type !== "exe") {
-        searchNode(childNode, fullPath);
-      }
-    });
-  }
-  
-  searchNode(fs["/"], "");
-  res.json({ results });
-});
-
-// Helper functions
+// Helper functions (keep your existing ones)
 function getAvailableFlags(filePath) {
-  // Return flags that can be obtained from this file
   const availableFlags = [];
   if (filePath.includes("caesar_cipher")) availableFlags.push(FLAGS.CRYPTO_MASTER);
   if (filePath.includes("base64_distress")) availableFlags.push(FLAGS.BASE64_DECODED);
@@ -463,20 +360,6 @@ function getAvailableFlags(filePath) {
   return availableFlags;
 }
 
-function getHintForChallenge(challenge) {
-  const hints = {
-    "caesar_cipher": "Try shifting each letter by 13 positions (ROT13)",
-    "base64_distress": "This is base64 encoded text - decode it to reveal the message",
-    "xor_challenge": "XOR each hex byte with the corresponding character from 'ANOMALY'",
-    "matrix_puzzle": "Convert numbers to letters (A=1, B=2, etc.) and read row by row",
-    "binary_arithmetic": "Perform the binary operations and convert results to ASCII",
-    "assembly_riddle": "Look for the hidden message in the assembly comments and data section",
-    "obfuscated_js": "Deobfuscate the JavaScript to reveal the base64 encoded values"
-  };
-  
-  return hints[challenge] || "Examine the challenge more carefully for clues";
-}
-
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Stateless CTF Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Fixed CTF Server running on port ${PORT}`));
