@@ -12,6 +12,13 @@ const FLAGS = {
   MASTER_FLAG: "CTF{m4st3r_0f_4ll_d0m41ns_4n0m4ly_d3f34t3d}"
 };
 
+// Level passkeys that unlock access
+const LEVEL_PASSKEYS = {
+  1: "crypto_master",
+  2: "reverse_engineer", 
+  3: "forensics_expert",
+};
+
 dotenv.config();
 const app = express();
 app.use(express.json());
@@ -26,6 +33,26 @@ function getNode(path) {
     node = node[seg];
   }
   return node;
+}
+
+// Check what level the user has access to based on their passkeys
+function getUserLevel(userPasskeys = []) {
+  let maxLevel = 1; // Everyone starts at level 1
+  
+  if (userPasskeys.includes("crypto_master")) {
+    maxLevel = 2;
+  }
+  if (userPasskeys.includes("reverse_engineer")) {
+    maxLevel = 3;
+  }
+  
+  return maxLevel;
+}
+
+// Check if user can access a specific node based on level
+function hasLevelAccess(node, userLevel) {
+  if (!node._level) return true; // No level restriction
+  return userLevel >= node._level;
 }
 
 // Simplified permission checking - only basic file permissions
@@ -50,11 +77,10 @@ function hasPermission(node, user, operation = 'r') {
   }
 }
 
-// Simplified passkey checking - no level requirements
+// Simplified passkey checking 
 function checkPasskeyAccess(node, passkey) {
-  if (!node.passkey_required) return true;
+  if (!node._passkey_required) return true;
   
-  // Simple passkey validation - you can customize these as needed
   const validPasskeys = [
     "crypto_master",
     "reverse_engineer", 
@@ -67,10 +93,24 @@ function checkPasskeyAccess(node, passkey) {
 // API: read file content
 app.get("/file", (req, res) => {
   const { path, user, passkey } = req.query;
+  const userPasskeys = req.query.userPasskeys ? req.query.userPasskeys.split(',') : [];
   
   const node = getNode(path);
   
   if (!node) return res.status(404).send("File not found");
+  
+  // Check level access first
+  const userLevel = getUserLevel(userPasskeys);
+  if (!hasLevelAccess(node, userLevel)) {
+    return res.status(403).json({ 
+      error: "Insufficient level access",
+      required_level: node._level,
+      user_level: userLevel,
+      hint: node._level === 2 ? "Need 'crypto_master' passkey for Level 2" : 
+            node._level === 3 ? "Need 'reverse_engineer' passkey for Level 3" : 
+            "Level access required"
+    });
+  }
   
   if (!hasPermission(node, user, 'r')) {
     return res.status(403).json({ 
@@ -78,8 +118,8 @@ app.get("/file", (req, res) => {
     });
   }
   
-  // Check passkey if required
-  if (node.passkey_required && !checkPasskeyAccess(node, passkey)) {
+  // Check passkey if required (for specific node access)
+  if (node._passkey_required && !checkPasskeyAccess(node, passkey)) {
     return res.status(401).json({ 
       error: "Passkey required", 
       hint: node.unlock_hint || "Find the correct passkey to access this file"
@@ -90,16 +130,31 @@ app.get("/file", (req, res) => {
     content: node.content,
     metadata: node.metadata || null,
     hint: node.unlock_hint || null,
+    level: node._level || 1
   });
 });
 
 // API: list directory
 app.get("/ls", (req, res) => {
   const { path, user, showHidden } = req.query;
+  const userPasskeys = req.query.userPasskeys ? req.query.userPasskeys.split(',') : [];
   
   const node = getNode(path);
   
   if (!node) return res.status(404).send("Directory not found");
+  
+  // Check level access for the directory itself
+  const userLevel = getUserLevel(userPasskeys);
+  if (!hasLevelAccess(node, userLevel)) {
+    return res.status(403).json({ 
+      error: "Insufficient level access",
+      required_level: node._level,
+      user_level: userLevel,
+      hint: node._level === 2 ? "Need 'crypto_master' passkey for Level 2" : 
+            node._level === 3 ? "Need 'reverse_engineer' passkey for Level 3" : 
+            "Level access required"
+    });
+  }
   
   if (!hasPermission(node, user, 'r')) {
     return res.status(403).json({ 
@@ -109,13 +164,16 @@ app.get("/ls", (req, res) => {
   
   let files = Object.keys(node).filter(key => !key.startsWith("_"));
   
-  // Filter files based on user permissions and hidden status
+  // Filter files based on user permissions, level access, and hidden status
   const visibleFiles = files.filter(filename => {
     const childNode = node[filename];
     if (!childNode) return false;
     
     // Check if file is hidden and if we should show hidden files
     if (childNode.hidden && !showHidden) return false;
+    
+    // Check level access for individual files
+    if (!hasLevelAccess(childNode, userLevel)) return false;
     
     // Check if user has read permissions for this file
     return hasPermission(childNode, user, 'r');
@@ -126,21 +184,40 @@ app.get("/ls", (req, res) => {
       type: childNode.type || 'file',
       permissions: childNode.permissions || 'r',
       hidden: childNode.hidden || false,
-      size: childNode.content ? childNode.content.length : 0
+      size: childNode.content ? childNode.content.length : 0,
+      level: childNode._level || 1
     };
   });
   
-  res.json({ files: visibleFiles });
+  res.json({ 
+    files: visibleFiles,
+    directory_level: node._level || 1,
+    user_level: userLevel
+  });
 });
 
 // API: execute files
 app.post("/run", (req, res) => {
   const { path, user, score, aiChoice, passkey, solution } = req.body;
+  const userPasskeys = req.body.userPasskeys || [];
   
   const node = getNode(path);
   
   if (!node) return res.status(404).json({ error: "File not found" });
   if (node.type !== "exe") return res.status(400).json({ error: "Not executable" });
+  
+  // Check level access
+  const userLevel = getUserLevel(userPasskeys);
+  if (!hasLevelAccess(node, userLevel)) {
+    return res.status(403).json({ 
+      error: "Insufficient level access",
+      required_level: node._level,
+      user_level: userLevel,
+      hint: node._level === 2 ? "Need 'crypto_master' passkey for Level 2" : 
+            node._level === 3 ? "Need 'reverse_engineer' passkey for Level 3" : 
+            "Level access required"
+    });
+  }
   
   if (!hasPermission(node, user, 'x')) {
     return res.status(403).json({ 
@@ -148,7 +225,7 @@ app.post("/run", (req, res) => {
     });
   }
   
-  if (node.passkey_required && !checkPasskeyAccess(node, passkey)) {
+  if (node._passkey_required && !checkPasskeyAccess(node, passkey)) {
     return res.status(401).json({ 
       error: "Passkey required to execute", 
       hint: node.unlock_hint || "Find the correct passkey"
@@ -170,7 +247,8 @@ app.post("/run", (req, res) => {
         output: "Snake Victory Achieved! The Anomaly whispers: 'Impressive reflexes... you might survive what's coming.'",
         flag: FLAGS.SNAKE_VICTORY,
         story_progression: "Snake challenge completed. Anomaly is taking notice of your skills.",
-        new_flags: newUserFlags
+        new_flags: newUserFlags,
+        level_hint: "Solve crypto puzzles to unlock Level 2 access"
       });
     }
     return res.json({ 
@@ -191,7 +269,8 @@ app.post("/run", (req, res) => {
         output: "Simon Victory Achieved! The Anomaly's voice grows more interested: 'Your pattern recognition is... exceptional.'",
         flag: FLAGS.SIMON_VICTORY,
         story_progression: "Simon challenge completed. The Anomaly sees you as a worthy opponent.",
-        new_flags: newUserFlags
+        new_flags: newUserFlags,
+        level_hint: "Master binary operations to unlock Level 3 access"
       });
     }
     return res.json({
@@ -240,10 +319,27 @@ app.post("/run", (req, res) => {
 
   // Default behavior for other executables
   return res.json({ 
-    output: node.content || "Command executed successfully."
+    output: node.content || "Command executed successfully.",
+    level: node._level || 1
+  });
+});
+
+// API: Check user's current level
+app.get("/level", (req, res) => {
+  const userPasskeys = req.query.userPasskeys ? req.query.userPasskeys.split(',') : [];
+  const userLevel = getUserLevel(userPasskeys);
+  
+  res.json({
+    level: userLevel,
+    passkeys: userPasskeys,
+    available_levels: {
+      1: "Cryptography Basics (home/user)",
+      2: userLevel >= 2 ? "Binary Operations (home/classified)" : "LOCKED - Need 'crypto_master'",
+      3: userLevel >= 3 ? "Digital Forensics (root)" : "LOCKED - Need 'reverse_engineer'"
+    }
   });
 });
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Simplified CTF Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`CTF Server with Level System running on port ${PORT}`));

@@ -305,7 +305,6 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
       
       if (data.flag) {
         setCapturedFlag(data.flag);
-        window.submitGameScore('/home/user/2nak3.bat', currentScore);
         return true;
       }
       return false;

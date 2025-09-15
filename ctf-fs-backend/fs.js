@@ -12,6 +12,7 @@ export const fs = {
   "/": {
     home: {
       user: {
+        _level: 1,
         // Story introduction
         "mission_briefing.txt": {
           type: "file",
@@ -118,6 +119,7 @@ The Anomaly has been learning our behaviors...`,
 
       // LEVEL 2: BINARY OPERATIONS & BIT MANIPULATION
       classified: {
+        _level: 2,
         _access_control: "LEVEL_2_REQUIRED",
         _passkey_required: "crypto_master",
 
@@ -128,10 +130,10 @@ The Anomaly has been learning our behaviors...`,
 Lead Scientist: Dr. Sarah Reeves
 Mission Log #18
 The Anomaly communicates almost entirely in binary streams. 
-At first glance, they seem like random noise, but I’ve started to notice recurring sequences. 
+At first glance, they seem like random noise, but I've started to notice recurring sequences. 
 It may be using binary not just for storage, but as a primary mode of thought.
 If I can map these patterns to concepts, I might begin to understand its reasoning process. 
-Learning its “language” could be the first step toward real communication.
+Learning its "language" could be the first step toward real communication.
 
 =====================
 01000011 01010100 01000110 01111011 
@@ -269,6 +271,7 @@ The Anomaly's computational power is... concerning.`,
     },
 
     root: {
+      _level: 3,
       _access_control: "LEVEL_2_REQUIRED",
       _passkey_required: "reverse_engineer",
 
