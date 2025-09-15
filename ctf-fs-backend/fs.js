@@ -323,7 +323,13 @@ CTF Flag: (decode the hidden flag sequence above)`,
           owner: "root",
           permissions: "r",
         },
+        "pleasedont.exe": {
+        type: "exe",
+        content: "welp this is the end for me"
+        },
+
       },
+
     },
 
     usr: {
