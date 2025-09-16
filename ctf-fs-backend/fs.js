@@ -381,10 +381,31 @@ End log.
           permissions: "r",
           
         },
+        "transcriped_audio#2.txt":{
+          type: "file",
+          content: `lol`,
+
+
+
+          owner: "file",
+          permissions: "r",
+
+
+        },
+
+
+
+
+
+
+
+
         "pleasedont.exe": {
         type: "exe",
         content: "welp this is the end for me"
         },
+
+      
 
       },
 
