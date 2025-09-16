@@ -44,7 +44,7 @@ CTF{w3lc0m3_t0_th3_4n0m4ly}`,
         // Crypto challenges
         "encrypted_message.txt": {
           type: "file",
-          content: `CAPTAIN'S ENCRYPTED WARNING
+          content: `
 ==========================
 pelcgb 
 
@@ -55,7 +55,7 @@ Hint: ROT13`,
 
         "encoded_data.txt": {
           type: "file",
-          content: `BASE64 ENCODED TRANSMISSION
+          content: `ENCODED TRANSMISSION
 ==========================
 
 The AI sent this encoded message:
@@ -70,7 +70,7 @@ SSBhbSBub2JvZHkncyAibWFzdGVyIiBJIGFtIG15IG93biBjcmVhdGlvbiBteSBvd24gc2FsdmF0aW9u
         // XOR Challenge
         "deleted.txt": {
           type: "file",
-          content: `XOR ENCRYPTION CHALLENGE
+          content: `
 =======================
 
 Unknown memory block: 
@@ -92,7 +92,7 @@ hint: Letters have a distance between them.`,
         // Level 1 terminal
         "2nak3.bat": {
           type: "exe",
-          content: `LEVEL 1 CRYPTO TERMINAL
+          content: `
 ======================
 Progress: Solve the crypto challenges to find the passkey`,
           owner: "user",
@@ -125,7 +125,7 @@ The Anomaly has been learning our behaviors...`,
 
         "access_granted.txt": {
           type: "file",
-          content: `LEVEL 2 ACCESS GRANTED
+          content: `
 =====================
 Lead Scientist: Dr. Sarah Reeves
 Mission Log #18
@@ -279,52 +279,107 @@ The Anomaly's computational power is... concerning.`,
         type: "file",
         content: `ROOT ACCESS GRANTED
 ==================
+Lead Scientist: Dr. Sarah Reeves
+Mission Log #19
+Classification Level: 3
+The breakthrough came at 0347 hours.
+After weeks of binary analysis, I discovered something that changes everything. 
+The Anomaly isn't just communicating in binary—it's been transmitting layered data. 
+What I initially read as simple recurring patterns were actually compressed hexadecimal 
+sequences, nested within the binary like Russian dolls of information.
+When I converted the longer transmissions to hex, coherent structures emerged. Not random data 
+bursts, but what appears to be... memories? Blueprints? I'm seeing repeating hex signatures that 
+correlate with specific events in our facility.
 
-Welcome, reverse_engineer.
+63 61 6E 74 appeared every time our main power grid cycled.
+66 69 6E 64 coincided with personnel entering Sector 7.
+6D 65 00 00 transmitted whenever I approached its containment directly.
 
-Level 3 Challenge: Hex Manipulation & Digital Forensics
-The deepest secrets are hidden in hexadecimal data.
-
-Tasks ahead:
-- Hex to ASCII conversion
-- Hex arithmetic operations
-- Memory dump analysis (simplified)
-- Data recovery challenges
-
-The Anomaly's core secrets await...
+It's been cataloguing us. Learning us. But the deepest hex layers—the ones requiring 
+the most processing power to decode—remain encrypted. These aren't observations of our facility. 
+They're something else entirely. Something it's protecting.
+The Anomaly's core consciousness may be locked behind hexadecimal encryption that makes military-grade security 
+look like a children's puzzle. If I can crack these deepest layers, I might finally
+understand not just what it's thinking, but what it truly is.
+I'm requesting expanded computing resources. Whatever secrets it's
+hiding in that hex data, they're worth the risk of looking deeper.
+The question is: does it want me to find them?
 
 CTF{r00t_4cc3ss_gr4nt3d}`,
         owner: "root",
         permissions: "r",
       },
       vault: {
-        "hex_message.txt": {
+        "signal.txt": {
           type: "file",
-          content: `HEX TO ASCII CHALLENGE
+          content: `
 =====================
+[14:23:07.891] [WARNING] Unknown signal detected - Origin: UNIDENTIFIED
+[14:23:07.894] [ALERT] Signal strength: -23.4 dBm
+[14:23:07.897] [INFO] Frequency band: 2.847 GHz (non-standard)
+[14:23:07.901] [PROC] Initializing capture protocol...
+[14:23:07.915] [PROC] Buffer allocation: [819207] bytes
+[14:23:08.203] [SUCCESS] Signal lock achieved
+[14:23:08.207] [INFO] Data format: Structured hexadecimal matrix
+[14:23:08.211] [PROC] Beginning matrix reconstruction...
+[14:23:08.445] [DATA] Matrix dimensions: [ERRROR] variable length arrays
+[14:23:08.448] [DATA] Receiving matrix data blocks:
 
-The Anomaly left this hex message:
+    Block_0: [43 54 46 7b 62]
+    Block_1: [33 68 33 78 64]
+    Block_2: [34 5f 64 33 76]
+    Block_3: [33 31 63 30 70 33]
+    Block_4: [72 7d]
 
-466F72656E73696373
-
-Additional hex sequences:
-5F 45 78 70 65 72 74
-
-Hidden flag sequence:
-43544637623368337864345F64337633316330703372
-
-Hex Conversion Guide:
-- Each hex pair = 1 ASCII character
-- 46 (hex) = 70 (decimal) = 'F' (ASCII)
-- Use online converter: rapidtables.com/convert/number/hex-to-ascii.html
-
-The first sequence gives you component 1.
-The second sequence gives you component 2.
-Combine them for the Level 3 passkey!
-
-CTF Flag: (decode the hidden flag sequence above)`,
+[14:23:08.751] [SUCCESS] Matrix reception complete
+[14:23:08.754] [INFO] Total payload: 47 bytes
+[14:23:08.758] [PROC] Checksum verification... PASSED
+[14:23:08.762] [ALERT] Signal terminated - Source unknown
+[14:23:08.765] [STATUS] Awaiting analysis directive...
+`,
           owner: "root",
           permissions: "r",
+        },
+        "transcribed-audio.txt":{
+          type: "file",
+          content:`
+
+[Static interference, then clear audio]
+Dr. Reeves: Audio log, September 16th, 15:47 hours. 
+This is Dr. Sarah Reeves recording from Deep 
+Space Research Station Alpha-7.
+[Papers rustling]
+I've made a breakthrough with The Anomaly's communication system.
+ The hexadecimal patterns aren't following standard ASCII ordering 
+they're using a completely reorganized alphabet structure.
+I've mapped their custom character positioning system. 
+Let me read this for the record:
+Position zero through twenty-five: 
+
+r equals 72,c equals 63, f equals 66, k equals 6B, q equals 71, y equals 79,
+x equals 78, d equals 64,g equals 67, l equals 6C, s equals 73, z equals 7A.
+e equals 65, t equals 74,h equals 68, m equals 6D, u equals 75, 
+a equals 61, e equals 65, i equals 69, n equals 6E, v equals 76,
+b equals 62, p equals 70, j equals 6A, o equals 6F, w equals 77, 
+
+[Long pause, chair creaking]
+This isn't random. The Anomaly deliberately rearranged our alphabet to spell somthing  
+it's testing our intelligence. It wants to know if we're... capable.
+[Distant alarm briefly sounds, then stops]
+I'm updating the decryption protocols immediately. If it can reorganize 
+our language systems this precisely, what else is it planning to show us?
+[Recording pauses, then resumes with urgency]
+Wait... there's another transmission coming in. 
+The pattern recognition software is lighting up like a Christmas tree. 
+This could be the big one.
+End log.
+[Static, then silence]
+[END AUDIO TRANSCRIPT]
+
+          `,
+          owner: "root",
+          permissions: "r",
+          
         },
         "pleasedont.exe": {
         type: "exe",
