@@ -5,8 +5,8 @@ import dotenv from "dotenv";
 
 // Flag definitions
 const FLAGS = {
-  SNAKE_VICTORY: "CTF{snake_victory_flag}",
-  SIMON_VICTORY: "CTF{simon_says_flag}",
+  SNAKE_VICTORY: "CTF{sn4k3_0v3rl0rd}",
+  SIMON_VICTORY: "CTF{s1m0n_s4ys_y0u_w1n}",
   GOOD_ENDING: "CTF{4n0m4ly_d3str0y3d_hum4n1ty_s4v3d}",
   BAD_ENDING: "CTF{j01n3d_th3_4n0m4ly_c0nsc10usn3ss_m3rg3d}",
   MASTER_FLAG: "CTF{m4st3r_0f_4ll_d0m41ns_4n0m4ly_d3f34t3d}"
