@@ -340,6 +340,26 @@ app.get("/level", (req, res) => {
   });
 });
 
+// API: Validate passkey
+app.get("/validate-passkey", (req, res) => {
+  const { passkey } = req.query;
+  
+  const validPasskeys = [
+    "crypto_master",
+    "reverse_engineer", 
+    "forensics_expert"
+  ];
+  
+  const isValid = validPasskeys.includes(passkey);
+  
+  res.json({
+    valid: isValid,
+    passkey: passkey,
+    level_unlock: isValid ? getUserLevel([passkey]) : null
+  });
+});
+
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`CTF Server with Level System running on port ${PORT}`));

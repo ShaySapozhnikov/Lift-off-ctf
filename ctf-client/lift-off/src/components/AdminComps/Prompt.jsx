@@ -385,39 +385,42 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         return [`Passkey '${key}' already in your collection.`];
       }
       
-      // Validate passkey using hash-based approach to avoid exposing secrets
-      const validatePasskey = (passkey) => {
-        // Simple hash function for validation without exposing the actual values
-        const hash = (str) => {
-          let hash = 0;
-          for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32bit integer
-          }
-          return hash;
-        };
+      try {
+        setIsLoading(true);
         
-        // Let me calculate the correct hashes
-        const cryptoHash = hash("crypto_master");
-        const reverseHash = hash("reverse_engineer");  
-        const forensicsHash = hash("forensics_expert");
+        // Validate passkey using the backend endpoint
+        const params = new URLSearchParams({ passkey: key });
+        const res = await fetch(`${BACKEND_URL}/validate-passkey?${params}`);
         
-        console.log("Debug - Input hash:", hash(passkey));
-        console.log("Debug - Expected hashes:", [cryptoHash, reverseHash, forensicsHash]);
-        
-        const validHashes = [cryptoHash, reverseHash, forensicsHash];
-        return validHashes.includes(hash(passkey));
-      };
-      
-      if (validatePasskey(key)) {
-        if (addPasskey(key)) {
-          return [`Passkey '${key}' added! New level: ${userLevel}`, "Use 'level' to see updated access."];
+        if (!res.ok) {
+          return [`Error validating passkey: ${res.status}`];
         }
-      } else {
-        return [`Invalid passkey: ${key}`];
+        
+        const data = await res.json();
+        
+        if (data.valid) {
+          if (addPasskey(key)) {
+            const newLevel = data.level_unlock || userLevel;
+            return [
+              `Passkey '${key}' validated and added!`,
+              `New access level: ${newLevel}`,
+              "Use 'level' command to see updated access permissions."
+            ];
+          }
+        } else {
+          return [
+            `Invalid passkey: '${key}'`,
+            "Hint: Look for clues in encrypted files, decoded messages, or system logs."
+          ];
+        }
+      } catch (e) {
+        console.error("Network error validating passkey:", e);
+        return [`Network error validating passkey: ${e.message}`];
+      } finally {
+        setIsLoading(false);
       }
     },
+       
     clear: async ({ setHistory }) => {
       setHistory([]);
       return [];
