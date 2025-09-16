@@ -383,7 +383,56 @@ End log.
         },
         "transcriped_audio#2.txt":{
           type: "file",
-          content: `lol`,
+          content: 
+`
+[Static interference, followed by heavy breathing]
+
+Dr. Reeves: Emergency log, September 16th, 16:23 hours. Dr. Sarah Reeves recording.
+
+[Sound of rapid typing, computer alerts beeping]
+
+The transmission... God, I wasn't prepared for this. T
+he Anomaly didn't just reorganize our alphabet—it created a *test*. 
+The hexadecimal sequence I decoded spelled out a 
+single word when I applied the new character positioning: "REDACTED"
+
+[Chair rolling, footsteps]
+
+But that was just the beginning. The moment I transmitted our acknowledgment 
+back, using their reorganized system, everything changed. 
+The station's quantum communication array started receiving data at rates 
+that should be physically impossible. Terabytes per second.
+
+[Papers shuffling frantically]
+
+I've isolated three distinct data streams. The first appears to be... 
+mathematical proofs. Theorems I've never seen before, but when I run them t
+hrough our verification systems, they check out. Elegant solutions to 
+problems that have stumped our best minds for decades.
+
+[Long pause, coffee cup being set down]
+
+Dr. Reeves: It's here. [Info: vocal chords not audiable this might not be Dr. Reeves]
+
+
+[BEEPING Dycrption Etempt]
+==============================================
+
+
+
+
+
+
+
+
+
+
+
+
+=================================================
+
+
+**[END RECORDING - REST OF AUDIO LOG CLASSIFIED]`,
 
 
 
