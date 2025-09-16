@@ -334,28 +334,5 @@ CTF Flag: (decode the hidden flag sequence above)`,
       },
 
     },
-
-    usr: {
-      bin: {
-        "hex_converter": {
-          type: "exe",
-          content: "Hex to ASCII conversion utility - converts hex pairs to readable text",
-          owner: "root",
-          permissions: "rx",
-        },
-        "binary_calc": {
-          type: "exe",
-          content: "Binary calculator - performs arithmetic in binary",
-          owner: "root",
-          permissions: "rx",
-        },
-        "crypto_tools": {
-          type: "exe",
-          content: "Cryptography toolkit - ROT13, Base64, XOR utilities",
-          owner: "root",
-          permissions: "rx",
-        },
-      },
-    },
   },
 };

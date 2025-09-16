@@ -603,7 +603,7 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
       
       // Food collision
       if (head.x === food.x && head.y === food.y) {
-        setScore(prev => prev + 1);
+        setScore(prev => prev + 2);
         playBeepSound();
         
         let newFood;
