@@ -47,6 +47,46 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
   useEffect(() => inputRef.current?.focus(), [history]);
   useEffect(() => setCursor(commands.length), [commands]);
 
+  // Update user level based on backend response (secure version)
+  const updateUserLevel = async (passkeys) => {
+    try {
+      const params = new URLSearchParams({
+        user: currentUser,
+        session_id: sessionId,
+        userPasskeys: passkeys.join(',')
+      });
+      const res = await fetch(`${BACKEND_URL}/level?${params}`);
+      const data = await res.json();
+      if (data.level) {
+        setUserLevel(data.level);
+      }
+    } catch (e) {
+      console.error("Error updating user level:", e);
+      // Fallback to level 1 if backend is unavailable
+      setUserLevel(1);
+    }
+  };
+
+  // Add passkey when earned (secure version)
+  const addPasskey = async (passkey) => {
+    if (!userPasskeys.includes(passkey)) {
+      const newPasskeys = [...userPasskeys, passkey];
+      setUserPasskeys(newPasskeys);
+      await updateUserLevel(newPasskeys);
+      return true;
+    }
+    return false;
+  };
+
+  // Add flag when earned
+  const addFlag = (flag) => {
+    if (!userFlags.includes(flag)) {
+      setUserFlags(prev => [...prev, flag]);
+      return true;
+    }
+    return false;
+  };
+
   // Load user progress from cookies on startup
   useEffect(() => {
     const savedPasskeys = getCookie('ctf_passkeys');
@@ -56,6 +96,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     if (savedPasskeys) {
       const passkeys = JSON.parse(savedPasskeys);
       setUserPasskeys(passkeys);
+      // Use backend to determine level (secure)
       updateUserLevel(passkeys);
     }
     
@@ -88,34 +129,6 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
   useEffect(() => {
     setCookie('ctf_flags', JSON.stringify(userFlags));
   }, [userFlags]);
-
-  // Update user level based on passkeys
-  const updateUserLevel = (passkeys) => {
-    let level = 1;
-    if (passkeys.includes("crypto_master")) level = 2;
-    if (passkeys.includes("reverse_engineer")) level = 3;
-    setUserLevel(level);
-  };
-
-  // Add passkey when earned
-  const addPasskey = (passkey) => {
-    if (!userPasskeys.includes(passkey)) {
-      const newPasskeys = [...userPasskeys, passkey];
-      setUserPasskeys(newPasskeys);
-      updateUserLevel(newPasskeys);
-      return true;
-    }
-    return false;
-  };
-
-  // Add flag when earned
-  const addFlag = (flag) => {
-    if (!userFlags.includes(flag)) {
-      setUserFlags(prev => [...prev, flag]);
-      return true;
-    }
-    return false;
-  };
 
   // --- Helper: resolve relative paths ---
   const resolvePath = (cwd, input) => {
@@ -370,8 +383,17 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       
       const output = [
         `Current Level: ${levelData.level}`,
-        
+        `Active Passkeys: ${userPasskeys.length > 0 ? userPasskeys.join(', ') : 'None'}`,
+        "",
+        "Available Access Levels:"
       ];
+      
+      // Add level information from backend
+      if (levelData.available_levels) {
+        Object.entries(levelData.available_levels).forEach(([level, desc]) => {
+          output.push(`  Level ${level}: ${desc}`);
+        });
+      }
       
       return output;
     },
@@ -399,7 +421,9 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         const data = await res.json();
         
         if (data.valid) {
-          if (addPasskey(key)) {
+          // Use the async addPasskey function
+          const wasAdded = await addPasskey(key);
+          if (wasAdded) {
             const newLevel = data.level_unlock || userLevel;
             return [
               `Passkey '${key}' validated and added!`,
@@ -420,7 +444,6 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         setIsLoading(false);
       }
     },
-       
     clear: async ({ setHistory }) => {
       setHistory([]);
       return [];
