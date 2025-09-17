@@ -315,7 +315,7 @@ CTF{r00t_4cc3ss_gr4nt3d}`,
           content: `
 =====================
 [14:23:07.891] [WARNING] Unknown signal detected - Origin: UNIDENTIFIED
-[14:23:07.894] [ALERT] Signal strength: -23.4 dBm
+[14:23:07.894] [ALERT] Signal strength: [4.72395805] dBm
 [14:23:07.897] [INFO] Frequency band: 2.847 GHz (non-standard)
 [14:23:07.901] [PROC] Initializing capture protocol...
 [14:23:07.915] [PROC] Buffer allocation: [819207] bytes
@@ -381,7 +381,7 @@ End log.
           permissions: "r",
           
         },
-        "transcriped_audio#2.txt":{
+        "transcribed_audio-2.txt":{
           type: "file",
           content: 
 `
@@ -416,20 +416,17 @@ Dr. Reeves: It's here. [Info: vocal chords not audiable this might not be Dr. Re
 
 
 [BEEPING Dycrption Etempt]
-==============================================
+==============================================>
 
+c = 63  b = 62  r = 72  e = 65
+f = 66  s = 73  g = 67  o = 6f         
+i = 69  n = 6e  k = 6b  l = 6c  
+m = 6d  j = 6a  h = 68  p = 70  
+q = 71  a = 61  d = 64  t = 74  
+u = 75  v = 76  w = 77  x = 78  
+y = 79  z = 7a  
 
-
-
-
-
-
-
-
-
-
-
-=================================================
+=================================================>
 
 
 **[END RECORDING - REST OF AUDIO LOG CLASSIFIED]`,
@@ -441,11 +438,6 @@ Dr. Reeves: It's here. [Info: vocal chords not audiable this might not be Dr. Re
 
 
         },
-
-
-
-
-
 
 
 
