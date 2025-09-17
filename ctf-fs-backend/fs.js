@@ -356,11 +356,15 @@ I've mapped their custom character positioning system.
 Let me read this for the record:
 Position zero through twenty-five: 
 
-r equals 72,c equals 63, f equals 66, k equals 6B, q equals 71, y equals 79,
-x equals 78, d equals 64,g equals 67, l equals 6C, s equals 73, z equals 7A.
-e equals 65, t equals 74,h equals 68, m equals 6D, u equals 75, 
-a equals 61, e equals 65, i equals 69, n equals 6E, v equals 76,
-b equals 62, p equals 70, j equals 6A, o equals 6F, w equals 77, 
+==============================================>
+
+r = 72  c = 63 f = 66 k = 6B q = 71 y = 79
+x = 78 d = 64 g = 67 l = 6C s = 73 z = 7A
+e = 65 t = 74 h = 68 m = 6D u = 75 
+a = 61 e = 65 i = 69 n = 6E v = 76
+b = 62 p = 70 j = 6A o = 6F w = 77 
+
+=================================================>
 
 [Long pause, chair creaking]
 This isn't random. The Anomaly deliberately rearranged our alphabet to spell somthing  
