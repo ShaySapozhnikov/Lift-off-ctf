@@ -8,6 +8,7 @@ function NotFound(){ // make this nicer
                 
                 <h1 class="mt-4 text-5xl text-balance text-amber-100 sm:text-7xl">-- 404: SYSTEM ERROR --</h1>
                 <p class="mt-6 text-lg font-medium text-pretty text-white sm:text-xl/8">You've drifted into an uncharted region of the interface.</p>
+                <p class="mt-6 text-lg font-medium text-pretty text-white sm:text-xl/2"> {"CTF{unch4rt3d_1nt3rf4c3}"} </p>
 
                
             </div>

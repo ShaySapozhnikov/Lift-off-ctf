@@ -24,6 +24,7 @@ function Home() {
           onClick={handleLogoClick}
         />
       </div>
+      
       {/* Main content area */}
       <div className="flex-1 flex justify-center items-center px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 grid-rows-4 md:grid-rows-2 gap-6 w-full max-w-[1200px]">
@@ -34,8 +35,14 @@ function Home() {
         </div>
       </div>
 
+
       {/* Footer spacer to ensure content doesn't touch bottom */}
       <div className="h-4"></div>
+      <div>
+      {"CTF{w3lc0m3_4b04rd}"}
+  
+      </div>
+   
     </div>
   );
 }
