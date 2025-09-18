@@ -144,53 +144,61 @@ function Backup() {
           <h3>The unhackable backup installer V2.0</h3>
 
           <button
-  className="mt-6 px-6 py-2 bg-zinc-900 text-white hover:text-amber-100 rounded border border-dashed mb-5"
-  onClick={async () => {
-    try {
-      // Backup bucket
-      const { data: files, error } = await supabase.storage
-        .from("Backup")
-        .list("", { limit: 1000 }); // increase limit if needed
+            className="mt-6 px-6 py-2 bg-zinc-900 text-white hover:text-amber-100 rounded border border-dashed mb-5"
+            onClick={async () => {
+              try {
+                // Backup bucket
+                const { data: files, error } = await supabase.storage
+                  .from("Backup")
+                  .list("", { limit: 1000 });
 
-      if (error) {
-        console.error("Error listing files:", error.message);
-        return;
-      }
+                if (error) {
+                  console.error("Error listing files:", error.message);
+                  return;
+                }
 
-      if (!files || files.length === 0) {
-        console.log("No files found in bucket.");
-        return;
-      }
+                if (!files || files.length === 0) {
+                  console.log("No files found in bucket.");
+                  return;
+                }
 
-      console.log("Files found:", files.map(f => f.name));
+                console.log("Files found:", files.map(f => f.name));
 
-      // Download each file
-      for (const file of files) {
-        const { data: signedUrlData, error: urlError } = await supabase.storage
-          .from("Backup")
-          .createSignedUrl(file.name, 60); // URL valid for 60 seconds
+                // Download each file using public URLs
+                for (const file of files) {
+                  try {
+                    // Get public URL (no auth required since bucket is public)
+                    const { data: publicUrlData } = supabase.storage
+                      .from("Backup")
+                      .getPublicUrl(file.name);
 
-        if (urlError) {
-          console.error("Error creating signed URL for", file.name, urlError.message);
-          continue;
-        }
+                    if (publicUrlData?.publicUrl) {
+                      const link = document.createElement("a");
+                      link.href = publicUrlData.publicUrl;
+                      link.download = file.name;
+                      link.target = '_blank'; // Fallback if download doesn't work
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      
+                      // Small delay between downloads
+                      await new Promise(resolve => setTimeout(resolve, 100));
+                    } else {
+                      console.error("No public URL returned for", file.name);
+                    }
+                  } catch (fileError) {
+                    console.error(`Error downloading ${file.name}:`, fileError);
+                  }
+                }
 
-        const link = document.createElement("a");
-        link.href = signedUrlData.signedUrl;
-        link.download = file.name;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      }
-
-      console.log("All files download triggered.");
-    } catch (err) {
-      console.error("Unexpected error:", err);
-    }
-  }}
->
-  Download All Backups
-</button>
+                console.log("All files download initiated.");
+              } catch (err) {
+                console.error("Unexpected error:", err);
+              }
+            }}
+          >
+            Download All Backups
+          </button>
 
         </div>
       </div>
