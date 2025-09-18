@@ -459,7 +459,6 @@ function TerminalInterface() {
       "  memory   - Check memory usage",
       "  clear    - Clear terminal",
       "  reboot   - Restart system",
-      "  anomaly  - Reset anomaly intro (dev command)"
     ],
     status: () => [
       "=== SYSTEM STATUS ===",
@@ -479,16 +478,12 @@ function TerminalInterface() {
       commandCount >= 4 ? "WARNING: Approaching critical threshold!" : "Status: NORMAL"
     ],
     // Developer command to reset anomaly intro for testing
-    anomaly: () => {
-      setHasSeenAnomaly(false);
-      return ["Anomaly intro reset. Refresh to see intro again."];
-    },
     scan: { 
       output: [
         "Initiating system scan...",
         "Scanning network nodes...",
-        "Found: 12 active connections",
-        "Found: 3 restricted directories", 
+        "Found: 6 active connections",
+        "Found: 4 restricted directories", 
         "Found: 1 autonomous crawler",
         "WARNING: Unusual activity detected",
         "Scan complete."
@@ -520,7 +515,8 @@ function TerminalInterface() {
         "Node 1: TIMEOUT",
         "Node 2: TIMEOUT", 
         "Node 3: 127ms - RESTRICTED",
-        "Backup Node: 45ms - ONLINE",
+        "backup Node: 45ms - ONLINE",
+        "public Node: 33ms - ONLINE",
         "Network connectivity: LIMITED"
       ],
       delays: [0, 1000, 2000, 3000, 4000, 5200]
