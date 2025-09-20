@@ -3,6 +3,7 @@ import Signin from '../components/SignIn-coms';
 
 import { supabase } from '../singletonSupabase';
 import { useSearchParams } from 'react-router-dom';
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import ShipIcon from "../components/shipIcon";
-
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 
 // Simple cookie helpers

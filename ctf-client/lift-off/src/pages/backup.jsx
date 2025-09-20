@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import ShipIcon from "../components/shipIcon";
 import { supabase } from '../singletonSupabase';
 

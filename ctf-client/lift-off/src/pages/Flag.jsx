@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../singletonSupabase';
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 // Input sanitization functions
 const sanitizeInput = (input) => {

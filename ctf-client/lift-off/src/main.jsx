@@ -2,6 +2,7 @@ import { StrictMode, createContext, useContext, useEffect, useState } from "reac
 import { createRoot } from "react-dom/client";
 import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
 import { supabase } from "./singletonSupabase.js";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 import "./index.css";
 

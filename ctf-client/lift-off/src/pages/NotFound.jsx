@@ -1,5 +1,6 @@
 import React from "react";
 import ShipIcon from "../components/shipIcon";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 function NotFound(){ // make this nicer 
     return(
