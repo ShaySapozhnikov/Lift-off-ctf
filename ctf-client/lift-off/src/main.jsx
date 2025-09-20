@@ -91,7 +91,6 @@ function AppRouter() {
           <Route path="backup" element={<Navigate to="/" replace />} />
           <Route path="internal-communications" element={<Navigate to="/" replace />} />
           <Route path="admin" element={<Navigate to="/" replace />} />
-          <Route path="flags" element={<Navigate to="/" replace />} />
           <Route path="public" element={<Navigate to="/" replace />} />
         </>
       )}
