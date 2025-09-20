@@ -71,6 +71,7 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="flags" element={<Flags />} />
 
       {/* Protected routes rendered only when eventStarted is true */}
       {eventStarted && (
@@ -79,7 +80,6 @@ function AppRouter() {
           <Route path="backup" element={<Backup />} />
           <Route path="internal-communications" element={<InternalCommunications />} />
           <Route path="admin" element={<Admin />} />
-          <Route path="flags" element={<Flags />} />
           <Route path="public" element={<Public />} />
         </>
       )}
