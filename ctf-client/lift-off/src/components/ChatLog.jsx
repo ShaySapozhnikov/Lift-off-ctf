@@ -5,11 +5,18 @@ import { getUserName } from "../../utils/cookieUser";
 function ChatLog() {
   const [messages, setMessages] = useState([]);
   const chatBoxRef = useRef(null);
-  const currentUserName = getUserName(); // Space-themed username for this user
+  const currentUserName = getUserName();
+  
+  // Check if user is scrolled to bottom (with small tolerance)
+  const isAtBottom = () => {
+    if (!chatBoxRef.current) return true;
+    const { scrollTop, scrollHeight, clientHeight } = chatBoxRef.current;
+    return scrollHeight - scrollTop - clientHeight < 10; // 10px tolerance
+  };
 
-  // Scroll to bottom when messages update
+  // Auto-scroll only if user was already at bottom
   useEffect(() => {
-    if (chatBoxRef.current) {
+    if (chatBoxRef.current && isAtBottom()) {
       chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
     }
   }, [messages]);
@@ -21,7 +28,7 @@ function ChatLog() {
         .from("messages")
         .select("*")
         .order("created_at", { ascending: true });
-
+      
       if (!error && data) {
         setMessages(data);
         console.log("Chat updated");
@@ -30,17 +37,14 @@ function ChatLog() {
 
     // Initial fetch
     fetchMessages();
-
-    // Poll every 2 seconds
+    // Poll every 1 second
     const interval = setInterval(fetchMessages, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="bg-zinc-900 p-4 h-[200px] border-2 border-gray-500 border-dashed rounded-md mt-4 flex flex-col">
       <h1 className="text-center">---Chat Log---</h1>
-
       <div
         id="chat-box"
         ref={chatBoxRef}
