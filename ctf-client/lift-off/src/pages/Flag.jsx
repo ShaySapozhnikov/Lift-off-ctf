@@ -479,6 +479,7 @@ function Flags() {
 
     return (
         <div className="min-h-screen flex items-center justify-center relative bg-black">
+            <SpeedInsights />
             {showCaptcha && (
                 <MathCaptcha 
                     onVerify={handleCaptchaVerified}

@@ -32,6 +32,7 @@ function Home() {
           <CountDown />
           <TerminalChat />
           <ChatLog />
+          <SpeedInsights />
         </div>
       </div>
 

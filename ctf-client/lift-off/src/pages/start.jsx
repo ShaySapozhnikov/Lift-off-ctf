@@ -680,6 +680,7 @@ function TerminalInterface() {
 
   return (
     <div className={`min-h-screen w-full bg-zinc-900 text-white flex items-center justify-center p-4 select-none transition-opacity duration-1000 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+      <SpeedInsights />
       {/* Audio Enable Overlay */}
       {showAudioPrompt && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">

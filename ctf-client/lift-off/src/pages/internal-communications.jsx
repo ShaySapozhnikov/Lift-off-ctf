@@ -323,6 +323,7 @@ const MissionControlCRM = () => {
 
   return (
     <div className="h-screen flex bg-zinc-900 text-amber-100 font-mono overflow-hidden">
+      <SpeedInsights />
       {!isLoggedIn && (
         <div id="signin-overlay" className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center z-[9999]">
           <Signin onLoginSuccess={() => {

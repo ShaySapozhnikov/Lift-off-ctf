@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import {useState} from 'react';
 
 import CorruptedAdminPanel from '../components/CorruptedAdminPanel';
 import { SpeedInsights } from '@vercel/speed-insights/next';
@@ -50,6 +50,7 @@ export default function AdminLoginAndPanel() {
     <>
       {!isLoggedIn ? (
         <div className="p-4 min-h-screen bg-zinc-900 text-white flex items-center justify-center">
+          <SpeedInsights />
           <div className="w-full max-w-sm">
             <form onSubmit={handleLogin} className="space-y-4">
               <pre className="text-red-500 text-center font-mono text-[5px] leading-tight whitespace-pre-wrap p-4 mt-[10px]">

@@ -81,6 +81,7 @@ function Backup() {
 
   return (
     <>
+      <SpeedInsights />
       <div
         ref={overlayRef}
         className={`fixed inset-0 z-50 hue-rotate-270 bg-black transition-opacity duration-300 ${
