@@ -91,13 +91,13 @@ hint: Letters have a distance between them.`,
 
         // Level 1 terminal
         "2nak3.bat": {
-          type: "exe",
-          content: `
-======================
-Progress: Solve the crypto challenges to find the passkey`,
-          owner: "user",
-          permissions: "rw",
-        },
+            type: "exe",
+            content: "...",
+            permissions: "rwx",
+            _passkey_required: true,
+            _required_passkey: "crypto_master",
+            unlock_hint: "Decode the cipher in the documents folder first" // Don't mention passkey names
+          },
 
         // Scattered CTF flags
         "ship_logs.txt": {
