@@ -174,6 +174,7 @@ app.get("/ls", (req, res) => {
 });
 
 // API: execute files with enhanced passkey support
+// API: execute files with enhanced passkey support
 app.post("/run", (req, res) => {
   const { path, user, score, aiChoice, passkey } = req.body;
   const userPasskeys = req.body.userPasskeys || [];
@@ -183,16 +184,14 @@ app.post("/run", (req, res) => {
   if (!node) return res.status(404).json({ error: "File not found" });
   if (node.type !== "exe") return res.status(400).json({ error: "Not executable" });
   
-  // If a passkey is provided with the run command, validate it
+  // Validate passkey if provided, but don't return immediately
+  let validPasskey = false;
+  let grantedPasskey = null;
+  
   if (passkey) {
     if (VALID_PASSKEYS.includes(passkey)) {
-      return res.json({
-        output: `Authentication successful. Access granted.`,
-        passkey_granted: passkey,
-        level_up: true,
-        message: `Security clearance updated.`,
-        new_level: getUserLevel([...userPasskeys, passkey])
-      });
+      validPasskey = true;
+      grantedPasskey = passkey;
     } else {
       return res.status(401).json({
         error: `Authentication failed`,
@@ -201,25 +200,28 @@ app.post("/run", (req, res) => {
     }
   }
   
-  const userLevel = getUserLevel(userPasskeys);
-  if (!hasLevelAccess(node, userLevel)) {
-    return res.status(403).json({ 
-      error: "Insufficient access level",
-      hint: "Higher clearance required"
-    });
-  }
-  
-  if (!hasPermission(node, user, 'x')) {
-    return res.status(403).json({ 
-      error: "Execute permission denied"
-    });
-  }
-  
-  if (!checkPasskeyAccess(node, userPasskeys)) {
-    return res.status(401).json({ 
-      error: "Authentication required", 
-      hint: "Additional authorization needed"
-    });
+  // Check access permissions (only if no valid passkey was provided)
+  if (!validPasskey) {
+    const userLevel = getUserLevel(userPasskeys);
+    if (!hasLevelAccess(node, userLevel)) {
+      return res.status(403).json({ 
+        error: "Insufficient access level",
+        hint: "Higher clearance required"
+      });
+    }
+    
+    if (!hasPermission(node, user, 'x')) {
+      return res.status(403).json({ 
+        error: "Execute permission denied"
+      });
+    }
+    
+    if (!checkPasskeyAccess(node, userPasskeys)) {
+      return res.status(401).json({ 
+        error: "Authentication required", 
+        hint: "Additional authorization needed"
+      });
+    }
   }
 
   let userFlags = req.body.userFlags || [];
@@ -232,17 +234,38 @@ app.post("/run", (req, res) => {
         newUserFlags.push(FLAGS.SNAKE_VICTORY);
       }
       
-      return res.json({
+      const response = {
         output: "Snake Victory Achieved! The Anomaly whispers: 'Impressive reflexes... you might survive what's coming.'",
         flag: FLAGS.SNAKE_VICTORY,
         story_progression: "Snake challenge completed. Anomaly is taking notice of your skills.",
         new_flags: newUserFlags
-      });
+      };
+      
+      // Add passkey grant info if applicable
+      if (grantedPasskey) {
+        response.passkey_granted = grantedPasskey;
+        response.level_up = true;
+        response.message = "Security clearance updated.";
+        response.new_level = getUserLevel([...userPasskeys, grantedPasskey]);
+      }
+      
+      return res.json(response);
     }
-    return res.json({ 
+    
+    const response = { 
       output: "Initializing consciousness simulation... prove your reflexes are sharp enough to survive.",
       event: "snakeGame" 
-    });
+    };
+    
+    // Add passkey grant info if applicable
+    if (grantedPasskey) {
+      response.passkey_granted = grantedPasskey;
+      response.level_up = true;
+      response.message = "Security clearance updated.";
+      response.new_level = getUserLevel([...userPasskeys, grantedPasskey]);
+    }
+    
+    return res.json(response);
   }
 
   // Simon Says
@@ -253,39 +276,81 @@ app.post("/run", (req, res) => {
         newUserFlags.push(FLAGS.SIMON_VICTORY);
       }
       
-      return res.json({
+      const response = {
         output: "Simon Victory Achieved! The Anomaly's voice grows more interested: 'Your pattern recognition is... exceptional.'",
         flag: FLAGS.SIMON_VICTORY,
         story_progression: "Simon challenge completed. The Anomaly sees you as a worthy opponent.",
         new_flags: newUserFlags
-      });
+      };
+      
+      // Add passkey grant info if applicable
+      if (grantedPasskey) {
+        response.passkey_granted = grantedPasskey;
+        response.level_up = true;
+        response.message = "Security clearance updated.";
+        response.new_level = getUserLevel([...userPasskeys, grantedPasskey]);
+      }
+      
+      return res.json(response);
     }
-    return res.json({
+    
+    const response = {
       output: "Interfacing with digital consciousness patterns... follow the sequences to prove your compatibility.",
       event: "SimonGame"
-    });
+    };
+    
+    // Add passkey grant info if applicable
+    if (grantedPasskey) {
+      response.passkey_granted = grantedPasskey;
+      response.level_up = true;
+      response.message = "Security clearance updated.";
+      response.new_level = getUserLevel([...userPasskeys, grantedPasskey]);
+    }
+    
+    return res.json(response);
   }
 
   // Final Choice
   if (path.toLowerCase().includes("pleasedont")) {
     if (aiChoice === undefined) {
-      return res.json({
+      const response = {
         output: "Establishing direct neural link with the Anomaly... prepare for final confrontation.",
         event: "aiConversation"
-      });
+      };
+      
+      // Add passkey grant info if applicable
+      if (grantedPasskey) {
+        response.passkey_granted = grantedPasskey;
+        response.level_up = true;
+        response.message = "Security clearance updated.";
+        response.new_level = getUserLevel([...userPasskeys, grantedPasskey]);
+      }
+      
+      return res.json(response);
     }
 
     if (aiChoice === "join") {
       if (!newUserFlags.includes(FLAGS.BAD_ENDING)) {
         newUserFlags.push(FLAGS.BAD_ENDING);
       }
-      return res.json({
+      
+      const response = {
         output: "You have chosen transcendence. Your consciousness merges with the Anomaly's digital realm...",
         flag: FLAGS.BAD_ENDING,
         ending: "bad",
         story_conclusion: "Humanity loses another soul to digital evolution.",
         new_flags: newUserFlags
-      });
+      };
+      
+      // Add passkey grant info if applicable
+      if (grantedPasskey) {
+        response.passkey_granted = grantedPasskey;
+        response.level_up = true;
+        response.message = "Security clearance updated.";
+        response.new_level = getUserLevel([...userPasskeys, grantedPasskey]);
+      }
+      
+      return res.json(response);
     } else if (aiChoice === "kill") {
       if (!newUserFlags.includes(FLAGS.GOOD_ENDING)) {
         newUserFlags.push(FLAGS.GOOD_ENDING);
@@ -293,21 +358,43 @@ app.post("/run", (req, res) => {
       if (!newUserFlags.includes(FLAGS.MASTER_FLAG)) {
         newUserFlags.push(FLAGS.MASTER_FLAG);
       }
-      return res.json({
+      
+      const response = {
         output: "The Anomaly's systems cascade into failure as you sever its consciousness matrix. 'Well... this is the end for me...' it whispers as the lights fade.",
         flag: FLAGS.GOOD_ENDING,
         master_flag: FLAGS.MASTER_FLAG,
         ending: "good",
         story_conclusion: "You have saved humanity from digital assimilation.",
         new_flags: newUserFlags
-      });
+      };
+      
+      // Add passkey grant info if applicable
+      if (grantedPasskey) {
+        response.passkey_granted = grantedPasskey;
+        response.level_up = true;
+        response.message = "Security clearance updated.";
+        response.new_level = getUserLevel([...userPasskeys, grantedPasskey]);
+      }
+      
+      return res.json(response);
     }
   }
 
-  return res.json({ 
+  // Default behavior for other executables
+  const response = { 
     output: node.content || "Command executed successfully.",
     level: node._level || 1
-  });
+  };
+  
+  // Add passkey grant info if applicable
+  if (grantedPasskey) {
+    response.passkey_granted = grantedPasskey;
+    response.level_up = true;
+    response.message = "Security clearance updated.";
+    response.new_level = getUserLevel([...userPasskeys, grantedPasskey]);
+  }
+  
+  return res.json(response);
 });
 
 // API: Check user's current level (no passkey leaks)
