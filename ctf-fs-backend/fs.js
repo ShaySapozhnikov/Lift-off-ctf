@@ -90,14 +90,14 @@ hint: Letters have a distance between them.`,
         },
 
         // Level 1 terminal
-        "2nak3.bat": {
-            type: "exe",
-            content: "...",
-            permissions: "rwx",
-            _passkey_required: true,
-            _required_passkey: "crypto_master",
-            unlock_hint: "Decode the cipher in the documents folder first" // Don't mention passkey names
-          },
+      "2nak3.bat": {
+  type: "exe",
+  content: "Snake game executable - requires authentication",
+  permissions: "rwx",
+  _passkey_required: true,
+  _required_passkey: "crypto_master",
+  unlock_hint: "Decode the cipher in the documents folder first"
+},
 
         // Scattered CTF flags
         "ship_logs.txt": {

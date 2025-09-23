@@ -94,14 +94,25 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     const savedUser = getCookie('ctf_user');
     
     if (savedPasskeys) {
-      const passkeys = JSON.parse(savedPasskeys);
-      setUserPasskeys(passkeys);
-      // Use backend to determine level (secure)
-      updateUserLevel(passkeys);
+      try {
+        const passkeys = JSON.parse(savedPasskeys);
+        console.log("Loaded passkeys from cookies:", passkeys);
+        setUserPasskeys(passkeys);
+        // Use backend to determine level (secure)
+        updateUserLevel(passkeys);
+      } catch (e) {
+        console.error("Error parsing saved passkeys:", e);
+        setUserPasskeys([]);
+      }
     }
     
     if (savedFlags) {
-      setUserFlags(JSON.parse(savedFlags));
+      try {
+        setUserFlags(JSON.parse(savedFlags));
+      } catch (e) {
+        console.error("Error parsing saved flags:", e);
+        setUserFlags([]);
+      }
     }
     
     if (savedUser) {
@@ -115,7 +126,8 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       "Type 'help' for available commands.",
       "Type 'level' to check your current access level.",
       "Begin your investigation with 'cat mission_briefing.txt'",
-      ""
+      "",
+      "Debug: Loading saved progress..."
     ];
     setHistory(welcomeMessages);
   }, [sessionId]);
@@ -187,7 +199,9 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         data.files.forEach(file => {
           let indicator = "";
           if (file.type === "directory") indicator = "/";
+          if (file.type === "exe") indicator = "*";
           if (file.level > userLevel) indicator += " [LEVEL LOCKED]";
+          if (file.passkey_required) indicator += " [AUTH REQUIRED]";
           
           output.push(`${file.name}${indicator}`);
         });
@@ -248,12 +262,16 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     }
   };
 
-  const runFileAPI = async (path, passkey = undefined) => {
+  // Enhanced runFileAPI function to handle passkeys properly
+  const runFileAPI = async (path, passkey = null) => {
     try {
       setIsLoading(true);
-      const requestBody = buildRequestBody({ path });
+      const requestBody = buildRequestBody({ 
+        path,
+        ...(passkey && { passkey }) // Only include passkey if provided
+      });
       
-      if (passkey !== undefined) requestBody.passkey = passkey;
+      console.log("Sending request to /run with body:", requestBody);
 
       const res = await fetch(`${BACKEND_URL}/run`, {
         method: "POST",
@@ -261,13 +279,25 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
         body: JSON.stringify(requestBody),
       });
       
+      console.log("Response status:", res.status);
+      
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: "Access denied" }));
+        console.log("Error response:", errorData);
         return [`Error: ${errorData.error || "Access denied"}`,
                 ...(errorData.hint ? [`Hint: ${errorData.hint}`] : [])];
       }
       
       const data = await res.json();
+      console.log("Success response:", data);
+
+      // Handle passkey grants from backend
+      if (data.passkey_granted) {
+        const wasAdded = await addPasskey(data.passkey_granted);
+        if (wasAdded) {
+          console.log("Passkey granted by backend:", data.passkey_granted);
+        }
+      }
 
       // Handle events
       if (data.event && typeof onEvent === "function") {
@@ -298,6 +328,16 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       }
 
       const output = [data.output];
+      
+      // Handle passkey messages
+      if (data.message) {
+        output.push("", data.message);
+      }
+      
+      // Handle level up notifications
+      if (data.level_up && data.new_level) {
+        output.push("", `ACCESS LEVEL UPGRADED TO ${data.new_level}!`);
+      }
       
       // Handle story progression
       if (data.story_progression) {
@@ -333,6 +373,32 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
     }
   };
 
+  // Challenge submission function
+  const submitSolution = async (challenge, solution) => {
+    try {
+      setIsLoading(true);
+      const requestBody = buildRequestBody({ challenge, solution });
+
+      const res = await fetch(`${BACKEND_URL}/submit-solution`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!res.ok) {
+        return { success: false, message: "Network error submitting solution" };
+      }
+
+      const data = await res.json();
+      return data;
+    } catch (e) {
+      console.error("Network error submitting solution:", e);
+      return { success: false, message: `Network error: ${e.message}` };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // --- Commands ---
   const commandsMap = {
     help: async () => [
@@ -342,16 +408,23 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       "  ls              - List directory contents", 
       "  cd <dir>        - Change directory",
       "  cat <file>      - Display file contents",
-      "  run <file> [passkey] - Execute a file",
+      "  run <file> <passkey> - Execute file with authentication",
       "  level           - Check your current access level",
-      "  passkey <key>   - Add a passkey to unlock new levels",
+      "  solve <challenge> <solution> - Submit challenge solution",
+      "  flags           - Show your collected flags",
       "  clear           - Clear the terminal screen",
       "",
+      "EXAMPLES:",
+      "  run 2nak3.bat crypto_master",
+      "  run exploit.exe reverse_engineer",
+      "",
     ],
+    
     ls: async ({ cwd }) => {
       const result = await lsDir(cwd.join("/"));
       return ["", ...result, ""];
     },
+    
     cd: async ({ cwd, args, setCwd }) => {
       if (!args[0]) return [];
       const newPath = resolvePath(cwd, args[0]);
@@ -363,18 +436,51 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       setCwd(newPath);
       return [`Changed directory to: ${newPath.join("/")}`];
     },
+    
     cat: async ({ cwd, args }) => {
       if (!args[0]) return ["cat: missing filename"];
       const path = resolvePath(cwd, args[0]).join("/");
       return await catFile(path);
     },
+    
+    // ENHANCED RUN COMMAND - passkey required
     run: async ({ cwd, args }) => {
       if (!args[0]) return ["run: missing filename"];
-      const path = resolvePath(cwd, args[0]).join("/");
-      const passkey = args[1]; // Optional passkey parameter
+      if (!args[1]) return [
+        "run: missing passkey",
+        "Usage: run <file> <passkey>",
+        "",
+        "Authentication is required to execute files.",
+        "Discover passkeys through exploration and challenges."
+      ];
       
-      return await runFileAPI(path, passkey);
+      const filename = args[0];
+      const passkey = args[1];
+      const path = resolvePath(cwd, filename).join("/");
+      
+      console.log(`Attempting to run ${filename} with passkey: ${passkey}`);
+      
+      const result = await runFileAPI(path, passkey);
+      
+      // Check if the backend granted the passkey
+      if (result.some(line => line.includes("Authentication successful"))) {
+        return [
+          `Executing ${filename} with authentication...`,
+          "",
+          "=== AUTHENTICATION SUCCESSFUL ===",
+          `File: ${filename}`,
+          `Passkey: ${passkey}`,
+          "",
+          ...result,
+          "",
+          "Use 'level' command to check updated permissions.",
+          "Use 'ls' to explore newly accessible areas."
+        ];
+      } else {
+        return result; // Return error from backend
+      }
     },
+    
     level: async () => {
       const levelData = await checkLevel();
       if (levelData.error) {
@@ -382,8 +488,10 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       }
       
       const output = [
+        `=== ACCESS CONTROL STATUS ===`,
         `Current Level: ${levelData.level}`,
         `Active Passkeys: ${userPasskeys.length > 0 ? userPasskeys.join(', ') : 'None'}`,
+        `Collected Flags: ${userFlags.length}`,
         "",
         "Available Access Levels:"
       ];
@@ -391,59 +499,71 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       // Add level information from backend
       if (levelData.available_levels) {
         Object.entries(levelData.available_levels).forEach(([level, desc]) => {
-          output.push(`  Level ${level}: ${desc}`);
+          const marker = levelData.level >= parseInt(level) ? "✓" : "✗";
+          output.push(`  ${marker} Level ${level}: ${desc}`);
         });
       }
       
       return output;
     },
-    passkey: async ({ args }) => {
-      if (!args[0]) return ["passkey: missing passkey argument", "Usage: passkey <key>"];
-      
-      const key = args[0];
-      
-      // Check if we already have this passkey
-      if (userPasskeys.includes(key)) {
-        return [`Passkey '${key}' already in your collection.`];
+    
+    solve: async ({ args }) => {
+      if (args.length < 2) {
+        return [
+          "solve: missing arguments", 
+          "Usage: solve <challenge> <solution>",
+          "",
+          "Find challenges by exploring the file system.",
+          "Some challenges may be hidden in files or require",
+          "specific analysis techniques to discover."
+        ];
       }
       
-      try {
-        setIsLoading(true);
-        
-        // Validate passkey using the backend endpoint
-        const params = new URLSearchParams({ passkey: key });
-        const res = await fetch(`${BACKEND_URL}/validate-passkey?${params}`);
-        
-        if (!res.ok) {
-          return [`Error validating passkey: ${res.status}`];
-        }
-        
-        const data = await res.json();
-        
-        if (data.valid) {
-          // Use the async addPasskey function
-          const wasAdded = await addPasskey(key);
+      const [challenge, ...solutionParts] = args;
+      const solution = solutionParts.join(' '); // Allow multi-word solutions
+      
+      const result = await submitSolution(challenge, solution);
+      
+      if (result.success) {
+        // Handle backend-provided passkey
+        if (result.reward_passkey) {
+          const wasAdded = await addPasskey(result.reward_passkey);
           if (wasAdded) {
-            const newLevel = data.level_unlock || userLevel;
-            return [
-              `Passkey '${key}' validated and added!`,
-              `New access level: ${newLevel}`,
-              "Use 'level' command to see updated access permissions."
-            ];
+            console.log("Passkey added from challenge:", result.reward_passkey);
           }
-        } else {
-          return [
-            `Invalid passkey: '${key}'`,
-            "Hint: Look for clues in encrypted files, decoded messages, or system logs."
-          ];
         }
-      } catch (e) {
-        console.error("Network error validating passkey:", e);
-        return [`Network error validating passkey: ${e.message}`];
-      } finally {
-        setIsLoading(false);
+        
+        return [
+          result.message,
+          result.level_unlock ? `New access unlocked: ${result.level_unlock}` : "",
+          result.reward_passkey ? `Access credential earned: ${result.reward_passkey}` : "",
+          "Use 'level' command to see updated permissions."
+        ].filter(Boolean);
+      } else {
+        return [
+          result.message,
+          result.hint || "Analyze the challenge more carefully."
+        ];
       }
     },
+    
+    flags: async () => {
+      if (userFlags.length === 0) {
+        return ["No flags collected yet.", "Complete challenges to earn flags!"];
+      }
+      
+      const output = [
+        `=== COLLECTED FLAGS (${userFlags.length}) ===`,
+        ""
+      ];
+      
+      userFlags.forEach((flag, index) => {
+        output.push(`${index + 1}. ${flag}`);
+      });
+      
+      return output;
+    },
+    
     clear: async ({ setHistory }) => {
       setHistory([]);
       return [];
@@ -560,6 +680,8 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       <div className="mt-1 text-white/50 font-mono text-sm">
         User: <span className="text-blue-400">{currentUser}</span> |
         Level: <span className="text-green-400">{userLevel}</span> |
+        Passkeys: <span className="text-cyan-400">[{userPasskeys.join(', ') || 'None'}]</span> |
+        Flags: <span className="text-purple-400">{userFlags.length}</span> |
         Session: <span className="text-gray-400">{sessionId.substring(0, 8)}...</span>
       </div>
     </div>
