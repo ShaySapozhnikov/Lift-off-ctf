@@ -410,13 +410,7 @@ export default function Prompt({ onEvent, playTypingSound, audioEnabled, onAudio
       "  cat <file>      - Display file contents",
       "  run <file> <passkey> - Execute file with authentication",
       "  level           - Check your current access level",
-      "  solve <challenge> <solution> - Submit challenge solution",
-      "  flags           - Show your collected flags",
       "  clear           - Clear the terminal screen",
-      "",
-      "EXAMPLES:",
-      "  run 2nak3.bat crypto_master",
-      "  run exploit.exe reverse_engineer",
       "",
     ],
     
