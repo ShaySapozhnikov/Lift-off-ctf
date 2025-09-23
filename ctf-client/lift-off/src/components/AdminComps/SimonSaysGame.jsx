@@ -677,7 +677,6 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
       }
     } catch (error) {
       console.error('Error connecting to backend:', error);
-      alert('Connection error. Please try again.');
     }
   };
   // Skip prompt component
