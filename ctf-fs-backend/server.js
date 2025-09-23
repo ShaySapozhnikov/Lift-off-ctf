@@ -415,47 +415,6 @@ app.get("/level", (req, res) => {
   });
 });
 
-// API: Submit challenge solution (no solution leaks)
-app.post("/submit-solution", (req, res) => {
-  const { challenge, solution } = req.body;
-  
-  // Secret challenge solutions (participants must discover these)
-  const challenges = {
-    "crypto_challenge_1": {
-      solution: "CAESAR_CIPHER_KEY",
-      reward_passkey: "crypto_master"
-    },
-    "binary_challenge_1": {
-      solution: "BUFFER_OVERFLOW", 
-      reward_passkey: "reverse_engineer"
-    },
-    "forensics_challenge_1": {
-      solution: "METADATA_ANALYSIS",
-      reward_passkey: "forensics_expert"
-    }
-  };
-  
-  const challengeData = challenges[challenge];
-  if (!challengeData) {
-    return res.status(404).json({ 
-      error: "Challenge not found"
-    });
-  }
-  
-  if (solution === challengeData.solution) {
-    return res.json({
-      success: true,
-      message: "Challenge completed successfully!",
-      reward_passkey: challengeData.reward_passkey
-    });
-  } else {
-    return res.json({
-      success: false,
-      message: "Incorrect solution.",
-      hint: "Analyze the challenge more carefully"
-    });
-  }
-});
 
 // Start server
 const PORT = process.env.PORT || 3000;
