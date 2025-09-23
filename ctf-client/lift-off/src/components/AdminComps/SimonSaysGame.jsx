@@ -645,28 +645,30 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
     try {
       const requestBody = {
         path: '/home/classified/LEAVE.bat',
-        user: 'player',
+        user: 'user', // Changed from 'player' to 'user'
         score: score,
+        passkey: 'reverse_engineer', // Add authentication for Simon game
+        userPasskeys: [], // Empty for new players
+        userFlags: [], // Include existing flags if any
+        session_id: 'simon_session_' + Date.now() // Add session ID
       };
-
+  
       const response = await fetch("https://lift-off-ctf.onrender.com/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
-
+  
       if (!response.ok) {
         throw new Error(`Server error: ${response.status} - ${response.statusText}`);
       }
-
+  
       const data = await response.json();
-
+      
       if (data.flag && score >= 550) {
         setCapturedFlag(data.flag);
         navigator.clipboard.writeText(data.flag);
         window.submitGameScore("/home/classified/LEAVE.bat", score);
-
-
       } else {
         // If score is not high enough, reset the game
         setShowingVictoryDialogue(false);
@@ -678,7 +680,6 @@ export default function SimonSaysGame({ onExit, audioContext, audioEnabled, onAu
       alert('Connection error. Please try again.');
     }
   };
-
   // Skip prompt component
   const SkipPrompt = () => (
     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">

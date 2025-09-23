@@ -314,7 +314,6 @@ export default function EndingScreen({ ending, onRestart, audioContext, audioEna
   // Backend connection function for flag retrieval
   const fetchEndingFlag = async () => {
     if (flagLoading || capturedFlag) return;
-    
     setFlagLoading(true);
     
     try {
@@ -326,26 +325,29 @@ export default function EndingScreen({ ending, onRestart, audioContext, audioEna
       } else {
         finalAiChoice = aiChoice;
       }
-
+  
       const requestBody = {
         path: '/root/vault/pleasedont.exe',
         user: 'root',
         passkey: 'forensics_expert',
-        aiChoice: finalAiChoice   // or 'join' for the bad ending
+        aiChoice: finalAiChoice,
+        userPasskeys: [], // Add this
+        userFlags: [], // Add this
+        session_id: 'ending_session_' + Date.now() // Add this
       };
-      
+  
       const response = await fetch("https://lift-off-ctf.onrender.com/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
       });
-
+  
       if (!response.ok) {
         throw new Error(`Server error: ${response.status} - ${response.statusText}`);
       }
-
+  
       const data = await response.json();
-
+      
       if (data.flag) {
         setCapturedFlag(data.flag);
         try {
@@ -354,7 +356,6 @@ export default function EndingScreen({ ending, onRestart, audioContext, audioEna
           console.warn('Could not copy to clipboard:', clipboardError);
         }
       }
-
     } catch (error) {
       console.error('Error fetching flag:', error);
     } finally {

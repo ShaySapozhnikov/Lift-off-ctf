@@ -288,9 +288,13 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          path: '/home/user/2nak3.bat',    // Fixed: Added leading slash
-          user: 'user',                    // Fixed: Changed from 'player' to 'user'  
-          score: currentScore              // This is the key parameter for level progression
+          path: '/home/user/2nak3.bat',
+          user: 'user',
+          score: currentScore,
+          passkey: 'crypto_master', // Add this for authentication
+          userPasskeys: [], // Empty for new players
+          userFlags: [], // Include existing flags if any
+          session_id: 'game_session_' + Date.now() // Add session ID
         }),
         signal: AbortSignal.timeout(10000)
       });
@@ -307,6 +311,7 @@ function SnakeAdmin({onExit, audioContext, audioEnabled, onAudioInit}) {
         setCapturedFlag(data.flag);
         return true;
       }
+      
       return false;
     } catch (error) {
       console.error('Victory API error:', error);
