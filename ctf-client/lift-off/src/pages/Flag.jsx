@@ -55,7 +55,7 @@ const validateFlag = (flag) => {
 
 // Simple client-side rate limiting
 class RateLimiter {
-    constructor(maxAttempts = 3, windowMs = 60000) { // 3 attempts per minute
+    constructor(maxAttempts = 99999, windowMs = 30000) { // 3 attempts per minute
         this.maxAttempts = maxAttempts;
         this.windowMs = windowMs;
         this.attempts = [];
