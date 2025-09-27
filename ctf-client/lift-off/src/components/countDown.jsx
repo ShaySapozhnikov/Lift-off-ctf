@@ -40,7 +40,7 @@ export default function CountDown() {
       }
 
       if (!data.running || !data.target_time) {
-        setTimeLeft("Starting Soon");
+        setTimeLeft("See you next time!");
         clearInterval(timerRef.current);
         timerRef.current = null;
         targetRef.current = null;
