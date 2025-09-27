@@ -22,7 +22,7 @@ const asciiArt = `
 `;
 
 export default function CountDown() {
-  const [timeLeft, setTimeLeft] = useState("Starting Soon");
+  const [timeLeft, setTimeLeft] = useState("See you next time!");
   const timerRef = useRef(null);
   const targetRef = useRef(null); // store current target_time
 
