@@ -6,7 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 
 import "./index.css";
 
-// ✅ Event Context
+
 const EventContext = createContext();
 
 function EventProvider({ children }) {
