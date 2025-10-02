@@ -39,7 +39,7 @@ function EventProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    //console.log("🟢 eventStarted changed:", eventStarted);
+
   }, [eventStarted]);
 
   return (
@@ -53,7 +53,7 @@ function useEvent() {
   return useContext(EventContext);
 }
 
-// ✅ Pages
+//  Pages
 import Home from "./pages/home.jsx";
 import Start from "./pages/start.jsx"; // <-- start page is now protected
 import NotFound from "./pages/NotFound.jsx";
@@ -63,7 +63,7 @@ import Admin from "./pages/admin.jsx";
 import Flags from "./pages/Flag.jsx";
 import Public from "./pages/Public.jsx";
 
-// ✅ AppRouter with conditional protected routes including /start
+//  AppRouter with conditional protected routes including /start
 function AppRouter() {
   const { eventStarted, loading } = useEvent();
 
@@ -102,7 +102,7 @@ function AppRouter() {
   );
 }
 
-// ✅ Mount
+//  Mount
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <EventProvider>
