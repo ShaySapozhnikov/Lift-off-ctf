@@ -90,13 +90,13 @@ export default function CountDown() {
   }, []);
 
   return (
-    <div className="bg-zinc-900 h-[400px] border-2 border-gray-500 border-dashed rounded-md p-2 overflow-auto">
-      <div className="z-0 animate-speedLine1">...........</div>
-      <pre className="text-white text-left font-mono text-[10px] leading-tight whitespace-pre-wrap p-4 mt-[10px] animate-float z-10">
+    <div className="bg-zinc-900 h-[400px] sm:h-[450px] md:h-[500px] border border-gray-500 border-dashed rounded-md p-2 sm:p-4 overflow-auto">
+      <div className="z-0 animate-speedLine1 text-[7px] sm:text-xs">...........</div>
+      <pre className="text-white text-left font-mono text-[7px] sm:text-[10px] leading-tight whitespace-pre-wrap p-2 sm:p-4 mt-[10px] animate-float z-10">
         {asciiArt}
       </pre>
-      <div className="z-0 animate-speedLine2">...........</div>
-      <h1 className="italic font-bold text-white text-center text-lg font-mono mt-10 animate-pulse">
+      <div className="z-0 animate-speedLine2 text-[7px] sm:text-xs">...........</div>
+      <h1 className="italic font-bold text-white text-center text-base sm:text-lg md:text-xl font-mono mt-6 sm:mt-8 md:mt-10 animate-pulse px-2">
         Countdown: {timeLeft}
       </h1>
     </div>
