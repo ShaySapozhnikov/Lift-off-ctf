@@ -1,7 +1,7 @@
 import {useState} from 'react';
 
 import CorruptedAdminPanel from '../components/CorruptedAdminPanel';
-import { SpeedInsights } from '@vercel/speed-insights/next';
+
 
 // Supabase setup
 import { supabase } from '../singletonSupabase';
