@@ -42,7 +42,7 @@ function Home() {
         <p className="text-zinc-900">{"CTF{w3lc0m3_4b04rd}"}</p>
       </div>
       
-      <SpeedInsights />
+
     </div>
   );
 }

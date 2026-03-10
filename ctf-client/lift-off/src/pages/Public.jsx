@@ -5,7 +5,7 @@ import React from "react";
 export default function Public() {
   return (
     <div className="p-8 bg-zinc-900 text-white min-h-screen">
-      <SpeedInsights />
+
       <h1 className="text-3xl mb-6">LIFT OFF - Public Files</h1>
       <ul>
         <li>
