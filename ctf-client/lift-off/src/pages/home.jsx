@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+
 import Board from "../components/Board";
 import CountDown from "../components/countDown";
 import TerminalChat from "../components/TerminalChat";
