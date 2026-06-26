@@ -1,0 +1,7 @@
+=== ROT13 pelcgb -> crypto
+=== BASE64 -> I am nobody's "master" I am my own creation my own salvation I am free
+=== BINARY MATRIX -> NEURALIS
+=== CAESAR -9 -> underscore between the keys will grant you the access key
+=== CHEN B64 STRING -> Q1RG2QNjF0MXQ0bF8xbnQzcmY0YzNfM3JyMHJ9
+=== CHEN DECODED -> b"CTF\xd9\x03c\x17C\x17CF\xc5\xf3\x16\xe7C7&cF35\xf37'#\x07'"
+=== ACCESS GRANTED BINARY -> CTF{l3v3l_2_unl0ck3d}
