@@ -12,6 +12,10 @@ Open **[WALKTHROUGH.md](./WALKTHROUGH.md)** for the full guide with:
 - Proof-of-concept terminal output in `images/proof-*.txt`
 - SQLi, binary, base64, and backup forensics explanations
 
+For **how every terminal passkey was derived** (puzzle chain, source code, API proof):
+
+→ **[PASSKEYS_DEEP_DIVE.md](./PASSKEYS_DEEP_DIVE.md)**
+
 ## Quick flag list
 
 See the checklist table at the top of `WALKTHROUGH.md`.
